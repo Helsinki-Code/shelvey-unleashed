@@ -21,6 +21,7 @@ const formatTime = (date: Date) => {
 };
 
 export const LiveFeed = () => {
+  // Live Feed section with real-time activity logs
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResult, setFilterResult] = useState<'all' | 'success' | 'pending' | 'error'>('all');

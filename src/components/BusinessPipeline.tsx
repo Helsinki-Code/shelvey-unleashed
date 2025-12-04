@@ -113,9 +113,9 @@ export const BusinessPipeline = () => {
   const avgProgress = Math.round(businesses.reduce((sum, b) => sum + b.progress, 0) / businesses.length);
 
   return (
-    <section className="py-20 relative overflow-hidden">
+    <section className="py-24 relative overflow-hidden">
       {/* Background effect */}
-      <div className="absolute inset-0 matrix-bg opacity-10" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/10 to-background" />
       
       <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
@@ -125,8 +125,8 @@ export const BusinessPipeline = () => {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="font-cyber text-3xl md:text-4xl font-bold mb-4">
-            <span className="text-gradient">BUSINESS PIPELINE</span>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">
+            <span className="text-gradient">Business Pipeline</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
             AI-powered business creation factory. From market research to exit-ready in weeks, not years.
