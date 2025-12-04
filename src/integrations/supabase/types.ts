@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_activity_logs: {
+        Row: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          agent_name?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      business_metrics: {
+        Row: {
+          id: string
+          metadata: Json | null
+          metric_type: string
+          period: string
+          recorded_at: string
+          value: number
+        }
+        Insert: {
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          period: string
+          recorded_at?: string
+          value: number
+        }
+        Update: {
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          period?: string
+          recorded_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      mcp_server_status: {
+        Row: {
+          id: string
+          last_ping: string | null
+          latency_ms: number | null
+          metadata: Json | null
+          requests_today: number | null
+          server_id: string
+          server_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_ping?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          requests_today?: number | null
+          server_id: string
+          server_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_ping?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          requests_today?: number | null
+          server_id?: string
+          server_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      voice_conversations: {
+        Row: {
+          agent_id: string
+          audio_url: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          status: string
+          transcript: string | null
+        }
+        Insert: {
+          agent_id: string
+          audio_url?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          status?: string
+          transcript?: string | null
+        }
+        Update: {
+          agent_id?: string
+          audio_url?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          status?: string
+          transcript?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

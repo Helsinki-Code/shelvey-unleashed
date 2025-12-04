@@ -9,6 +9,8 @@ import AgentsPage from "./pages/AgentsPage";
 import PipelinePage from "./pages/PipelinePage";
 import NeuralPage from "./pages/NeuralPage";
 import MeetingsPage from "./pages/MeetingsPage";
+import VoicePage from "./pages/VoicePage";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/pipeline" element={<PipelinePage />} />
             <Route path="/neural" element={<NeuralPage />} />
             <Route path="/meetings" element={<MeetingsPage />} />
+            <Route path="/voice" element={<VoicePage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
