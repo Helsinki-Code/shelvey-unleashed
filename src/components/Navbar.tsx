@@ -10,6 +10,8 @@ const navLinks = [
   { name: 'Pipeline', href: '/pipeline' },
   { name: 'Neural', href: '/neural' },
   { name: 'Meetings', href: '/meetings' },
+  { name: 'Voice', href: '/voice' },
+  { name: 'Admin', href: '/admin' },
 ];
 
 export const Navbar = () => {
