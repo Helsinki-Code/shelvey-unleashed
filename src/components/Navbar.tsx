@@ -1,0 +1,181 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ThemeToggle } from './ThemeToggle';
+import { Menu, X, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+const navLinks = [
+  { name: 'Command', href: '/' },
+  { name: 'Agents', href: '/agents' },
+  { name: 'Pipeline', href: '/pipeline' },
+  { name: 'Neural Net', href: '/neural' },
+  { name: 'Meetings', href: '/meetings' },
+];
+
+export const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50">
+      {/* Glassmorphic background */}
+      <div className="absolute inset-0 glass-morphism border-b border-border/50" />
+      
+      {/* Animated top border */}
+      <motion.div 
+        className="absolute top-0 left-0 right-0 h-[2px] bg-cyber-gradient"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 1, ease: "easeOut" }}
+      />
+
+      <div className="container mx-auto px-4 relative">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <motion.div 
+              className="relative w-10 h-10 flex items-center justify-center"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Animated hexagon background */}
+              <svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full">
+                <motion.polygon
+                  points="20,2 38,11 38,29 20,38 2,29 2,11"
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="1.5"
+                  className="drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]"
+                  animate={{
+                    strokeDasharray: ["0 200", "200 0"],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+                <polygon
+                  points="20,2 38,11 38,29 20,38 2,29 2,11"
+                  fill="hsl(var(--primary) / 0.1)"
+                />
+              </svg>
+              <Zap className="w-5 h-5 text-primary relative z-10" />
+            </motion.div>
+            
+            <div className="flex flex-col">
+              <span className="font-cyber text-lg font-bold tracking-wider text-foreground group-hover:text-primary transition-colors">
+                SHEL<span className="text-primary">VEY</span>
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground tracking-widest">
+                AI WORKFORCE
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map((link, index) => (
+              <Link
+                key={link.name}
+                to={link.href}
+                className="relative px-4 py-2 group"
+              >
+                <motion.span
+                  className="relative z-10 font-mono text-sm text-muted-foreground group-hover:text-primary transition-colors uppercase tracking-wider"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  {link.name}
+                </motion.span>
+                
+                {/* Hover effect */}
+                <motion.div
+                  className="absolute inset-0 rounded-md bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  layoutId="navHover"
+                />
+                
+                {/* Bottom line indicator */}
+                <motion.div
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-primary group-hover:w-full transition-all duration-300"
+                />
+              </Link>
+            ))}
+          </div>
+
+          {/* Right section */}
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            
+            {/* Status indicator */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+              <motion.div 
+                className="w-2 h-2 rounded-full bg-primary"
+                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span className="font-mono text-xs text-primary">ONLINE</span>
+            </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
+            >
+              <AnimatePresence mode="wait">
+                {isOpen ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <X className="w-5 h-5 text-foreground" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Menu className="w-5 h-5 text-foreground" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden overflow-hidden"
+          >
+            <div className="glass-morphism border-t border-border/50 px-4 py-4 space-y-2">
+              {navLinks.map((link, index) => (
+                <motion.div
+                  key={link.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Link
+                    to={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-lg bg-card/50 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all font-mono text-sm uppercase tracking-wider text-muted-foreground hover:text-primary"
+                  >
+                    {link.name}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
+  );
+};

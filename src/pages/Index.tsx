@@ -1,13 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Navbar } from '@/components/Navbar';
+import { HeroSection } from '@/components/HeroSection';
+import { AgentGrid } from '@/components/AgentGrid';
+import { NeuralNetwork } from '@/components/NeuralNetwork';
+import { LiveFeed } from '@/components/LiveFeed';
+import { BusinessPipeline } from '@/components/BusinessPipeline';
+import { VoiceMeetingRoom } from '@/components/VoiceMeetingRoom';
+import { Footer } from '@/components/Footer';
+import { Helmet } from 'react-helmet-async';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <>
+      <Helmet>
+        <title>ShelVey - Autonomous AI Sales & Business Creation Ecosystem</title>
+        <meta 
+          name="description" 
+          content="ShelVey is an autonomous AI workforce with 25+ specialized agents that operate like a real company. Build, market, and scale businesses with AI-powered automation." 
+        />
+        <meta name="keywords" content="AI workforce, autonomous agents, business automation, AI sales, SaaS creation" />
+      </Helmet>
+
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main>
+          <HeroSection />
+          <AgentGrid />
+          <NeuralNetwork />
+          <VoiceMeetingRoom />
+          <BusinessPipeline />
+          <LiveFeed />
+        </main>
+        <Footer />
       </div>
-    </div>
+    </>
   );
 };
 
