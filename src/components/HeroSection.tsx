@@ -245,8 +245,8 @@ export const HeroSection = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
               </span>
-              <span className="text-sm font-mono text-primary tracking-wide">
-                25 AGENTS • 26 MCP SERVERS • LIVE
+            <span className="text-sm font-mono text-primary tracking-wide">
+                25 AGENTS • 27 MCP SERVERS • AMROGEN
               </span>
             </motion.div>
             
@@ -354,9 +354,9 @@ export const HeroSection = () => {
             <StatusCard className="top-[5%] right-[5%]" delay={0.8}>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-emerald-400">PostgreSQL</span>
+                <span className="text-xs font-mono text-emerald-400">Playwright</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">12ms • 1.8k req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">45ms • 892 req</div>
             </StatusCard>
             
             <StatusCard className="bottom-[15%] left-[0%]" delay={1}>
@@ -369,18 +369,18 @@ export const HeroSection = () => {
             
             <StatusCard className="top-[25%] left-[-5%]" delay={1.2}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-xs font-mono text-blue-400">HubSpot CRM</span>
+                <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                <span className="text-xs font-mono text-cyan-400">Perplexity AI</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">67ms • 1.9k req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">89ms • 2.3k req</div>
             </StatusCard>
             
             <StatusCard className="bottom-[5%] right-[10%]" delay={1.4}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                <span className="text-xs font-mono text-violet-400">GitHub</span>
+                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                <span className="text-xs font-mono text-indigo-400">Vapi Voice</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">28ms • 2.9k req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">123ms • 678 req</div>
             </StatusCard>
           </motion.div>
         </div>
