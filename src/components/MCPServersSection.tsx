@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mcpServers, categoryColors, MCPServer } from '@/lib/mcp-servers';
-import { Search, Zap, Clock, Activity, ExternalLink, Check, Loader2 } from 'lucide-react';
+import { Search, Zap, Clock, Activity, ExternalLink, Check, Loader2, Key } from 'lucide-react';
 import { Input } from './ui/input';
 
 const ServerCard = ({ server, index }: { server: MCPServer; index: number }) => {
@@ -48,6 +48,12 @@ const ServerCard = ({ server, index }: { server: MCPServer; index: number }) => 
                 <span className="text-[10px] text-amber-400">Syncing</span>
               </>
             )}
+            {server.status === 'requires-key' && (
+              <>
+                <Key className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">Key Required</span>
+              </>
+            )}
           </div>
         </div>
         
@@ -90,7 +96,7 @@ export const MCPServersSection = () => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MCPServer['category'] | 'all'>('all');
   
-  const categories: Array<MCPServer['category'] | 'all'> = ['all', 'database', 'communication', 'development', 'analytics', 'automation', 'ai', 'storage', 'search'];
+  const categories: Array<MCPServer['category'] | 'all'> = ['all', 'development', 'ai', 'voice', 'social', 'marketing', 'automation', 'design', 'communication', 'storage', 'analytics'];
   
   const filteredServers = mcpServers.filter(server => {
     const matchesSearch = server.name.toLowerCase().includes(search.toLowerCase()) ||
