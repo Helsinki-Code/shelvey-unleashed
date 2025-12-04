@@ -5,10 +5,10 @@ import { Menu, X, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const navLinks = [
-  { name: 'Command', href: '/' },
+  { name: 'Home', href: '/' },
   { name: 'Agents', href: '/agents' },
   { name: 'Pipeline', href: '/pipeline' },
-  { name: 'Neural Net', href: '/neural' },
+  { name: 'Neural', href: '/neural' },
   { name: 'Meetings', href: '/meetings' },
 ];
 

@@ -135,10 +135,9 @@ const NetworkVisualization = () => {
 
 export const NeuralNetwork = () => {
   return (
-    <section className="py-20 relative overflow-hidden">
+    <section className="py-24 relative overflow-hidden">
       {/* Background effects */}
-      <div className="absolute inset-0 matrix-bg opacity-20" />
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-muted/20 via-background to-background" />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
@@ -148,8 +147,9 @@ export const NeuralNetwork = () => {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="font-cyber text-3xl md:text-4xl font-bold mb-4">
-            <span className="text-gradient">NEURAL COMMUNICATION NETWORK</span>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">
+            <span className="text-gradient">Neural Communication</span>
+            <span className="text-foreground"> Network</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Real-time visualization of agent-to-agent data flow. Each node represents an AI agent, 

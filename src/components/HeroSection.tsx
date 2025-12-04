@@ -1,264 +1,401 @@
-import { motion } from 'framer-motion';
-import { Play, Zap, Users, TrendingUp, Activity } from 'lucide-react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { useEffect, useState, useRef } from 'react';
+import { Zap, ArrowRight, Sparkles, Globe, Cpu } from 'lucide-react';
 import { Button } from './ui/button';
 
-const stats = [
-  { value: '2,845', label: 'Leads Processed', icon: Users },
-  { value: '14.2K', label: 'Messages Sent', icon: TrendingUp },
-  { value: '3.4%', label: 'Conversion Rate', icon: Zap },
-];
-
-// Animated Orb component using CSS
-const AnimatedOrb = () => {
-  return (
-    <div className="relative w-full h-full flex items-center justify-center">
-      {/* Main orb */}
-      <motion.div
-        className="relative w-64 h-64 md:w-80 md:h-80 rounded-full"
-        style={{
-          background: 'radial-gradient(circle at 30% 30%, hsl(158 100% 60%), hsl(158 100% 35%), hsl(160 40% 15%))',
-          boxShadow: '0 0 60px hsl(158 100% 45% / 0.4), 0 0 120px hsl(158 100% 45% / 0.2), inset 0 0 60px hsl(158 100% 60% / 0.3)',
-        }}
-        animate={{
-          scale: [1, 1.05, 1],
-          rotate: [0, 5, -5, 0],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      >
-        {/* Inner glow */}
-        <motion.div
-          className="absolute inset-8 rounded-full"
-          style={{
-            background: 'radial-gradient(circle, hsl(180 100% 60% / 0.3), transparent 70%)',
-          }}
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 3, repeat: Infinity }}
+// Hexagonal grid background
+const HexGrid = () => (
+  <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="hexagons" width="50" height="86.6" patternUnits="userSpaceOnUse" patternTransform="scale(2)">
+        <polygon 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="0.5"
+          points="25,0 50,14.4 50,43.3 25,57.7 0,43.3 0,14.4"
+          className="text-primary"
         />
-      </motion.div>
+        <polygon 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="0.5"
+          points="25,28.9 50,43.3 50,72.2 25,86.6 0,72.2 0,43.3"
+          className="text-primary"
+        />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#hexagons)" />
+  </svg>
+);
 
-      {/* Orbiting particles */}
-      {[...Array(3)].map((_, i) => (
+// Animated counter
+const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 2,
+      onUpdate: (v) => setDisplayValue(Math.floor(v)),
+    });
+    return controls.stop;
+  }, [value]);
+  
+  return <span>{displayValue.toLocaleString()}{suffix}</span>;
+};
+
+// Neural connection lines
+const NeuralLines = () => {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {[...Array(8)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-full h-full"
-          style={{ transformOrigin: 'center center' }}
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 10 + i * 5,
-            repeat: Infinity,
-            ease: "linear",
+          className="absolute h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"
+          style={{
+            top: `${15 + i * 12}%`,
+            left: '-10%',
+            width: '120%',
+            transform: `rotate(${-15 + i * 5}deg)`,
           }}
-        >
-          <motion.div
-            className="absolute w-3 h-3 rounded-full"
-            style={{
-              top: '10%',
-              left: '50%',
-              background: i === 0 ? 'hsl(180 100% 50%)' : i === 1 ? 'hsl(270 80% 60%)' : 'hsl(158 100% 50%)',
-              boxShadow: `0 0 10px ${i === 0 ? 'hsl(180 100% 50%)' : i === 1 ? 'hsl(270 80% 60%)' : 'hsl(158 100% 50%)'}`,
-            }}
-            animate={{ scale: [1, 1.5, 1] }}
-            transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
-          />
-        </motion.div>
+          animate={{
+            opacity: [0, 0.6, 0],
+            scaleX: [0.5, 1, 0.5],
+          }}
+          transition={{
+            duration: 4 + i * 0.5,
+            repeat: Infinity,
+            delay: i * 0.3,
+          }}
+        />
       ))}
-
-      {/* Particle ring */}
-      <motion.div
-        className="absolute w-[120%] h-[120%] rounded-full border border-primary/20"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-      />
-      <motion.div
-        className="absolute w-[140%] h-[140%] rounded-full border border-cyber-cyan/10"
-        animate={{ rotate: -360 }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-      />
     </div>
   );
 };
 
+// Floating data particles
+const DataParticles = () => {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {[...Array(20)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 rounded-full bg-primary"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+          }}
+          animate={{
+            y: [0, -100, 0],
+            opacity: [0, 1, 0],
+            scale: [0, 1.5, 0],
+          }}
+          transition={{
+            duration: 3 + Math.random() * 2,
+            repeat: Infinity,
+            delay: Math.random() * 3,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Central orb with morphing effect
+const CentralOrb = () => {
+  return (
+    <div className="relative w-[320px] h-[320px] md:w-[420px] md:h-[420px]">
+      {/* Outer glow rings */}
+      <motion.div
+        className="absolute inset-[-20%] rounded-full border border-primary/20"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="absolute inset-[-10%] rounded-full border border-primary/10"
+        animate={{ rotate: -360 }}
+        transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+      />
+      
+      {/* Main orb container */}
+      <div className="absolute inset-0 rounded-full overflow-hidden">
+        {/* Gradient background */}
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(circle at 30% 30%, hsl(var(--primary)) 0%, transparent 50%),
+              radial-gradient(circle at 70% 70%, hsl(var(--accent)) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, hsl(var(--cyber-purple)) 0%, transparent 60%),
+              linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--cyber-dark)))
+            `,
+          }}
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        
+        {/* Inner glow */}
+        <motion.div
+          className="absolute inset-[15%] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary) / 0.5) 0%, transparent 70%)',
+          }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 3, repeat: Infinity }}
+        />
+        
+        {/* Scan line effect */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/10 to-transparent"
+          animate={{ y: ['-100%', '100%'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+        />
+      </div>
+      
+      {/* Orbiting elements */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute top-1/2 left-1/2 w-3 h-3"
+          style={{ transformOrigin: '0 0' }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 8 + i * 2, repeat: Infinity, ease: 'linear' }}
+        >
+          <motion.div
+            className="w-3 h-3 rounded-full"
+            style={{
+              background: i % 2 === 0 ? 'hsl(var(--primary))' : 'hsl(var(--accent))',
+              transform: `translateX(${130 + i * 20}px)`,
+              boxShadow: `0 0 20px ${i % 2 === 0 ? 'hsl(var(--primary))' : 'hsl(var(--accent))'}`,
+            }}
+            animate={{ scale: [1, 1.5, 1] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+          />
+        </motion.div>
+      ))}
+      
+      {/* Center core */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full"
+        style={{
+          background: 'radial-gradient(circle, hsl(var(--background)) 0%, hsl(var(--card)) 100%)',
+          boxShadow: 'inset 0 0 30px hsl(var(--primary) / 0.3)',
+        }}
+      >
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+        >
+          <Cpu className="w-8 h-8 text-primary" />
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Status indicator cards floating around
+const StatusCard = ({ children, className, delay }: { children: React.ReactNode; className: string; delay: number }) => (
+  <motion.div
+    className={`absolute p-3 rounded-xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg ${className}`}
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ 
+      opacity: 1, 
+      scale: 1,
+      y: [0, -8, 0],
+    }}
+    transition={{ 
+      delay,
+      y: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+    }}
+  >
+    {children}
+  </motion.div>
+);
+
 export const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-      {/* Animated background grid */}
-      <div className="absolute inset-0 matrix-bg opacity-30" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
+      {/* Background layers */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/20" />
+      <HexGrid />
+      <NeuralLines />
+      <DataParticles />
       
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
-      <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background opacity-50" />
-
-      {/* Floating geometric shapes */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-32 h-32 border border-primary/10 rounded-full"
-            style={{
-              top: `${20 + i * 15}%`,
-              left: `${10 + i * 20}%`,
-            }}
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.1, 0.3, 0.1],
-              rotate: [0, 180, 360],
-            }}
-            transition={{
-              duration: 10 + i * 2,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-        ))}
-      </div>
-
+      {/* Radial glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/5 blur-[150px]" />
+      
       <div className="container mx-auto px-4 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left content */}
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center lg:text-left"
+            className="text-center lg:text-left order-2 lg:order-1"
           >
-            {/* Badge */}
+            {/* Live status badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6"
+              className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-primary/5 border border-primary/20 mb-8"
             >
-              <motion.div 
-                className="w-2 h-2 rounded-full bg-primary"
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              />
-              <span className="font-mono text-sm text-primary">25 AGENTS ACTIVE</span>
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+              </span>
+              <span className="text-sm font-mono text-primary tracking-wide">
+                25 AGENTS • 26 MCP SERVERS • LIVE
+              </span>
             </motion.div>
-
+            
             {/* Main heading */}
-            <h1 className="font-cyber text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              <span className="text-foreground">THE FUTURE OF</span>
-              <br />
-              <span className="text-gradient">AUTONOMOUS</span>
-              <br />
-              <span className="text-foreground">BUSINESS</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight">
+              <motion.span 
+                className="block text-foreground"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                Autonomous
+              </motion.span>
+              <motion.span 
+                className="block text-gradient mt-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                AI Workforce
+              </motion.span>
+              <motion.span 
+                className="block text-foreground/60 text-2xl sm:text-3xl lg:text-4xl mt-4 font-normal"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                for Business Creation
+              </motion.span>
             </h1>
-
-            <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
-              ShelVey is an autonomous AI workforce that operates like a real company. 
-              25+ specialized agents working 24/7 to identify opportunities, build solutions, 
-              and generate revenue.
-            </p>
-
+            
+            <motion.p 
+              className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              ShelVey deploys 25 specialized AI agents connected to real-time MCP servers. 
+              They identify opportunities, build products, and generate revenue 24/7.
+            </motion.p>
+            
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
               <Button 
                 size="lg" 
-                className="group relative overflow-hidden bg-primary hover:bg-primary/90 text-primary-foreground font-cyber tracking-wider"
+                className="group text-base px-8 h-14 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
               >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-cyber-cyan/20 to-cyber-purple/20"
-                  animate={{ x: ['-100%', '100%'] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <span className="relative flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  INITIALIZE AGENTS
-                </span>
+                <Zap className="w-5 h-5 mr-2" />
+                Launch Dashboard
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
               
               <Button 
                 variant="outline" 
                 size="lg"
-                className="font-cyber tracking-wider border-primary/30 hover:border-primary hover:bg-primary/5"
+                className="text-base px-8 h-14 rounded-xl border-border hover:bg-muted"
               >
-                <Play className="w-5 h-5 mr-2" />
-                WATCH DEMO
+                <Sparkles className="w-5 h-5 mr-2" />
+                View Live Demo
               </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-12">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  className="text-center p-4 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 transition-colors"
-                >
-                  <stat.icon className="w-5 h-5 text-primary mx-auto mb-2" />
-                  <div className="font-cyber text-2xl text-foreground">{stat.value}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{stat.label}</div>
-                </motion.div>
+            </motion.div>
+            
+            {/* Stats row */}
+            <motion.div 
+              className="grid grid-cols-3 gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              {[
+                { value: 14847, label: 'Tasks Today', suffix: '' },
+                { value: 98.7, label: 'Success Rate', suffix: '%' },
+                { value: 127450, label: 'Revenue MTD', suffix: '' },
+              ].map((stat, i) => (
+                <div key={stat.label} className="text-center lg:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {stat.label === 'Revenue MTD' ? '$' : ''}
+                    <AnimatedNumber value={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+                </div>
               ))}
-            </div>
+            </motion.div>
           </motion.div>
-
-          {/* Right - Animated Orb */}
+          
+          {/* Right - Orb visualization */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.3 }}
-            className="relative h-[400px] lg:h-[600px]"
+            className="relative flex items-center justify-center order-1 lg:order-2 h-[400px] lg:h-[600px]"
           >
-            {/* Glow effect behind orb */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary/20 blur-[100px]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-cyber-cyan/20 blur-[60px]" />
-
-            <AnimatedOrb />
-
-            {/* Floating info cards */}
-            <motion.div
-              className="absolute top-[15%] right-[10%] p-3 rounded-lg glass-morphism border border-primary/20 shadow-cyber"
-              animate={{ y: [-5, 5, -5] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
+            {/* Background glow */}
+            <div className="absolute w-[300px] h-[300px] rounded-full bg-primary/20 blur-[100px]" />
+            <div className="absolute w-[200px] h-[200px] rounded-full bg-accent/20 blur-[80px] translate-x-20" />
+            
+            <CentralOrb />
+            
+            {/* Floating status cards */}
+            <StatusCard className="top-[5%] right-[5%]" delay={0.8}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm">🤖</span>
-                </div>
-                <div>
-                  <div className="text-xs font-mono text-primary">DIRECTOR AGENT</div>
-                  <div className="text-[10px] text-muted-foreground">Orchestrating...</div>
-                </div>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono text-emerald-400">PostgreSQL</span>
               </div>
-            </motion.div>
-
-            <motion.div
-              className="absolute bottom-[20%] left-[5%] p-3 rounded-lg glass-morphism border border-cyber-cyan/20 shadow-cyber"
-              animate={{ y: [5, -5, 5] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            >
+              <div className="text-[10px] text-muted-foreground mt-1">12ms • 1.8k req</div>
+            </StatusCard>
+            
+            <StatusCard className="bottom-[15%] left-[0%]" delay={1}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-cyber-cyan/20 flex items-center justify-center">
-                  <span className="text-sm">💰</span>
-                </div>
-                <div>
-                  <div className="text-xs font-mono text-cyber-cyan">REVENUE TODAY</div>
-                  <div className="text-lg font-cyber text-foreground">$12,450</div>
-                </div>
+                <Globe className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">$12,450</span>
               </div>
-            </motion.div>
+              <div className="text-[10px] text-muted-foreground">Revenue Today</div>
+            </StatusCard>
+            
+            <StatusCard className="top-[25%] left-[-5%]" delay={1.2}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-xs font-mono text-blue-400">HubSpot CRM</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">67ms • 1.9k req</div>
+            </StatusCard>
+            
+            <StatusCard className="bottom-[5%] right-[10%]" delay={1.4}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                <span className="text-xs font-mono text-violet-400">GitHub</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">28ms • 2.9k req</div>
+            </StatusCard>
           </motion.div>
         </div>
       </div>
-
+      
       {/* Scroll indicator */}
       <motion.div
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        animate={{ y: [0, 10, 0] }}
+        animate={{ y: [0, 8, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <div className="w-6 h-10 rounded-full border-2 border-primary/30 flex justify-center p-2">
+        <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2">
           <motion.div
-            className="w-1.5 h-1.5 rounded-full bg-primary"
-            animate={{ y: [0, 12, 0] }}
+            className="w-1 h-2 rounded-full bg-primary"
+            animate={{ y: [0, 8, 0], opacity: [1, 0.5, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
         </div>
