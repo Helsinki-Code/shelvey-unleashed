@@ -1,101 +1,51 @@
-import { useRef, useMemo, Suspense } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
 import { agents, divisionColors, Division } from '@/lib/agents-data';
 
-const Node = ({ position, color, scale = 0.15 }: { position: [number, number, number]; color: string; scale?: number }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.scale.setScalar(scale + Math.sin(state.clock.getElapsedTime() * 2) * 0.02);
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={position}>
-      <sphereGeometry args={[scale, 16, 16]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={0.5}
-        metalness={0.8}
-        roughness={0.2}
-      />
-    </mesh>
-  );
-};
-
-const ConnectionLine = ({ start, end, color }: { start: THREE.Vector3; end: THREE.Vector3; color: string }) => {
-  const lineRef = useRef<THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>>(null);
-
-  const geometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    return geometry;
-  }, [start, end]);
-
-  useFrame((state) => {
-    if (lineRef.current && lineRef.current.material) {
-      lineRef.current.material.opacity = 0.3 + Math.sin(state.clock.getElapsedTime() * 3) * 0.2;
-    }
-  });
-
-  return (
-    <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 }))} ref={lineRef} />
-  );
-};
-
+// CSS-based Neural Network visualization
 const NetworkVisualization = () => {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.05;
-    }
-  });
-
-  // Create node positions in a spherical pattern
   const nodes = useMemo(() => {
     return agents.map((agent, i) => {
-      const phi = Math.acos(-1 + (2 * i) / agents.length);
-      const theta = Math.sqrt(agents.length * Math.PI) * phi;
-      const radius = 3;
+      // Position nodes in a circular pattern
+      const angle = (i / agents.length) * Math.PI * 2;
+      const radius = 40;
+      const x = 50 + radius * Math.cos(angle);
+      const y = 50 + radius * Math.sin(angle);
       return {
-        position: [
-          radius * Math.cos(theta) * Math.sin(phi),
-          radius * Math.sin(theta) * Math.sin(phi),
-          radius * Math.cos(phi),
-        ] as [number, number, number],
+        x,
+        y,
         color: divisionColors[agent.division as Division],
         agent,
       };
     });
   }, []);
 
-  // Create connections between nodes in the same division
+  // Create connections
   const connections = useMemo(() => {
-    const conns: { start: THREE.Vector3; end: THREE.Vector3; color: string }[] = [];
+    const conns: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
     
     nodes.forEach((node, i) => {
-      // Connect to next 2 nodes in same division
-      nodes.slice(i + 1).forEach((otherNode) => {
-        if (node.agent.division === otherNode.agent.division) {
+      // Connect to nodes in same division
+      nodes.forEach((otherNode, j) => {
+        if (i < j && node.agent.division === otherNode.agent.division) {
           conns.push({
-            start: new THREE.Vector3(...node.position),
-            end: new THREE.Vector3(...otherNode.position),
+            x1: node.x,
+            y1: node.y,
+            x2: otherNode.x,
+            y2: otherNode.y,
             color: node.color,
           });
         }
       });
       
-      // Random connections between divisions
-      if (i % 3 === 0 && i + 5 < nodes.length) {
+      // Connect some to center
+      if (i % 4 === 0) {
         conns.push({
-          start: new THREE.Vector3(...node.position),
-          end: new THREE.Vector3(...nodes[i + 5].position),
-          color: '#00FFE0',
+          x1: node.x,
+          y1: node.y,
+          x2: 50,
+          y2: 50,
+          color: '#00E5A0',
         });
       }
     });
@@ -103,37 +53,83 @@ const NetworkVisualization = () => {
     return conns;
   }, [nodes]);
 
-  // Center node (Director)
-  const centerNode = {
-    position: [0, 0, 0] as [number, number, number],
-    color: '#00E5A0',
-  };
-
   return (
-    <group ref={groupRef}>
-      {/* Center Director node */}
-      <Node position={centerNode.position} color={centerNode.color} scale={0.3} />
-      
-      {/* Agent nodes */}
-      {nodes.map((node, i) => (
-        <Node key={i} position={node.position} color={node.color} />
-      ))}
-      
-      {/* Connections */}
-      {connections.map((conn, i) => (
-        <ConnectionLine key={i} {...conn} />
-      ))}
-      
-      {/* Connections to center */}
-      {nodes.filter((_, i) => i % 4 === 0).map((node, i) => (
-        <ConnectionLine
-          key={`center-${i}`}
-          start={new THREE.Vector3(0, 0, 0)}
-          end={new THREE.Vector3(...node.position)}
-          color="#00E5A0"
+    <div className="relative w-full h-full">
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        {/* Connections */}
+        {connections.map((conn, i) => (
+          <motion.line
+            key={`conn-${i}`}
+            x1={conn.x1}
+            y1={conn.y1}
+            x2={conn.x2}
+            y2={conn.y2}
+            stroke={conn.color}
+            strokeWidth="0.15"
+            strokeOpacity="0.3"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1, strokeOpacity: [0.2, 0.5, 0.2] }}
+            transition={{ duration: 3, repeat: Infinity, delay: i * 0.05 }}
+          />
+        ))}
+
+        {/* Center node */}
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="3"
+          fill="#00E5A0"
+          animate={{ r: [3, 3.5, 3] }}
+          transition={{ duration: 2, repeat: Infinity }}
         />
-      ))}
-    </group>
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="5"
+          fill="none"
+          stroke="#00E5A0"
+          strokeWidth="0.2"
+          strokeOpacity="0.5"
+          animate={{ r: [5, 7, 5], strokeOpacity: [0.5, 0.2, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+
+        {/* Agent nodes */}
+        {nodes.map((node, i) => (
+          <motion.g key={`node-${i}`}>
+            <motion.circle
+              cx={node.x}
+              cy={node.y}
+              r="1.5"
+              fill={node.color}
+              animate={{ 
+                r: node.agent.status === 'active' ? [1.5, 2, 1.5] : 1.5,
+              }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
+            />
+            {node.agent.status === 'active' && (
+              <motion.circle
+                cx={node.x}
+                cy={node.y}
+                r="2.5"
+                fill="none"
+                stroke={node.color}
+                strokeWidth="0.1"
+                animate={{ r: [2.5, 4, 2.5], strokeOpacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+              />
+            )}
+          </motion.g>
+        ))}
+      </svg>
+
+      {/* Rotating ring overlay */}
+      <motion.div
+        className="absolute inset-0 border border-primary/10 rounded-full"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+      />
+    </div>
   );
 };
 
@@ -161,7 +157,7 @@ export const NeuralNetwork = () => {
           </p>
         </motion.div>
 
-        {/* 3D Canvas */}
+        {/* Network visualization */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -171,22 +167,9 @@ export const NeuralNetwork = () => {
           {/* Glow effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary/10 blur-[100px]" />
           
-          <Canvas camera={{ position: [0, 0, 8], fov: 60 }}>
-            <ambientLight intensity={0.3} />
-            <pointLight position={[10, 10, 10]} intensity={1} color="#00FFE0" />
-            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8B5CF6" />
-            <Suspense fallback={null}>
-              <NetworkVisualization />
-            </Suspense>
-            <OrbitControls 
-              enableZoom={true} 
-              enablePan={false} 
-              minDistance={5} 
-              maxDistance={15}
-              autoRotate
-              autoRotateSpeed={0.5}
-            />
-          </Canvas>
+          <div className="absolute inset-0 p-8">
+            <NetworkVisualization />
+          </div>
 
           {/* Legend */}
           <div className="absolute bottom-4 left-4 p-4 rounded-xl glass-morphism border border-border/50">

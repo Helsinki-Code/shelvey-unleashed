@@ -1,70 +1,86 @@
-import { useRef, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Sphere, MeshDistortMaterial } from '@react-three/drei';
-import * as THREE from 'three';
-import { Play, Zap, Users, TrendingUp } from 'lucide-react';
+import { Play, Zap, Users, TrendingUp, Activity } from 'lucide-react';
 import { Button } from './ui/button';
-
-const AnimatedOrb = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.2;
-      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
-    }
-  });
-
-  return (
-    <Sphere ref={meshRef} args={[1, 100, 100]} scale={2.5}>
-      <MeshDistortMaterial
-        color="#00E5A0"
-        attach="material"
-        distort={0.4}
-        speed={2}
-        roughness={0.2}
-        metalness={0.8}
-      />
-    </Sphere>
-  );
-};
-
-const ParticleRing = () => {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.z = state.clock.getElapsedTime() * 0.1;
-    }
-  });
-
-  const particles = Array.from({ length: 60 }, (_, i) => {
-    const angle = (i / 60) * Math.PI * 2;
-    const radius = 3.5;
-    return {
-      position: [Math.cos(angle) * radius, Math.sin(angle) * radius, 0] as [number, number, number],
-      scale: 0.03 + Math.random() * 0.02,
-    };
-  });
-
-  return (
-    <group ref={groupRef}>
-      {particles.map((particle, i) => (
-        <mesh key={i} position={particle.position}>
-          <sphereGeometry args={[particle.scale, 8, 8]} />
-          <meshBasicMaterial color={i % 3 === 0 ? "#00FFE0" : i % 3 === 1 ? "#00E5A0" : "#8B5CF6"} />
-        </mesh>
-      ))}
-    </group>
-  );
-};
 
 const stats = [
   { value: '2,845', label: 'Leads Processed', icon: Users },
   { value: '14.2K', label: 'Messages Sent', icon: TrendingUp },
   { value: '3.4%', label: 'Conversion Rate', icon: Zap },
 ];
+
+// Animated Orb component using CSS
+const AnimatedOrb = () => {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      {/* Main orb */}
+      <motion.div
+        className="relative w-64 h-64 md:w-80 md:h-80 rounded-full"
+        style={{
+          background: 'radial-gradient(circle at 30% 30%, hsl(158 100% 60%), hsl(158 100% 35%), hsl(160 40% 15%))',
+          boxShadow: '0 0 60px hsl(158 100% 45% / 0.4), 0 0 120px hsl(158 100% 45% / 0.2), inset 0 0 60px hsl(158 100% 60% / 0.3)',
+        }}
+        animate={{
+          scale: [1, 1.05, 1],
+          rotate: [0, 5, -5, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        {/* Inner glow */}
+        <motion.div
+          className="absolute inset-8 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(180 100% 60% / 0.3), transparent 70%)',
+          }}
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 3, repeat: Infinity }}
+        />
+      </motion.div>
+
+      {/* Orbiting particles */}
+      {[...Array(3)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-full h-full"
+          style={{ transformOrigin: 'center center' }}
+          animate={{ rotate: 360 }}
+          transition={{
+            duration: 10 + i * 5,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        >
+          <motion.div
+            className="absolute w-3 h-3 rounded-full"
+            style={{
+              top: '10%',
+              left: '50%',
+              background: i === 0 ? 'hsl(180 100% 50%)' : i === 1 ? 'hsl(270 80% 60%)' : 'hsl(158 100% 50%)',
+              boxShadow: `0 0 10px ${i === 0 ? 'hsl(180 100% 50%)' : i === 1 ? 'hsl(270 80% 60%)' : 'hsl(158 100% 50%)'}`,
+            }}
+            animate={{ scale: [1, 1.5, 1] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
+          />
+        </motion.div>
+      ))}
+
+      {/* Particle ring */}
+      <motion.div
+        className="absolute w-[120%] h-[120%] rounded-full border border-primary/20"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      />
+      <motion.div
+        className="absolute w-[140%] h-[140%] rounded-full border border-cyber-cyan/10"
+        animate={{ rotate: -360 }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+      />
+    </div>
+  );
+};
 
 export const HeroSection = () => {
   return (
@@ -184,7 +200,7 @@ export const HeroSection = () => {
             </div>
           </motion.div>
 
-          {/* Right - 3D Orb */}
+          {/* Right - Animated Orb */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -195,16 +211,7 @@ export const HeroSection = () => {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary/20 blur-[100px]" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-cyber-cyan/20 blur-[60px]" />
 
-            <Canvas camera={{ position: [0, 0, 6] }}>
-              <ambientLight intensity={0.5} />
-              <directionalLight position={[10, 10, 5]} intensity={1} />
-              <pointLight position={[-10, -10, -5]} intensity={0.5} color="#00FFE0" />
-              <pointLight position={[10, -10, 5]} intensity={0.5} color="#8B5CF6" />
-              <Suspense fallback={null}>
-                <AnimatedOrb />
-                <ParticleRing />
-              </Suspense>
-            </Canvas>
+            <AnimatedOrb />
 
             {/* Floating info cards */}
             <motion.div
