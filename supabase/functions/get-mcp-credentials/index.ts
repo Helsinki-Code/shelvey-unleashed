@@ -48,7 +48,56 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's subscription tier
+    // Check if user is super admin - they bypass ALL subscription checks
+    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { _user_id: userId });
+    
+    if (isSuperAdmin) {
+      console.log(`[get-mcp-credentials] Super Admin detected - bypassing subscription check for user ${userId}`);
+      // Super admin uses admin API keys directly
+      const requiredKeys = MCP_KEY_MAPPING[mcpServerId] || [];
+      
+      if (requiredKeys.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, credentials: {}, source: 'super_admin' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const credentials: Record<string, string> = {};
+      for (const keyName of requiredKeys) {
+        const { data: adminKey } = await supabase
+          .from('admin_api_keys')
+          .select('encrypted_value')
+          .eq('key_name', keyName)
+          .eq('is_configured', true)
+          .single();
+
+        if (adminKey?.encrypted_value) {
+          credentials[keyName] = adminKey.encrypted_value;
+        }
+      }
+      
+      const missingKeys = requiredKeys.filter(key => !credentials[key]);
+      if (missingKeys.length > 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Missing admin API keys',
+            missingKeys,
+            source: 'super_admin',
+            message: 'Please configure these API keys in the Super Admin dashboard.'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, credentials, source: 'super_admin', tier: 'super_admin' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get user's subscription tier for non-super-admin users
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('subscription_tier, subscription_status')
