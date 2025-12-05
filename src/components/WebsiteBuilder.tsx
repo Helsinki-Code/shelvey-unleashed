@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { 
-  Globe, Sparkles, Loader2, Eye, Code, Rocket, 
+  Globe, Sparkles, Loader2, Rocket, 
   Palette, Plus, X 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ReactCodePreview } from "./ReactCodePreview";
 
 interface GeneratedWebsite {
   id: string;
@@ -20,14 +20,16 @@ interface GeneratedWebsite {
   html: string;
   css: string;
   js: string;
+  tsx?: string;
+  componentName?: string;
   status: string;
+  isReactComponent?: boolean;
 }
 
 export const WebsiteBuilder = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWebsite, setGeneratedWebsite] = useState<GeneratedWebsite | null>(null);
-  const [activeTab, setActiveTab] = useState("preview");
   
   const [formData, setFormData] = useState({
     businessName: "",
@@ -93,7 +95,6 @@ export const WebsiteBuilder = () => {
       if (response.error) throw response.error;
 
       setGeneratedWebsite(response.data.website);
-      setActiveTab("preview");
       toast.success("Website generated successfully!");
     } catch (error: any) {
       console.error("Generation error:", error);
@@ -321,35 +322,19 @@ export const WebsiteBuilder = () => {
         </CardHeader>
         <CardContent>
           {generatedWebsite ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="preview" className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </TabsTrigger>
-                <TabsTrigger value="code" className="flex items-center gap-2">
-                  <Code className="h-4 w-4" />
-                  Code
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="preview" className="mt-4">
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <iframe
-                    srcDoc={generatedWebsite.html}
-                    className="w-full h-[500px]"
-                    title="Website Preview"
-                    sandbox="allow-scripts"
-                  />
-                </div>
-              </TabsContent>
-              <TabsContent value="code" className="mt-4">
-                <div className="bg-muted/50 rounded-lg p-4 overflow-auto max-h-[500px]">
-                  <pre className="text-xs">
-                    <code>{generatedWebsite.html}</code>
-                  </pre>
-                </div>
-              </TabsContent>
-            </Tabs>
+            generatedWebsite.isReactComponent && generatedWebsite.tsx ? (
+              <ReactCodePreview 
+                code={generatedWebsite.tsx}
+                componentName={generatedWebsite.componentName || 'LandingPage'}
+                css={generatedWebsite.css}
+              />
+            ) : (
+              <ReactCodePreview 
+                code={generatedWebsite.html}
+                componentName="LandingPage"
+                css={generatedWebsite.css}
+              />
+            )
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
