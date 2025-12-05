@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { Menu, X, LogIn, LayoutDashboard, Crown } from 'lucide-react';
+import { Menu, X, LogIn, LayoutDashboard, Crown, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -100,7 +100,7 @@ export const Navbar = () => {
             {!isLoading && (
               user ? (
                 <div className="flex items-center gap-2">
-                  {isSuperAdmin && (
+              {isSuperAdmin && (
                     <Link to="/super-admin">
                       <Button size="sm" variant="outline" className="gap-2 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10">
                         <Crown className="w-4 h-4" />
@@ -108,6 +108,12 @@ export const Navbar = () => {
                       </Button>
                     </Link>
                   )}
+                  <Link to="/team-collaboration">
+                    <Button size="sm" variant="outline" className="gap-2">
+                      <Users className="w-4 h-4" />
+                      <span className="hidden sm:inline">Team</span>
+                    </Button>
+                  </Link>
                   <Link to="/dashboard">
                     <Button size="sm" className="gap-2">
                       <LayoutDashboard className="w-4 h-4" />
@@ -199,6 +205,24 @@ export const Navbar = () => {
                   >
                     <Crown className="h-4 w-4 inline mr-2" />
                     Super Admin
+                  </Link>
+                </motion.div>
+              )}
+
+              {/* Mobile Team Collaboration link */}
+              {user && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (navLinks.length + 0.5) * 0.05 }}
+                >
+                  <Link
+                    to="/team-collaboration"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-lg bg-card/50 hover:bg-primary/10 border border-border hover:border-primary/20 transition-all font-mono text-sm uppercase tracking-wider text-muted-foreground hover:text-primary"
+                  >
+                    <Users className="h-4 w-4 inline mr-2" />
+                    Team Collaboration
                   </Link>
                 </motion.div>
               )}
