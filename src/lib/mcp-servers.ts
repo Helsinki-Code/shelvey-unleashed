@@ -307,6 +307,18 @@ export const mcpServers: MCPServer[] = [
     latency: 45, 
     requestsToday: 1234 
   },
+  { 
+    id: 'mcp-artifacts', 
+    name: 'Artifacts MMO', 
+    description: 'Website generation, report rendering, dashboards, and visual artifacts', 
+    category: 'design', 
+    status: 'requires-key', 
+    icon: '🎪', 
+    envRequired: ['ARTIFACTS_MMO_TOKEN'],
+    toolCount: 8,
+    latency: 120, 
+    requestsToday: 0 
+  },
 ];
 
 export const categoryColors: Record<MCPServer['category'], { bg: string; text: string; border: string }> = {
