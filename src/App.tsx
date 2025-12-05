@@ -32,6 +32,7 @@ import LiveDemoPage from "./pages/LiveDemoPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import TeamCollaborationPage from "./pages/TeamCollaborationPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
+import ComputerUsePage from "./pages/ComputerUsePage";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/team-collaboration" element={<TeamCollaborationPage />} />
               <Route path="/integrations" element={<IntegrationsPage />} />
+              <Route path="/computer-use" element={<ComputerUsePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
