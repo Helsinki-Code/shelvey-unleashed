@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { Menu, X, Zap, LogIn, LayoutDashboard, Crown } from 'lucide-react';
+import { Menu, X, LogIn, LayoutDashboard, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
+import shelveyLogo from '@/assets/shelvey-logo.png';
 
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Agents', href: '/agents' },
-  { name: 'Organization', href: '/organization' },
-  { name: 'Websites', href: '/websites' },
   { name: 'MCP', href: '/mcp' },
   { name: 'Pricing', href: '/pricing' },
 ];
@@ -42,25 +41,11 @@ export const Navbar = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {/* Animated hexagon background */}
-              <svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full">
-                <motion.polygon
-                  points="20,2 38,11 38,29 20,38 2,29 2,11"
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="1.5"
-                  className="drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]"
-                  animate={{
-                    strokeDasharray: ["0 200", "200 0"],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
-                <polygon
-                  points="20,2 38,11 38,29 20,38 2,29 2,11"
-                  fill="hsl(var(--primary) / 0.1)"
-                />
-              </svg>
-              <Zap className="w-5 h-5 text-primary relative z-10" />
+              <img 
+                src={shelveyLogo} 
+                alt="ShelVey Logo" 
+                className="w-10 h-10 object-contain drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]" 
+              />
             </motion.div>
             
             <div className="flex flex-col">
@@ -68,7 +53,7 @@ export const Navbar = () => {
                 SHEL<span className="text-primary">VEY</span>
               </span>
               <span className="text-[10px] font-mono text-muted-foreground tracking-widest">
-                AI WORKFORCE
+                THE REAL WORKFORCE AI
               </span>
             </div>
           </Link>
