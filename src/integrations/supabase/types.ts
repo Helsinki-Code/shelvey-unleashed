@@ -82,6 +82,118 @@ export type Database = {
           },
         ]
       }
+      agent_mcp_usage: {
+        Row: {
+          action: string
+          agent_id: string
+          created_at: string
+          id: string
+          latency_ms: number | null
+          mcp_server_id: string
+          request_payload: Json | null
+          response_payload: Json | null
+          success: boolean | null
+          task_id: string | null
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          mcp_server_id: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          success?: boolean | null
+          task_id?: string | null
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          mcp_server_id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          success?: boolean | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_mcp_usage_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_tasks: {
+        Row: {
+          assigned_agent_id: string
+          completed_at: string | null
+          created_at: string
+          delegated_by: string
+          id: string
+          input_data: Json | null
+          mcp_servers_used: string[] | null
+          output_data: Json | null
+          priority: string
+          project_id: string | null
+          started_at: string | null
+          status: string
+          task_description: string
+          task_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_agent_id: string
+          completed_at?: string | null
+          created_at?: string
+          delegated_by?: string
+          id?: string
+          input_data?: Json | null
+          mcp_servers_used?: string[] | null
+          output_data?: Json | null
+          priority?: string
+          project_id?: string | null
+          started_at?: string | null
+          status?: string
+          task_description: string
+          task_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_agent_id?: string
+          completed_at?: string | null
+          created_at?: string
+          delegated_by?: string
+          id?: string
+          input_data?: Json | null
+          mcp_servers_used?: string[] | null
+          output_data?: Json | null
+          priority?: string
+          project_id?: string | null
+          started_at?: string | null
+          status?: string
+          task_description?: string
+          task_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           category: string | null
@@ -189,6 +301,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      generated_websites: {
+        Row: {
+          created_at: string
+          css_content: string | null
+          deployed_url: string | null
+          domain_name: string | null
+          html_content: string
+          id: string
+          js_content: string | null
+          metadata: Json | null
+          name: string
+          project_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          css_content?: string | null
+          deployed_url?: string | null
+          domain_name?: string | null
+          html_content: string
+          id?: string
+          js_content?: string | null
+          metadata?: Json | null
+          name: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          css_content?: string | null
+          deployed_url?: string | null
+          domain_name?: string | null
+          html_content?: string
+          id?: string
+          js_content?: string | null
+          metadata?: Json | null
+          name?: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_websites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mcp_server_status: {
         Row: {
