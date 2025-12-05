@@ -244,14 +244,18 @@ serve(async (req) => {
 });
 
 function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] {
+  // Updated mapping: Use Perplexity for sentiment/social analysis (more reliable than Twitter)
   const taskMCPMapping: Record<string, string[]> = {
     'market_research': ['mcp-perplexity'],
-    'competitor_analysis': ['mcp-perplexity', 'mcp-twitter'],
-    'trend_analysis': ['mcp-perplexity', 'mcp-twitter'],
+    'competitor_analysis': ['mcp-perplexity'],
+    'trend_analysis': ['mcp-perplexity'], // Perplexity for trends (includes Reddit/Twitter data)
+    'sentiment_analysis': ['mcp-perplexity'], // Social sentiment via Perplexity
+    'social_sentiment': ['mcp-perplexity'], // Reddit-equivalent sentiment
+    'community_research': ['mcp-perplexity'], // Deep community/forum research
     'brand_identity': ['mcp-falai'],
     'logo_design': ['mcp-falai'],
     'content_creation': ['mcp-perplexity'],
-    'social_media': ['mcp-twitter', 'mcp-linkedin'],
+    'social_media': ['mcp-perplexity', 'mcp-linkedin'], // Perplexity for research, LinkedIn for posting
     'lead_generation': ['mcp-linkedin'],
     'sales_outreach': ['mcp-vapi', 'mcp-linkedin'],
     'code_development': ['mcp-github'],
@@ -269,14 +273,21 @@ async function executeMCPWork(
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
 
   // Determine the tool to use based on task type and MCP server
+  // Perplexity is now the primary source for social sentiment (includes Reddit/Twitter/forum data)
   const toolMapping: Record<string, Record<string, { tool: string; args: any }>> = {
     'mcp-perplexity': {
       'market_research': { tool: 'market_research', args: inputData },
       'competitor_analysis': { tool: 'competitor_analysis', args: inputData },
       'trend_analysis': { tool: 'trend_analysis', args: inputData },
+      // New social sentiment tools (Reddit-equivalent)
+      'sentiment_analysis': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
+      'social_sentiment': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
+      'community_research': { tool: 'community_research', args: { topic: inputData?.topic || inputData?.query, industry: inputData?.industry } },
+      'social_trends': { tool: 'social_trends', args: { industry: inputData?.industry, category: inputData?.category } },
       'default': { tool: 'research', args: { query: inputData?.query || inputData?.description } },
     },
     'mcp-twitter': {
+      // Twitter still available but gateway will auto-fallback to Perplexity if rate limited
       'trend_analysis': { tool: 'get_trends', args: {} },
       'social_media': { tool: 'search_tweets', args: { query: inputData?.query } },
       'default': { tool: 'analyze_sentiment', args: { query: inputData?.query || inputData?.industry } },

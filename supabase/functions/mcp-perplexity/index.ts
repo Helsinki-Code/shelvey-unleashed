@@ -43,6 +43,16 @@ serve(async (req) => {
       case 'trend_analysis':
         result = await performTrendAnalysis(apiKey, args);
         break;
+      // New social sentiment tools (Reddit-equivalent via Perplexity)
+      case 'social_sentiment':
+        result = await performSocialSentiment(apiKey, args);
+        break;
+      case 'community_research':
+        result = await performCommunityResearch(apiKey, args);
+        break;
+      case 'social_trends':
+        result = await performSocialTrends(apiKey, args);
+        break;
       default:
         return new Response(
           JSON.stringify({ success: false, error: `Unknown tool: ${tool}` }),
@@ -248,5 +258,182 @@ Provide comprehensive trend analysis with predictions.`,
     citations: response.citations || [],
     relatedQuestions: response.related_questions || [],
     researchType: 'trend_analysis',
+  };
+}
+
+// New: Social Sentiment Analysis (Reddit-equivalent)
+async function performSocialSentiment(apiKey: string, args: any) {
+  const { query, industry, brand, timeframe } = args;
+  
+  const searchQuery = query || brand || industry;
+  
+  const messages = [
+    {
+      role: 'system',
+      content: `You are a social media sentiment analyst specializing in analyzing discussions from Reddit, forums, Twitter, and online communities. Your analysis should include:
+
+1. Overall Sentiment Score (0-100, where 0 is extremely negative, 50 is neutral, 100 is extremely positive)
+2. Sentiment Breakdown: percentage positive, negative, neutral
+3. Key Discussion Themes from Reddit and forums
+4. Most Discussed Topics with sentiment
+5. Common Complaints/Pain Points
+6. Common Praise/Positive Mentions
+7. Notable Reddit threads and forum discussions
+8. Community Recommendations and Opinions
+9. Trend Direction (improving, declining, stable)
+10. Representative Quotes from discussions
+
+Focus specifically on:
+- Reddit discussions (r/relevant_subreddits)
+- Forum discussions
+- Social media sentiment
+- Online community feedback
+
+Provide specific examples and cite sources including Reddit posts when possible.`,
+    },
+    {
+      role: 'user',
+      content: `Analyze social sentiment and community discussions for:
+Topic/Brand/Industry: ${searchQuery}
+Timeframe: ${timeframe || 'Last 3 months'}
+
+Search Reddit, forums, and social media for community sentiment. Provide comprehensive analysis with specific examples from discussions.`,
+    },
+  ];
+
+  const response = await callPerplexity(apiKey, messages);
+  
+  return {
+    sentiment: response.choices[0]?.message?.content || '',
+    citations: response.citations || [],
+    relatedQuestions: response.related_questions || [],
+    analysisType: 'social_sentiment',
+    query: searchQuery,
+  };
+}
+
+// New: Community Research (Deep Reddit/Forum analysis)
+async function performCommunityResearch(apiKey: string, args: any) {
+  const { topic, subreddits, industry, question } = args;
+  
+  const researchTopic = topic || industry;
+  
+  const messages = [
+    {
+      role: 'system',
+      content: `You are a community research specialist who deeply analyzes Reddit discussions, forums, and online communities. Your research should include:
+
+1. Relevant Subreddits and Communities
+   - Most active subreddits discussing this topic
+   - Forum communities and discussion boards
+   
+2. Community Insights
+   - What the community thinks/feels about the topic
+   - Common questions asked
+   - Frequently recommended solutions/products
+   - Community-favorite alternatives
+   
+3. Expert Opinions from Community Members
+   - Advice from experienced users
+   - Professional insights shared in discussions
+   
+4. Community Pain Points
+   - Common frustrations discussed
+   - Unmet needs mentioned
+   
+5. Success Stories and Case Studies
+   - Positive experiences shared
+   - What worked for community members
+   
+6. Community Recommendations
+   - Top recommended products/services/approaches
+   - Community consensus on best practices
+   
+7. Trending Discussions
+   - Recent hot topics in relevant communities
+   - Emerging themes
+
+Include specific Reddit thread examples and forum discussions where possible.`,
+    },
+    {
+      role: 'user',
+      content: `Conduct deep community research for:
+Topic: ${researchTopic}
+${subreddits ? `Focus Subreddits: ${subreddits.join(', ')}` : ''}
+${question ? `Specific Question: ${question}` : ''}
+
+Analyze Reddit discussions and online communities to provide actionable insights from real user experiences.`,
+    },
+  ];
+
+  const response = await callPerplexity(apiKey, messages);
+  
+  return {
+    communityInsights: response.choices[0]?.message?.content || '',
+    citations: response.citations || [],
+    relatedQuestions: response.related_questions || [],
+    researchType: 'community_research',
+    topic: researchTopic,
+  };
+}
+
+// New: Social Trends (Trending topics from social platforms)
+async function performSocialTrends(apiKey: string, args: any) {
+  const { industry, category, region } = args;
+  
+  const messages = [
+    {
+      role: 'system',
+      content: `You are a social trends analyst who monitors trending topics across Reddit, Twitter, and online communities. Your analysis should include:
+
+1. Currently Trending Topics
+   - Hot discussions on Reddit (with specific subreddits)
+   - Trending hashtags on social media
+   - Viral discussions in online communities
+   
+2. Emerging Trends
+   - Topics gaining momentum
+   - Early-stage discussions that are growing
+   
+3. Trending Sentiment
+   - How people feel about trending topics
+   - Positive vs negative trending discussions
+   
+4. Trending Products/Services/Ideas
+   - What's being talked about favorably
+   - Rising recommendations
+   
+5. Trending Concerns/Controversies
+   - What's causing negative discussions
+   - Community concerns being raised
+   
+6. Influencer and Expert Topics
+   - What industry experts are discussing
+   - Influential community members' topics
+   
+7. Prediction: Next Big Topics
+   - Based on current momentum, what's likely to trend
+
+Provide specific examples with sources including Reddit threads when available.`,
+    },
+    {
+      role: 'user',
+      content: `Identify trending social discussions for:
+${industry ? `Industry: ${industry}` : ''}
+${category ? `Category: ${category}` : ''}
+${region ? `Region: ${region}` : ''}
+
+Find currently trending topics on Reddit, Twitter, and online communities. Provide actionable trend insights.`,
+    },
+  ];
+
+  const response = await callPerplexity(apiKey, messages);
+  
+  return {
+    trends: response.choices[0]?.message?.content || '',
+    citations: response.citations || [],
+    relatedQuestions: response.related_questions || [],
+    analysisType: 'social_trends',
+    industry,
   };
 }
