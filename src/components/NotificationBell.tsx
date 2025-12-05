@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, CheckCheck, Trash2, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -97,7 +98,7 @@ export const NotificationBell = () => {
               </div>
 
               {/* Notifications list */}
-              <ScrollArea className="h-80">
+              <ScrollArea className="h-64">
                 {notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-8 text-muted-foreground">
                     <Bell className="h-10 w-10 mb-2 opacity-50" />
@@ -105,7 +106,7 @@ export const NotificationBell = () => {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {notifications.map((notification) => (
+                    {notifications.slice(0, 5).map((notification) => (
                       <NotificationItem
                         key={notification.id}
                         notification={notification}
@@ -116,6 +117,18 @@ export const NotificationBell = () => {
                   </div>
                 )}
               </ScrollArea>
+
+              {/* View All Link */}
+              {notifications.length > 0 && (
+                <div className="p-3 border-t border-border">
+                  <Link to="/notifications" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full gap-2 text-sm">
+                      View all notifications
+                      <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </motion.div>
           </>
         )}
