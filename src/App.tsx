@@ -11,6 +11,7 @@ import PipelinePage from "./pages/PipelinePage";
 import NeuralPage from "./pages/NeuralPage";
 import MeetingsPage from "./pages/MeetingsPage";
 import VoicePage from "./pages/VoicePage";
+import ProjectDetailPage from "./pages/ProjectDetailPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import MCPServersPage from "./pages/MCPServersPage";
 import AuthPage from "./pages/AuthPage";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/neural" element={<NeuralPage />} />
               <Route path="/meetings" element={<MeetingsPage />} />
               <Route path="/voice" element={<VoicePage />} />
+              <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/mcp" element={<MCPServersPage />} />
               <Route path="/websites" element={<WebsitesPage />} />

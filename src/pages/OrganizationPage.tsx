@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import { OrgChart } from '@/components/OrgChart';
 import { PhaseTimeline } from '@/components/PhaseTimeline';
 import { TeamDashboard } from '@/components/TeamDashboard';
@@ -10,7 +9,8 @@ import { DeliverableTracker } from '@/components/DeliverableTracker';
 import { RealTimeActivityFeed } from '@/components/RealTimeActivityFeed';
 import { CEOAgentChat } from '@/components/CEOAgentChat';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
-import { SubscriptionGate } from '@/components/SubscriptionGate';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
+import { HelpTooltip } from '@/components/HelpTooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   Building2, Users, Clock, FileText, Play, 
-  Plus, Loader2, Briefcase, Activity, Bot, BarChart3
+  Plus, Loader2, Briefcase, Activity, Bot, BarChart3, HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,11 +31,18 @@ interface BusinessProject {
 }
 
 export default function OrganizationPage() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
   const [projects, setProjects] = useState<BusinessProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -88,27 +95,30 @@ export default function OrganizationPage() {
         <meta name="description" content="View and manage your AI business organization structure" />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div className="min-h-screen bg-background flex">
+        <DashboardSidebar />
         
-        <main className="container mx-auto px-4 pt-24 pb-16">
-          <SubscriptionGate>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-7xl mx-auto"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <Building2 className="w-8 h-8 text-primary" />
-                    Organization Hub
-                  </h1>
-                  <p className="text-muted-foreground mt-1">
-                    Manage your AI business teams and track progress
-                  </p>
-                </div>
+        <main className="flex-1 ml-[260px] p-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-7xl mx-auto"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <Building2 className="w-8 h-8 text-primary" />
+                  Organization Hub
+                  <HelpTooltip
+                    title="AI Organization"
+                    description="This is your AI company's organizational structure. You have 25 specialized agents organized into 5 departments, all working together to build your business."
+                  />
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Manage your AI business teams and track progress
+                </p>
+              </div>
 
                 {/* Project Selector */}
                 <div className="flex items-center gap-3">
@@ -223,10 +233,7 @@ export default function OrganizationPage() {
                 </Tabs>
               )}
             </motion.div>
-          </SubscriptionGate>
         </main>
-
-        <Footer />
       </div>
     </>
   );
