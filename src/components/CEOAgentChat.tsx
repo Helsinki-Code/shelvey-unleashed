@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2, Sparkles, RefreshCw, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, RefreshCw, Zap, ChevronLeft, Phone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CEOTaskDelegation } from './CEOTaskDelegation';
+import { CEOVoiceCall } from './CEOVoiceCall';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -27,6 +28,7 @@ export const CEOAgentChat = ({ projectId, showDelegation = true }: CEOAgentChatP
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDelegationPanel, setShowDelegationPanel] = useState(false);
+  const [showVoiceCall, setShowVoiceCall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -180,7 +182,15 @@ What business opportunity would you like to explore today?`,
   };
 
   return (
-    <div className="flex gap-4">
+    <>
+      {/* Voice Call Modal */}
+      <AnimatePresence>
+        {showVoiceCall && (
+          <CEOVoiceCall onClose={() => setShowVoiceCall(false)} />
+        )}
+      </AnimatePresence>
+
+      <div className="flex gap-4">
       {/* Delegation Panel */}
       {showDelegation && showDelegationPanel && (
         <motion.div
@@ -206,6 +216,15 @@ What business opportunity would you like to explore today?`,
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setShowVoiceCall(true)}
+                className="gap-2 bg-primary hover:bg-primary/90"
+              >
+                <Phone className="w-4 h-4" />
+                Call CEO
+              </Button>
               {showDelegation && (
                 <Button 
                   variant="outline" 
@@ -307,6 +326,7 @@ What business opportunity would you like to explore today?`,
         </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 };
