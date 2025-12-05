@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Bot, Settings, MessageSquare, Briefcase, Server, Key, 
-  TrendingUp, Loader2, Plus, LogOut, Crown
+  TrendingUp, Loader2, Plus, LogOut, Crown, Building2, Globe
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -137,6 +137,51 @@ const UserDashboard = () => {
               </Card>
             </motion.div>
           ))}
+        </div>
+
+        {/* Quick Navigation for Organization & Websites */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card 
+              className="glass-morphism cyber-border cursor-pointer hover:border-primary/50 transition-all"
+              onClick={() => navigate('/organization')}
+            >
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <Building2 className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Organization</h3>
+                  <p className="text-sm text-muted-foreground">View your AI agent workforce structure</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card 
+              className="glass-morphism cyber-border cursor-pointer hover:border-primary/50 transition-all"
+              onClick={() => navigate('/websites')}
+            >
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-accent/10">
+                  <Globe className="w-8 h-8 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Websites</h3>
+                  <p className="text-sm text-muted-foreground">Manage your generated business websites</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* Main Content Tabs */}

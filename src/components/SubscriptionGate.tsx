@@ -17,7 +17,7 @@ export const SubscriptionGate = ({
   showUpgradePrompt = true 
 }: SubscriptionGateProps) => {
   const { subscribed, isLoading, createCheckout } = useSubscription();
-  const { subscriptionTier } = useAuth();
+  const { subscriptionTier, isSuperAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -27,7 +27,8 @@ export const SubscriptionGate = ({
     );
   }
 
-  if (subscribed) {
+  // Super admin always has full access
+  if (isSuperAdmin || subscribed) {
     return <>{children}</>;
   }
 

@@ -12,7 +12,7 @@ interface SubscriptionState {
 }
 
 export const useSubscription = () => {
-  const { user, session } = useAuth();
+  const { user, session, isSuperAdmin } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionState>({
     subscribed: false,
     productId: null,
@@ -23,6 +23,19 @@ export const useSubscription = () => {
   });
 
   const checkSubscription = useCallback(async () => {
+    // Super admin always has full subscription access
+    if (isSuperAdmin) {
+      setSubscription({
+        subscribed: true,
+        productId: 'super_admin',
+        subscriptionEnd: null,
+        status: 'active',
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
     if (!session?.access_token) {
       setSubscription(prev => ({ ...prev, isLoading: false }));
       return;
@@ -55,7 +68,7 @@ export const useSubscription = () => {
         error: err instanceof Error ? err.message : 'Failed to check subscription',
       }));
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, isSuperAdmin]);
 
   const createCheckout = useCallback(async (includeSetupFee: boolean = true, planType: string = 'standard') => {
     if (!session?.access_token) {
