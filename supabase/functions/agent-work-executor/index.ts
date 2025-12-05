@@ -245,7 +245,8 @@ serve(async (req) => {
 
 function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] {
   // Updated mapping: Use Perplexity for sentiment/social analysis (more reliable than Twitter)
-  // Use Artifacts MMO for website/report/dashboard generation
+  // Use 21st.dev Magic + shadcn for modern React website generation
+  // Use Artifacts MMO for reports/dashboards/presentations
   const taskMCPMapping: Record<string, string[]> = {
     'market_research': ['mcp-perplexity'],
     'competitor_analysis': ['mcp-perplexity'],
@@ -260,8 +261,12 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'lead_generation': ['mcp-linkedin'],
     'sales_outreach': ['mcp-vapi', 'mcp-linkedin'],
     'code_development': ['mcp-github'],
-    // Artifacts MMO for generation tasks
-    'website_generation': ['mcp-artifacts'],
+    // Modern React website generation with 21st.dev Magic + shadcn
+    'website_generation': ['mcp-21st-magic', 'mcp-shadcn'],
+    'landing_page': ['mcp-21st-magic', 'mcp-shadcn'],
+    'ui_component': ['mcp-21st-magic', 'mcp-shadcn'],
+    'react_component': ['mcp-21st-magic', 'mcp-shadcn'],
+    // Artifacts MMO for reports/dashboards
     'report_generation': ['mcp-artifacts'],
     'dashboard_generation': ['mcp-artifacts'],
     'chart_generation': ['mcp-artifacts'],
@@ -319,13 +324,28 @@ async function executeMCPWork(
       'default': { tool: 'get_assistants', args: {} },
     },
     'mcp-artifacts': {
-      'website_generation': { tool: 'generate_website', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, branding: inputData?.branding } },
       'report_generation': { tool: 'generate_report', args: { title: inputData?.title, data: inputData?.data, reportType: inputData?.reportType, sections: inputData?.sections } },
       'dashboard_generation': { tool: 'generate_dashboard', args: { title: inputData?.title, widgets: inputData?.widgets, data: inputData?.data, theme: inputData?.theme } },
       'chart_generation': { tool: 'generate_chart', args: { chartType: inputData?.chartType, data: inputData?.data, title: inputData?.title } },
       'document_generation': { tool: 'generate_document', args: { title: inputData?.title, content: inputData?.content, template: inputData?.template } },
       'presentation_generation': { tool: 'generate_presentation', args: { title: inputData?.title, slides: inputData?.slides, theme: inputData?.theme } },
-      'default': { tool: 'generate_website', args: inputData },
+      'default': { tool: 'generate_report', args: inputData },
+    },
+    // Modern React website generation with 21st.dev Magic
+    'mcp-21st-magic': {
+      'website_generation': { tool: 'generate_landing_page', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, sections: ['hero', 'features', 'pricing', 'testimonials', 'cta', 'footer'] } },
+      'landing_page': { tool: 'generate_landing_page', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, sections: inputData?.sections || ['hero', 'features', 'cta'] } },
+      'ui_component': { tool: 'generate_component', args: { description: inputData?.description, framework: 'react', styling: 'tailwind' } },
+      'react_component': { tool: 'generate_component', args: { description: inputData?.description, framework: 'react', styling: 'tailwind' } },
+      'default': { tool: 'generate_component', args: { description: inputData?.description || 'Create a modern React component' } },
+    },
+    // shadcn/ui components
+    'mcp-shadcn': {
+      'website_generation': { tool: 'get_block', args: { name: 'dashboard-01' } },
+      'landing_page': { tool: 'list_components', args: { category: 'layout' } },
+      'ui_component': { tool: 'get_component', args: { name: inputData?.componentName || 'button' } },
+      'react_component': { tool: 'get_component', args: { name: inputData?.componentName || 'card' } },
+      'default': { tool: 'list_components', args: {} },
     },
   };
 

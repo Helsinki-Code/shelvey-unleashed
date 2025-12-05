@@ -128,3 +128,12 @@ verify_jwt = false
 
 [functions.mcp-googlecalendar]
 verify_jwt = false
+
+[functions.mcp-artifacts]
+verify_jwt = false
+
+[functions.mcp-21st-magic]
+verify_jwt = false
+
+[functions.mcp-shadcn]
+verify_jwt = false

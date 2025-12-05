@@ -26,6 +26,9 @@ const MCP_ENDPOINTS: Record<string, string> = {
   'mcp-googlemaps': 'mcp-googlemaps',
   'mcp-contentcore': 'mcp-contentcore',
   'mcp-artifacts': 'mcp-artifacts',
+  // Modern React website generation MCPs
+  'mcp-21st-magic': 'mcp-21st-magic',
+  'mcp-shadcn': 'mcp-shadcn',
 };
 
 // Twitter tool to Perplexity fallback mapping

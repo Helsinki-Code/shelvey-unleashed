@@ -28,6 +28,9 @@ const MCP_KEY_MAPPING: Record<string, string[]> = {
   'mcp-contentcore': [],
   'mcp-kokorotts': ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
   'mcp-artifacts': ['ARTIFACTS_MMO_TOKEN'],
+  // Modern React website generation MCPs
+  'mcp-21st-magic': ['TWENTY_FIRST_API_KEY'],
+  'mcp-shadcn': [], // No API key needed - uses GitHub public API
 };
 
 serve(async (req) => {
