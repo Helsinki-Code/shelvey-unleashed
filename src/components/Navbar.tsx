@@ -11,10 +11,9 @@ const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Agents', href: '/agents' },
   { name: 'Organization', href: '/organization' },
-  { name: 'Branding', href: '/branding' },
   { name: 'Websites', href: '/websites' },
   { name: 'MCP', href: '/mcp' },
-  { name: 'Pipeline', href: '/pipeline' },
+  { name: 'Pricing', href: '/pricing' },
 ];
 
 export const Navbar = () => {
