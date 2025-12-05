@@ -40,7 +40,7 @@ interface ActivityLog {
 const AdminDashboard = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { servers: mcpServers, stats: mcpStats, simulateActivity } = useMCPServers();
+  const { servers: mcpServers, stats: mcpStats, runHealthCheck, refreshServers } = useMCPServers();
 
   // Generate agent performance data
   const agentPerformanceData = agents.slice(0, 8).map(agent => ({
@@ -104,14 +104,8 @@ const AdminDashboard = () => {
       })
       .subscribe();
 
-    // Auto-simulate activity
-    const interval = setInterval(() => {
-      simulateActivity();
-    }, 10000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, []);
 
@@ -133,7 +127,7 @@ const AdminDashboard = () => {
             <h1 className="cyber-text text-4xl font-bold text-gradient">Admin Dashboard</h1>
             <p className="text-muted-foreground mt-2">Real-time analytics and system configuration</p>
           </div>
-          <Button variant="outline" className="gap-2" onClick={() => simulateActivity()}>
+          <Button variant="outline" className="gap-2" onClick={() => { runHealthCheck(); refreshServers(); }}>
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>

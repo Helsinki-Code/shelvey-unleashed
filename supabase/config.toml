@@ -1,4 +1,10 @@
 project_id = "isoafhjneixsoygrpgtt"
 
-[functions.simulate-mcp-activity]
+[functions.mcp-health-check]
+verify_jwt = false
+
+[functions.log-agent-activity]
+verify_jwt = false
+
+[functions.mcp-request]
 verify_jwt = false

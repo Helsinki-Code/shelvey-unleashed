@@ -96,13 +96,13 @@ export const useMCPServers = () => {
     fetchServers();
   };
 
-  // Trigger simulation
-  const simulateActivity = async () => {
+  // Trigger real health check for configured MCP servers
+  const runHealthCheck = async () => {
     try {
-      const { error } = await supabase.functions.invoke('simulate-mcp-activity');
+      const { error } = await supabase.functions.invoke('mcp-health-check');
       if (error) throw error;
     } catch (err) {
-      console.error('Error simulating activity:', err);
+      console.error('Error running health check:', err);
     }
   };
 
@@ -127,7 +127,7 @@ export const useMCPServers = () => {
     error,
     stats,
     refreshServers,
-    simulateActivity,
+    runHealthCheck,
   };
 };
 
