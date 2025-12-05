@@ -31,7 +31,26 @@ const MCP_KEY_MAPPING: Record<string, string[]> = {
   // Modern React website generation MCPs
   'mcp-21st-magic': ['TWENTY_FIRST_API_KEY'],
   'mcp-shadcn': [], // No API key needed - uses GitHub public API
+  // E-Commerce MCPs (USER KEYS ONLY - connects to user's stores)
+  'mcp-shopify': ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_STORE_URL'],
+  'mcp-etsy': ['ETSY_API_KEY', 'ETSY_ACCESS_TOKEN'],
+  'mcp-woocommerce': ['WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
+  // Trading MCPs (USER KEYS ONLY - connects to user's brokerage accounts)
+  'mcp-alpaca': ['ALPACA_API_KEY', 'ALPACA_SECRET_KEY'],
+  'mcp-coinbase': ['COINBASE_API_KEY', 'COINBASE_API_SECRET'],
+  'mcp-binance': ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY'],
 };
+
+// MCPs that MUST use user's own keys (connects to their personal accounts/stores)
+// Even DFY users must provide their own keys for these
+const USER_ONLY_MCPS = [
+  'mcp-shopify',
+  'mcp-etsy',
+  'mcp-woocommerce',
+  'mcp-alpaca',
+  'mcp-coinbase',
+  'mcp-binance',
+];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -141,8 +160,28 @@ serve(async (req) => {
       );
     }
 
-    // DFY Plan: Use admin API keys
-    if (profile.subscription_tier === 'dfy') {
+    // USER_ONLY_MCPS: Always use user's own keys regardless of subscription tier
+    // These MCPs connect to user's personal stores/trading accounts
+    if (USER_ONLY_MCPS.includes(mcpServerId)) {
+      source = 'user';
+      console.log(`[get-mcp-credentials] ${mcpServerId} requires user-only keys (personal account MCP)`);
+      
+      for (const keyName of requiredKeys) {
+        const { data: userKey } = await supabase
+          .from('user_api_keys')
+          .select('encrypted_value')
+          .eq('user_id', userId)
+          .eq('key_name', keyName)
+          .eq('is_configured', true)
+          .single();
+
+        if (userKey?.encrypted_value) {
+          credentials[keyName] = userKey.encrypted_value;
+        }
+      }
+    }
+    // DFY Plan: Use admin API keys for shared MCPs
+    else if (profile.subscription_tier === 'dfy') {
       source = 'admin';
       
       for (const keyName of requiredKeys) {

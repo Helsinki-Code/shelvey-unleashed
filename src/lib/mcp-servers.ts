@@ -3,13 +3,14 @@ export interface MCPServer {
   id: string;
   name: string;
   description: string;
-  category: 'development' | 'communication' | 'automation' | 'analytics' | 'ai' | 'storage' | 'marketing' | 'voice' | 'design' | 'social';
+  category: 'development' | 'communication' | 'automation' | 'analytics' | 'ai' | 'storage' | 'marketing' | 'voice' | 'design' | 'social' | 'ecommerce' | 'trading';
   status: 'connected' | 'syncing' | 'requires-key';
   icon: string;
   envRequired?: string[];
   toolCount?: number;
   latency?: number;
   requestsToday?: number;
+  requiresUserKeys?: boolean; // True for MCPs that connect to user's personal accounts
 }
 
 export const mcpServers: MCPServer[] = [
@@ -334,6 +335,76 @@ export const mcpServers: MCPServer[] = [
     latency: 120, 
     requestsToday: 0 
   },
+
+  // E-Commerce MCPs (User Keys Only - connects to user's stores)
+  { 
+    id: 'mcp-shopify', 
+    name: 'Shopify', 
+    description: 'Full e-commerce store management - products, orders, inventory, customers', 
+    category: 'ecommerce', 
+    status: 'requires-key', 
+    icon: '🛍️', 
+    envRequired: ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_STORE_URL'],
+    toolCount: 9,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-etsy', 
+    name: 'Etsy', 
+    description: 'Handmade marketplace - listings, shop management, orders, reviews', 
+    category: 'ecommerce', 
+    status: 'requires-key', 
+    icon: '🧶', 
+    envRequired: ['ETSY_API_KEY', 'ETSY_ACCESS_TOKEN'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-woocommerce', 
+    name: 'WooCommerce', 
+    description: 'WordPress e-commerce - products, orders, coupons, reports', 
+    category: 'ecommerce', 
+    status: 'requires-key', 
+    icon: '🛒', 
+    envRequired: ['WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
+    toolCount: 10,
+    requiresUserKeys: true,
+  },
+
+  // Trading MCPs (User Keys Only - connects to user's brokerage accounts)
+  { 
+    id: 'mcp-alpaca', 
+    name: 'Alpaca Trading', 
+    description: 'Stock trading API - orders, positions, market data, portfolio history', 
+    category: 'trading', 
+    status: 'requires-key', 
+    icon: '📈', 
+    envRequired: ['ALPACA_API_KEY', 'ALPACA_SECRET_KEY'],
+    toolCount: 12,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-coinbase', 
+    name: 'Coinbase', 
+    description: 'Crypto trading - accounts, orders, portfolios, market data', 
+    category: 'trading', 
+    status: 'requires-key', 
+    icon: '🪙', 
+    envRequired: ['COINBASE_API_KEY', 'COINBASE_API_SECRET'],
+    toolCount: 10,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-binance', 
+    name: 'Binance', 
+    description: 'Crypto exchange - spot trading, orders, balances, market data', 
+    category: 'trading', 
+    status: 'requires-key', 
+    icon: '💹', 
+    envRequired: ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY'],
+    toolCount: 11,
+    requiresUserKeys: true,
+  },
 ];
 
 export const categoryColors: Record<MCPServer['category'], { bg: string; text: string; border: string }> = {
@@ -347,6 +418,8 @@ export const categoryColors: Record<MCPServer['category'], { bg: string; text: s
   voice: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30' },
   design: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/30' },
   social: { bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
+  ecommerce: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/30' },
+  trading: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' },
 };
 
 // Map agents to their connected MCP servers based on AMROGEN architecture
