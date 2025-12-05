@@ -4,29 +4,27 @@ import { Link } from 'react-router-dom';
 
 const footerLinks = {
   product: [
-    { name: 'Features', href: '#' },
-    { name: 'Pricing', href: '#' },
-    { name: 'API Docs', href: '#' },
-    { name: 'Integrations', href: '#' },
+    { name: 'Features', href: '/#features' },
+    { name: 'Pricing', href: '/#pricing' },
+    { name: 'Agents', href: '/agents' },
+    { name: 'MCP Servers', href: '/mcp' },
   ],
   company: [
-    { name: 'About', href: '#' },
-    { name: 'Blog', href: '#' },
-    { name: 'Careers', href: '#' },
-    { name: 'Contact', href: '#' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' },
   ],
   legal: [
-    { name: 'Privacy', href: '#' },
-    { name: 'Terms', href: '#' },
-    { name: 'Security', href: '#' },
+    { name: 'Privacy', href: '/privacy' },
+    { name: 'Terms', href: '/terms' },
+    { name: 'Security', href: '/security' },
   ],
 };
 
 const socialLinks = [
-  { icon: Twitter, href: '#', label: 'Twitter' },
-  { icon: Github, href: '#', label: 'GitHub' },
-  { icon: Linkedin, href: '#', label: 'LinkedIn' },
-  { icon: Mail, href: '#', label: 'Email' },
+  { icon: Twitter, href: 'https://twitter.com/shelveyai', label: 'Twitter' },
+  { icon: Github, href: 'https://github.com/shelvey', label: 'GitHub' },
+  { icon: Linkedin, href: 'https://linkedin.com/company/shelvey', label: 'LinkedIn' },
+  { icon: Mail, href: 'mailto:admin@shelvey.pro', label: 'Email' },
 ];
 
 export const Footer = () => {
@@ -58,10 +56,22 @@ export const Footer = () => {
                 </span>
               </div>
             </Link>
-            <p className="text-muted-foreground mb-6 max-w-sm">
+            <p className="text-muted-foreground mb-4 max-w-sm">
               The autonomous AI workforce that operates like a real company. 
               25+ specialized agents building, marketing, and scaling businesses 24/7.
             </p>
+            
+            {/* Company Info */}
+            <div className="text-sm text-muted-foreground mb-6 space-y-1">
+              <p className="font-medium text-foreground">ShelVey, LLC</p>
+              <p>131 Continental Dr Suite 305</p>
+              <p>Newark, DE, 19713 US</p>
+              <p className="mt-2">
+                <a href="mailto:support@shelvey.pro" className="hover:text-primary transition-colors">
+                  support@shelvey.pro
+                </a>
+              </p>
+            </div>
             
             {/* Social links */}
             <div className="flex gap-3">
@@ -69,6 +79,8 @@ export const Footer = () => {
                 <motion.a
                   key={social.label}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   whileHover={{ scale: 1.1, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/50 hover:text-primary transition-colors"
@@ -86,12 +98,12 @@ export const Footer = () => {
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -102,12 +114,12 @@ export const Footer = () => {
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -118,12 +130,12 @@ export const Footer = () => {
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -133,7 +145,7 @@ export const Footer = () => {
         {/* Bottom */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ShelVey. All rights reserved.
+            © {new Date().getFullYear()} ShelVey, LLC. All rights reserved.
           </p>
           
           {/* Status */}
