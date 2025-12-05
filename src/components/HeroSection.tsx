@@ -1,5 +1,6 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Zap, ArrowRight, Sparkles, Globe, Cpu } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -215,6 +216,8 @@ const StatusCard = ({ children, className, delay }: { children: React.ReactNode;
 );
 
 export const HeroSection = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
       {/* Background layers */}
@@ -298,6 +301,7 @@ export const HeroSection = () => {
               <Button 
                 size="lg" 
                 className="group text-base px-8 h-14 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
+                onClick={() => navigate('/auth?mode=signup')}
               >
                 <Zap className="w-5 h-5 mr-2" />
                 Launch Dashboard
@@ -308,6 +312,7 @@ export const HeroSection = () => {
                 variant="outline" 
                 size="lg"
                 className="text-base px-8 h-14 rounded-xl border-border hover:bg-muted"
+                onClick={() => navigate('/live-demo')}
               >
                 <Sparkles className="w-5 h-5 mr-2" />
                 View Live Demo

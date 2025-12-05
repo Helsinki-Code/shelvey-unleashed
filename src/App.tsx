@@ -27,6 +27,8 @@ import PrivacyPage from "./pages/PrivacyPage";
 import SecurityPage from "./pages/SecurityPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PricingPage from "./pages/PricingPage";
+import LiveDemoPage from "./pages/LiveDemoPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,8 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/security" element={<SecurityPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/live-demo" element={<LiveDemoPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
