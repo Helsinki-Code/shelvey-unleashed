@@ -209,3 +209,12 @@ verify_jwt = false
 
 [functions.mcp-serpapi]
 verify_jwt = false
+
+[functions.openai-mcp-connector]
+verify_jwt = false
+
+[functions.openai-connectors]
+verify_jwt = false
+
+[functions.oauth-callback]
+verify_jwt = false
