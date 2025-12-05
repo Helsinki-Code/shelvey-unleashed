@@ -3,19 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Check, Loader2, Lock, Eye, MessageSquare,
-  ChevronRight, Settings, MoreVertical, Globe, Sparkles
+  ChevronRight, Settings, Globe, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { HelpTooltip, HELP_CONTENT } from '@/components/HelpTooltip';
+import { DeliverableContentViewer } from '@/components/DeliverableContentViewer';
 
 interface Phase {
   id: string;
@@ -32,6 +31,7 @@ interface Deliverable {
   deliverable_type: string;
   status: string;
   description: string | null;
+  generated_content?: any;
 }
 
 const PHASE_INFO = [
@@ -93,11 +93,11 @@ const ProjectDetailPage = () => {
       const activePhase = phasesData?.find(p => p.status === 'active');
       setSelectedPhase(activePhase || phasesData?.[0] || null);
 
-      // Fetch deliverables for selected phase
+      // Fetch deliverables for selected phase with generated_content
       if (activePhase) {
         const { data: deliverablesData } = await supabase
           .from('phase_deliverables')
-          .select('*')
+          .select('id, name, deliverable_type, status, description, generated_content')
           .eq('phase_id', activePhase.id);
         
         setDeliverables(deliverablesData || []);
@@ -117,13 +117,26 @@ const ProjectDetailPage = () => {
   const handlePhaseSelect = async (phase: Phase) => {
     setSelectedPhase(phase);
     
-    // Fetch deliverables for this phase
+    // Fetch deliverables for this phase with generated_content
     const { data } = await supabase
       .from('phase_deliverables')
-      .select('*')
+      .select('id, name, deliverable_type, status, description, generated_content')
       .eq('phase_id', phase.id);
     
     setDeliverables(data || []);
+  };
+
+  const handleApproveDeliverable = async (deliverableId: string) => {
+    await supabase
+      .from('phase_deliverables')
+      .update({ status: 'approved', user_approved: true })
+      .eq('id', deliverableId);
+    
+    // Refresh deliverables
+    if (selectedPhase) {
+      handlePhaseSelect(selectedPhase);
+    }
+    toast({ title: 'Deliverable approved!' });
   };
 
   const getPhaseStatus = (phaseNumber: number) => {
@@ -325,33 +338,15 @@ const ProjectDetailPage = () => {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="h-[300px] pr-4">
+                  <ScrollArea className="h-[400px] pr-4">
                     {deliverables.length > 0 ? (
                       <div className="space-y-3">
                         {deliverables.map((deliverable) => (
-                          <div
+                          <DeliverableContentViewer
                             key={deliverable.id}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                          >
-                            {deliverable.status === 'approved' ? (
-                              <Check className="w-4 h-4 text-primary" />
-                            ) : deliverable.status === 'in_progress' ? (
-                              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full border-2 border-muted-foreground" />
-                            )}
-                            <div className="flex-1">
-                              <p className={`text-sm font-medium ${
-                                deliverable.status === 'approved' ? 'line-through text-muted-foreground' : ''
-                              }`}>
-                                {deliverable.name}
-                              </p>
-                              {deliverable.description && (
-                                <p className="text-xs text-muted-foreground">{deliverable.description}</p>
-                              )}
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                          </div>
+                            deliverable={deliverable}
+                            onApprove={handleApproveDeliverable}
+                          />
                         ))}
                       </div>
                     ) : (

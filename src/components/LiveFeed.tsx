@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateActivityLogs, ActivityLog, agents } from '@/lib/agents-data';
-import { Activity, CheckCircle, Clock, AlertCircle, Search, Filter } from 'lucide-react';
+import { Activity, CheckCircle, Clock, AlertCircle, Search, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ActivityLog {
+  id: string;
+  timestamp: Date;
+  agentId: string;
+  agentName: string;
+  action: string;
+  result: 'success' | 'pending' | 'error';
+  details: string;
+}
 
 const resultIcons = {
   success: <CheckCircle className="w-4 h-4 text-green-500" />,
@@ -21,35 +31,80 @@ const formatTime = (date: Date) => {
 };
 
 export const LiveFeed = () => {
-  // Live Feed section with real-time activity logs
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterResult, setFilterResult] = useState<'all' | 'success' | 'pending' | 'error'>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ active: 0, tasksPerHour: 0, successRate: 0 });
 
   useEffect(() => {
-    // Initial logs
-    setLogs(generateActivityLogs());
+    // Fetch real agent activity logs
+    const fetchLogs = async () => {
+      try {
+        const { data } = await supabase
+          .from('agent_activity_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-    // Add new log every few seconds
-    const interval = setInterval(() => {
-      const agent = agents[Math.floor(Math.random() * agents.length)];
-      const actions = ['Lead qualified', 'Message sent', 'Data collected', 'API call made', 'Content generated'];
-      const results: Array<'success' | 'pending' | 'error'> = ['success', 'success', 'success', 'pending', 'error'];
-      
-      const newLog: ActivityLog = {
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        agentId: agent.id,
-        agentName: agent.name,
-        action: actions[Math.floor(Math.random() * actions.length)],
-        result: results[Math.floor(Math.random() * results.length)],
-        details: `Processing item ${Math.floor(Math.random() * 1000)}`,
-      };
+        if (data) {
+          const formattedLogs: ActivityLog[] = data.map((log) => ({
+            id: log.id,
+            timestamp: new Date(log.created_at),
+            agentId: log.agent_id,
+            agentName: log.agent_name,
+            action: log.action,
+            result: log.status === 'completed' ? 'success' : log.status === 'error' ? 'error' : 'pending',
+            details: (log.metadata as any)?.mcp_server || (log.metadata as any)?.deliverable || 'Processing',
+          }));
+          setLogs(formattedLogs);
 
-      setLogs(prev => [newLog, ...prev.slice(0, 49)]);
-    }, 3000);
+          // Calculate stats
+          const successCount = formattedLogs.filter(l => l.result === 'success').length;
+          const uniqueAgents = new Set(formattedLogs.map(l => l.agentId)).size;
+          setStats({
+            active: uniqueAgents,
+            tasksPerHour: formattedLogs.length,
+            successRate: formattedLogs.length > 0 ? Math.round((successCount / formattedLogs.length) * 100) : 0,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return () => clearInterval(interval);
+    fetchLogs();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('live-feed-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'agent_activity_logs',
+        },
+        (payload) => {
+          const newLog: ActivityLog = {
+            id: payload.new.id,
+            timestamp: new Date(payload.new.created_at),
+            agentId: payload.new.agent_id,
+            agentName: payload.new.agent_name,
+            action: payload.new.action,
+            result: payload.new.status === 'completed' ? 'success' : payload.new.status === 'error' ? 'error' : 'pending',
+            details: (payload.new.metadata as any)?.mcp_server || (payload.new.metadata as any)?.deliverable || 'Processing',
+          };
+          setLogs(prev => [newLog, ...prev.slice(0, 49)]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filteredLogs = logs.filter(log => {
@@ -117,47 +172,59 @@ export const LiveFeed = () => {
 
               {/* Log entries */}
               <div className="h-[400px] overflow-y-auto">
-                <AnimatePresence initial={false}>
-                  {filteredLogs.map((log, index) => (
-                    <motion.div
-                      key={log.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
-                      className={`p-3 border-b border-border/50 hover:bg-card/50 transition-colors ${index === 0 ? 'bg-primary/5' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-1 p-1.5 rounded-lg border ${resultColors[log.result]}`}>
-                          {resultIcons[log.result]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-xs text-muted-foreground">
-                              [{formatTime(log.timestamp)}]
-                            </span>
-                            <span className="font-medium text-sm text-foreground truncate">
-                              {log.agentName.replace(' Agent', '')}
-                            </span>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : filteredLogs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <Activity className="w-12 h-12 mb-2 opacity-50" />
+                    <p>No activity yet</p>
+                    <p className="text-sm">Agent activity will appear here in real-time</p>
+                  </div>
+                ) : (
+                  <AnimatePresence initial={false}>
+                    {filteredLogs.map((log, index) => (
+                      <motion.div
+                        key={log.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className={`p-3 border-b border-border/50 hover:bg-card/50 transition-colors ${index === 0 ? 'bg-primary/5' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 p-1.5 rounded-lg border ${resultColors[log.result]}`}>
+                            {resultIcons[log.result]}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-primary">{log.action}</span>
-                            <span className="text-xs text-muted-foreground">• {log.details}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-xs text-muted-foreground">
+                                [{formatTime(log.timestamp)}]
+                              </span>
+                              <span className="font-medium text-sm text-foreground truncate">
+                                {log.agentName.replace(' Agent', '')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-primary">{log.action}</span>
+                              <span className="text-xs text-muted-foreground">• {log.details}</span>
+                            </div>
                           </div>
+                          {index === 0 && (
+                            <motion.div
+                              className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                            >
+                              NEW
+                            </motion.div>
+                          )}
                         </div>
-                        {index === 0 && (
-                          <motion.div
-                            className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            NEW
-                          </motion.div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
               </div>
             </div>
           </motion.div>
@@ -172,7 +239,7 @@ export const LiveFeed = () => {
             {/* Global KPIs */}
             <div className="rounded-2xl bg-card border border-border p-6 shadow-cyber">
               <h3 className="font-cyber text-lg mb-4 flex items-center gap-2">
-                <Filter className="w-5 h-5 text-primary" />
+                <Activity className="w-5 h-5 text-primary" />
                 SYSTEM STATUS
               </h3>
               
@@ -180,31 +247,29 @@ export const LiveFeed = () => {
                 <div className="p-4 rounded-xl bg-background/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-muted-foreground">Active Agents</span>
-                    <span className="font-cyber text-2xl text-primary">18</span>
+                    <span className="font-cyber text-2xl text-primary">{stats.active}</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-border overflow-hidden">
                     <motion.div
                       className="h-full bg-primary rounded-full"
                       initial={{ width: 0 }}
-                      whileInView={{ width: '72%' }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.2 }}
+                      animate={{ width: `${Math.min(stats.active * 4, 100)}%` }}
+                      transition={{ duration: 1 }}
                     />
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-background/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-muted-foreground">Tasks/Hour</span>
-                    <span className="font-cyber text-2xl text-cyber-cyan">847</span>
+                    <span className="text-sm text-muted-foreground">Tasks Logged</span>
+                    <span className="font-cyber text-2xl text-cyan-500">{stats.tasksPerHour}</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-border overflow-hidden">
                     <motion.div
-                      className="h-full bg-cyber-cyan rounded-full"
+                      className="h-full bg-cyan-500 rounded-full"
                       initial={{ width: 0 }}
-                      whileInView={{ width: '85%' }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.3 }}
+                      animate={{ width: `${Math.min(stats.tasksPerHour * 2, 100)}%` }}
+                      transition={{ duration: 1 }}
                     />
                   </div>
                 </div>
@@ -212,15 +277,14 @@ export const LiveFeed = () => {
                 <div className="p-4 rounded-xl bg-background/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-muted-foreground">Success Rate</span>
-                    <span className="font-cyber text-2xl text-green-500">94.2%</span>
+                    <span className="font-cyber text-2xl text-green-500">{stats.successRate}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-border overflow-hidden">
                     <motion.div
                       className="h-full bg-green-500 rounded-full"
                       initial={{ width: 0 }}
-                      whileInView={{ width: '94.2%' }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1, delay: 0.4 }}
+                      animate={{ width: `${stats.successRate}%` }}
+                      transition={{ duration: 1 }}
                     />
                   </div>
                 </div>
@@ -228,13 +292,13 @@ export const LiveFeed = () => {
                 <div className="p-4 rounded-xl bg-background/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-muted-foreground">System Health</span>
-                    <span className="font-cyber text-2xl text-primary">98%</span>
+                    <span className="font-cyber text-2xl text-primary">{logs.length > 0 ? '98%' : '—'}</span>
                   </div>
                   <div className="flex gap-1">
                     {[...Array(10)].map((_, i) => (
                       <motion.div
                         key={i}
-                        className={`flex-1 h-3 rounded ${i < 9.8 ? 'bg-primary' : 'bg-border'}`}
+                        className={`flex-1 h-3 rounded ${logs.length > 0 && i < 9.8 ? 'bg-primary' : 'bg-border'}`}
                         initial={{ scaleY: 0 }}
                         whileInView={{ scaleY: 1 }}
                         viewport={{ once: true }}
@@ -246,25 +310,35 @@ export const LiveFeed = () => {
               </div>
             </div>
 
-            {/* Alert notifications */}
+            {/* Recent activity summary */}
             <div className="rounded-2xl bg-card border border-border p-4 shadow-cyber">
-              <h4 className="font-mono text-sm text-muted-foreground mb-3">RECENT ALERTS</h4>
+              <h4 className="font-mono text-sm text-muted-foreground mb-3">RECENT ACTIVITY</h4>
               <div className="space-y-2">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm"
-                >
-                  <span className="text-yellow-500 font-mono">⚠️ High CPU usage on Research Agent</span>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm"
-                >
-                  <span className="text-green-500 font-mono">✓ API rate limit restored</span>
-                </motion.div>
+                {logs.slice(0, 2).map((log, i) => (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className={`p-3 rounded-lg text-sm ${
+                      log.result === 'success' 
+                        ? 'bg-green-500/10 border border-green-500/20' 
+                        : log.result === 'error'
+                        ? 'bg-red-500/10 border border-red-500/20'
+                        : 'bg-yellow-500/10 border border-yellow-500/20'
+                    }`}
+                  >
+                    <span className={
+                      log.result === 'success' ? 'text-green-500' : 
+                      log.result === 'error' ? 'text-red-500' : 'text-yellow-500'
+                    }>
+                      {log.result === 'success' ? '✓' : log.result === 'error' ? '✗' : '⏳'} {log.agentName}: {log.action}
+                    </span>
+                  </motion.div>
+                ))}
+                {logs.length === 0 && (
+                  <p className="text-muted-foreground text-sm">No recent activity</p>
+                )}
               </div>
             </div>
           </motion.div>
