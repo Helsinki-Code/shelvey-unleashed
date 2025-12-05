@@ -1,11 +1,16 @@
 import { Navbar } from '@/components/Navbar';
 import { BusinessPipeline } from '@/components/BusinessPipeline';
+import { ProjectInitializer } from '@/components/ProjectInitializer';
+import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { Footer } from '@/components/Footer';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { Factory, DollarSign, TrendingUp, Rocket } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const PipelinePage = () => {
+  const { user } = useAuth();
+  
   const stats = [
     { icon: Factory, label: 'Businesses Created', value: '47', color: 'text-primary' },
     { icon: DollarSign, label: 'Total Revenue', value: '$2.4M', color: 'text-green-500' },
@@ -65,6 +70,19 @@ const PipelinePage = () => {
           </section>
 
           <BusinessPipeline />
+
+          {/* Project Initializer for logged-in users */}
+          {user && (
+            <section className="py-16">
+              <div className="container mx-auto px-4">
+                <SubscriptionGate>
+                  <div className="max-w-xl mx-auto">
+                    <ProjectInitializer />
+                  </div>
+                </SubscriptionGate>
+              </div>
+            </section>
+          )}
         </main>
 
         <Footer />
