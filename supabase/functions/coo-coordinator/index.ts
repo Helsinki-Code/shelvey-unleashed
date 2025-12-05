@@ -102,7 +102,40 @@ serve(async (req) => {
           .update({ status: 'active' })
           .eq('division', 'research');
 
-        result = { success: true, message: 'Project phases initialized, Research team activated' };
+        // Get the active phase (Phase 1)
+        const { data: activePhase } = await supabase
+          .from('business_phases')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('phase_number', 1)
+          .single();
+
+        // Trigger phase work to start the agents working
+        if (activePhase) {
+          console.log('[COO] Starting phase work for Phase 1');
+          
+          // Fire and forget - don't await to avoid blocking
+          fetch(`${supabaseUrl}/functions/v1/phase-auto-worker`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              action: 'start_phase_work',
+              userId,
+              projectId,
+              phaseId: activePhase.id,
+            }),
+          }).then(async (response) => {
+            const workResult = await response.json();
+            console.log('[COO] Phase work started:', workResult);
+          }).catch((workError) => {
+            console.error('[COO] Failed to start phase work:', workError);
+          });
+        }
+
+        result = { success: true, message: 'Project phases initialized, Research team activated, work started' };
         break;
 
       case 'activate_phase':
