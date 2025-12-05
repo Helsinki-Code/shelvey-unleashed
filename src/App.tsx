@@ -35,6 +35,7 @@ import TeamCollaborationPage from "./pages/TeamCollaborationPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import ComputerUsePage from "./pages/ComputerUsePage";
 import DeveloperToolsPage from "./pages/DeveloperToolsPage";
+import WorkspacePage from "./pages/WorkspacePage";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="/computer-use" element={<ComputerUsePage />} />
               <Route path="/developer-tools" element={<DeveloperToolsPage />} />
+              <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
