@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import WebsitesPage from "./pages/WebsitesPage";
 import OrganizationPage from "./pages/OrganizationPage";
 import BrandingPage from "./pages/BrandingPage";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/organization" element={<OrganizationPage />} />
               <Route path="/branding" element={<BrandingPage />} />
+              <Route path="/super-admin" element={<SuperAdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

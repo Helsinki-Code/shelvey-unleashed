@@ -57,13 +57,13 @@ export const useSubscription = () => {
     }
   }, [session?.access_token]);
 
-  const createCheckout = useCallback(async (includeSetupFee: boolean = true) => {
+  const createCheckout = useCallback(async (includeSetupFee: boolean = true, planType: string = 'standard') => {
     if (!session?.access_token) {
       throw new Error('Not authenticated');
     }
 
     const { data, error } = await supabase.functions.invoke('create-checkout', {
-      body: { includeSetupFee },
+      body: { includeSetupFee, planType },
       headers: {
         Authorization: `Bearer ${session.access_token}`,
       },

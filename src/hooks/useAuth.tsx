@@ -9,6 +9,7 @@ interface Profile {
   avatar_url: string | null;
   subscription_status: 'trial' | 'active' | 'canceled' | 'expired';
   subscription_expires_at: string | null;
+  subscription_tier?: string | null;
 }
 
 interface AuthContextType {
@@ -17,6 +18,8 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   isSubscribed: boolean;
+  isSuperAdmin: boolean;
+  subscriptionTier: string;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -30,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -43,6 +47,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return null;
     }
     return data as Profile;
+  };
+
+  const checkSuperAdminStatus = async (userId: string) => {
+    const { data, error } = await supabase.rpc('is_super_admin', {
+      _user_id: userId,
+    });
+
+    if (!error) {
+      setIsSuperAdmin(data === true);
+    }
   };
 
   const initializeMCPServers = async (userId: string) => {
@@ -71,11 +85,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(async () => {
             const profileData = await fetchProfile(session.user.id);
             setProfile(profileData);
+            await checkSuperAdminStatus(session.user.id);
             await initializeMCPServers(session.user.id);
             setIsLoading(false);
           }, 0);
         } else {
           setProfile(null);
+          setIsSuperAdmin(false);
           setIsLoading(false);
         }
       }
@@ -89,6 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         fetchProfile(session.user.id).then((profileData) => {
           setProfile(profileData);
+          checkSuperAdminStatus(session.user.id);
           initializeMCPServers(session.user.id);
           setIsLoading(false);
         });
@@ -129,12 +146,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setIsSuperAdmin(false);
   };
 
   const refreshProfile = async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
       setProfile(profileData);
+      await checkSuperAdminStatus(user.id);
     }
   };
 
@@ -143,6 +162,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
     : false;
 
+  const subscriptionTier = profile?.subscription_tier || 'standard';
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -150,6 +171,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       profile,
       isLoading,
       isSubscribed,
+      isSuperAdmin,
+      subscriptionTier,
       signUp,
       signIn,
       signOut,

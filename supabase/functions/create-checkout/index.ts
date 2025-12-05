@@ -7,10 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ShelVey pricing
-const PRICES = {
+// ShelVey pricing - Standard Plan
+const STANDARD_PRICES = {
   subscription: "price_1SarvYG8EcNVoEpv5S9ijn7w", // $2,999/month
   setup_fee: "price_1SarwAG8EcNVoEpv5vPzraRW",   // $999 one-time
+};
+
+// ShelVey pricing - DFY Plan
+const DFY_PRICES = {
+  subscription: "price_1SasuuG8EcNVoEpv5z0EGKqk", // $4,999/month
+  setup_fee: "price_1SasvSG8EcNVoEpvEVlmBQGg",   // $1,499 one-time
 };
 
 const logStep = (step: string, details?: any) => {
@@ -31,8 +37,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { includeSetupFee = true } = await req.json();
-    logStep("Request parsed", { includeSetupFee });
+    const { includeSetupFee = true, planType = 'standard' } = await req.json();
+    logStep("Request parsed", { includeSetupFee, planType });
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization")!;
@@ -58,10 +64,14 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
+    // Select prices based on plan type
+    const prices = planType === 'dfy' ? DFY_PRICES : STANDARD_PRICES;
+    logStep("Selected pricing", { planType, prices });
+
     // Build line items
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
-        price: PRICES.subscription,
+        price: prices.subscription,
         quantity: 1,
       },
     ];
@@ -69,7 +79,7 @@ serve(async (req) => {
     // Add setup fee if requested
     if (includeSetupFee) {
       lineItems.push({
-        price: PRICES.setup_fee,
+        price: prices.setup_fee,
         quantity: 1,
       });
       logStep("Added setup fee to checkout");
@@ -88,14 +98,16 @@ serve(async (req) => {
       subscription_data: {
         metadata: {
           user_id: user.id,
+          plan_type: planType,
         },
       },
       metadata: {
         user_id: user.id,
+        plan_type: planType,
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url, planType });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
