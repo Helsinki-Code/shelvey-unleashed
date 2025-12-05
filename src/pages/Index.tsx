@@ -4,6 +4,7 @@ import { SimplifiedHero } from '@/components/SimplifiedHero';
 import { HowItWorks } from '@/components/HowItWorks';
 import { MeetYourTeam } from '@/components/MeetYourTeam';
 import { ConnectedApps } from '@/components/ConnectedApps';
+import { LiveDemoChat } from '@/components/LiveDemoChat';
 import { MCPServersSection } from '@/components/MCPServersSection';
 import { AgentGrid } from '@/components/AgentGrid';
 import { NeuralNetwork } from '@/components/NeuralNetwork';
@@ -35,6 +36,7 @@ const Index = () => {
           <HowItWorks />
           <MeetYourTeam />
           <ConnectedApps />
+          <LiveDemoChat />
           
           {/* Expert sections (hidden in beginner mode via component logic) */}
           {!isBeginner && (
