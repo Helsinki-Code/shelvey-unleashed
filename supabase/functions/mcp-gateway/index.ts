@@ -25,6 +25,7 @@ const MCP_ENDPOINTS: Record<string, string> = {
   'mcp-googlecalendar': 'mcp-googlecalendar',
   'mcp-googlemaps': 'mcp-googlemaps',
   'mcp-contentcore': 'mcp-contentcore',
+  'mcp-artifacts': 'mcp-artifacts',
 };
 
 // Twitter tool to Perplexity fallback mapping

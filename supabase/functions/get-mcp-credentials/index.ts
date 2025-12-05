@@ -27,6 +27,7 @@ const MCP_KEY_MAPPING: Record<string, string[]> = {
   'mcp-21stdev': ['21ST_DEV_API_KEY'],
   'mcp-contentcore': [],
   'mcp-kokorotts': ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
+  'mcp-artifacts': ['ARTIFACTS_MMO_TOKEN'],
 };
 
 serve(async (req) => {
