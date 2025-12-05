@@ -3,7 +3,7 @@ export interface MCPServer {
   id: string;
   name: string;
   description: string;
-  category: 'development' | 'communication' | 'automation' | 'analytics' | 'ai' | 'storage' | 'marketing' | 'voice' | 'design' | 'social' | 'ecommerce' | 'trading';
+  category: 'development' | 'communication' | 'automation' | 'analytics' | 'ai' | 'storage' | 'marketing' | 'voice' | 'design' | 'social' | 'ecommerce' | 'trading' | 'crm' | 'infrastructure' | 'scheduling' | 'scraping' | 'cms' | 'publishing' | 'llm' | 'database';
   status: 'connected' | 'syncing' | 'requires-key';
   icon: string;
   envRequired?: string[];
@@ -405,6 +405,227 @@ export const mcpServers: MCPServer[] = [
     toolCount: 11,
     requiresUserKeys: true,
   },
+
+  // === NEW 18 MCP SERVERS ===
+
+  // E-Commerce
+  { 
+    id: 'mcp-amazon', 
+    name: 'Amazon Seller', 
+    description: 'Amazon Seller Central - orders, inventory, listings, fulfillment, reports', 
+    category: 'ecommerce', 
+    status: 'requires-key', 
+    icon: '📦', 
+    envRequired: ['AMAZON_CLIENT_ID', 'AMAZON_CLIENT_SECRET', 'AMAZON_REFRESH_TOKEN', 'AMAZON_MARKETPLACE_ID'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+
+  // Analytics & SEO
+  { 
+    id: 'mcp-googleanalytics', 
+    name: 'Google Analytics', 
+    description: 'GA4 analytics - pageviews, sessions, audience, conversions, traffic sources', 
+    category: 'analytics', 
+    status: 'requires-key', 
+    icon: '📊', 
+    envRequired: ['GA_PROPERTY_ID', 'GA_CLIENT_EMAIL', 'GA_PRIVATE_KEY'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-serpapi', 
+    name: 'SerpAPI', 
+    description: 'Search engine results - Google, Bing, YouTube, shopping, news, trends', 
+    category: 'analytics', 
+    status: 'requires-key', 
+    icon: '🔍', 
+    envRequired: ['SERPAPI_KEY'],
+    toolCount: 8,
+  },
+
+  // CRM
+  { 
+    id: 'mcp-hubspot', 
+    name: 'HubSpot', 
+    description: 'CRM - contacts, deals, companies, tickets, pipeline, email campaigns', 
+    category: 'crm', 
+    status: 'requires-key', 
+    icon: '🎯', 
+    envRequired: ['HUBSPOT_ACCESS_TOKEN'],
+    toolCount: 10,
+    requiresUserKeys: true,
+  },
+
+  // Social Media
+  { 
+    id: 'mcp-instagram', 
+    name: 'Instagram Business', 
+    description: 'Instagram Graph API - media, stories, insights, comments, hashtags', 
+    category: 'social', 
+    status: 'requires-key', 
+    icon: '📸', 
+    envRequired: ['INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ID'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-tiktok', 
+    name: 'TikTok Business', 
+    description: 'TikTok Business API - videos, analytics, followers, trending', 
+    category: 'social', 
+    status: 'requires-key', 
+    icon: '🎵', 
+    envRequired: ['TIKTOK_ACCESS_TOKEN', 'TIKTOK_OPEN_ID'],
+    toolCount: 7,
+    requiresUserKeys: true,
+  },
+
+  // Infrastructure
+  { 
+    id: 'mcp-vercel', 
+    name: 'Vercel', 
+    description: 'Deployment platform - projects, deployments, domains, env vars, logs', 
+    category: 'infrastructure', 
+    status: 'requires-key', 
+    icon: '▲', 
+    envRequired: ['VERCEL_API_KEY'],
+    toolCount: 9,
+    requiresUserKeys: true,
+  },
+  { 
+    id: 'mcp-cloudflare', 
+    name: 'Cloudflare', 
+    description: 'CDN & DNS - zones, records, cache, Workers, R2, KV, analytics', 
+    category: 'infrastructure', 
+    status: 'requires-key', 
+    icon: '☁️', 
+    envRequired: ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'],
+    toolCount: 9,
+    requiresUserKeys: true,
+  },
+
+  // Scheduling
+  { 
+    id: 'mcp-calendly', 
+    name: 'Calendly', 
+    description: 'Scheduling - event types, scheduled events, invitees, availability', 
+    category: 'scheduling', 
+    status: 'requires-key', 
+    icon: '📆', 
+    envRequired: ['CALENDLY_API_KEY'],
+    toolCount: 7,
+    requiresUserKeys: true,
+  },
+
+  // Communication
+  { 
+    id: 'mcp-twilio', 
+    name: 'Twilio', 
+    description: 'Communications - SMS, MMS, voice calls, WhatsApp, phone lookup', 
+    category: 'communication', 
+    status: 'requires-key', 
+    icon: '📱', 
+    envRequired: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+
+  // Data & Scraping
+  { 
+    id: 'mcp-brightdata', 
+    name: 'Bright Data', 
+    description: 'Web intelligence - search, scraping, screenshots, content extraction', 
+    category: 'scraping', 
+    status: 'requires-key', 
+    icon: '🌐', 
+    envRequired: ['BRIGHTDATA_API_KEY'],
+    toolCount: 7,
+  },
+
+  // CMS
+  { 
+    id: 'mcp-wordpress', 
+    name: 'WordPress', 
+    description: 'WordPress REST API - posts, pages, media, categories, users', 
+    category: 'cms', 
+    status: 'requires-key', 
+    icon: '📝', 
+    envRequired: ['WORDPRESS_URL', 'WORDPRESS_USERNAME', 'WORDPRESS_APP_PASSWORD'],
+    toolCount: 9,
+    requiresUserKeys: true,
+  },
+
+  // Publishing
+  { 
+    id: 'mcp-medium', 
+    name: 'Medium', 
+    description: 'Medium publishing - articles, publications, user info', 
+    category: 'publishing', 
+    status: 'requires-key', 
+    icon: '✍️', 
+    envRequired: ['MEDIUM_INTEGRATION_TOKEN'],
+    toolCount: 4,
+    requiresUserKeys: true,
+  },
+
+  // AI & LLM
+  { 
+    id: 'mcp-openai', 
+    name: 'OpenAI', 
+    description: 'GPT models - chat, images (DALL-E), embeddings, TTS, moderation', 
+    category: 'llm', 
+    status: 'requires-key', 
+    icon: '🤖', 
+    envRequired: ['OPENAI_API_KEY'],
+    toolCount: 6,
+  },
+  { 
+    id: 'mcp-claude', 
+    name: 'Claude (Anthropic)', 
+    description: 'Claude models - messaging, document analysis, code generation', 
+    category: 'llm', 
+    status: 'requires-key', 
+    icon: '🧠', 
+    envRequired: ['ANTHROPIC_API_KEY'],
+    toolCount: 4,
+  },
+  { 
+    id: 'mcp-gemini', 
+    name: 'Google Gemini', 
+    description: 'Gemini models - content generation, image analysis, embeddings', 
+    category: 'llm', 
+    status: 'requires-key', 
+    icon: '💎', 
+    envRequired: ['GOOGLE_AI_API_KEY'],
+    toolCount: 4,
+  },
+
+  // Database
+  { 
+    id: 'mcp-postgresql', 
+    name: 'PostgreSQL', 
+    description: 'Database operations - tables, queries, insert, update, delete', 
+    category: 'database', 
+    status: 'requires-key', 
+    icon: '🐘', 
+    envRequired: ['POSTGRES_CONNECTION_STRING'],
+    toolCount: 8,
+    requiresUserKeys: true,
+  },
+
+  // Automation
+  { 
+    id: 'mcp-n8n', 
+    name: 'n8n Workflows', 
+    description: 'Workflow automation - list, execute, activate workflows', 
+    category: 'automation', 
+    status: 'requires-key', 
+    icon: '⚡', 
+    envRequired: ['N8N_HOST', 'N8N_API_KEY'],
+    toolCount: 7,
+    requiresUserKeys: true,
+  },
 ];
 
 export const categoryColors: Record<MCPServer['category'], { bg: string; text: string; border: string }> = {
@@ -420,6 +641,14 @@ export const categoryColors: Record<MCPServer['category'], { bg: string; text: s
   social: { bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
   ecommerce: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/30' },
   trading: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' },
+  crm: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
+  infrastructure: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30' },
+  scheduling: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/30' },
+  scraping: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30' },
+  cms: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
+  publishing: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' },
+  llm: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
+  database: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30' },
 };
 
 // Map agents to their connected MCP servers based on AMROGEN architecture
