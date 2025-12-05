@@ -27,6 +27,22 @@ const MCP_ENDPOINTS: Record<string, string> = {
   'mcp-contentcore': 'mcp-contentcore',
 };
 
+// Twitter tool to Perplexity fallback mapping
+const TWITTER_TO_PERPLEXITY_FALLBACK: Record<string, { tool: string; transformArgs: (args: any) => any }> = {
+  'analyze_sentiment': {
+    tool: 'social_sentiment',
+    transformArgs: (args) => ({ query: args.query, industry: args.industry }),
+  },
+  'get_trends': {
+    tool: 'social_trends',
+    transformArgs: (args) => ({ industry: args.industry, region: args.region }),
+  },
+  'search_tweets': {
+    tool: 'community_research',
+    transformArgs: (args) => ({ topic: args.query, question: args.query }),
+  },
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -97,7 +113,7 @@ serve(async (req) => {
     }
 
     // Call the specific MCP server function
-    const mcpResponse = await fetch(`${supabaseUrl}/functions/v1/${mcpEndpoint}`, {
+    let mcpResponse = await fetch(`${supabaseUrl}/functions/v1/${mcpEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,24 +130,80 @@ serve(async (req) => {
       }),
     });
 
-    const mcpResult = await mcpResponse.json();
+    let mcpResult = await mcpResponse.json();
+    let usedFallback = false;
+    let fallbackServer = '';
+
+    // Smart Fallback: If Twitter rate limited (429), fallback to Perplexity social sentiment
+    if (mcpServerId === 'mcp-twitter' && 
+        (mcpResult.error?.includes('429') || mcpResult.error?.includes('rate limit') || mcpResult.error?.includes('Too Many Requests'))) {
+      
+      const fallbackConfig = TWITTER_TO_PERPLEXITY_FALLBACK[tool];
+      
+      if (fallbackConfig) {
+        console.log(`[mcp-gateway] Twitter rate limited, falling back to Perplexity ${fallbackConfig.tool}`);
+        
+        // Get Perplexity credentials
+        const perplexityCredResponse = await fetch(`${supabaseUrl}/functions/v1/get-mcp-credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ userId, mcpServerId: 'mcp-perplexity' }),
+        });
+
+        const perplexityCredResult = await perplexityCredResponse.json();
+
+        if (perplexityCredResult.success) {
+          // Call Perplexity with transformed args
+          const fallbackArgs = fallbackConfig.transformArgs(toolArgs);
+          
+          mcpResponse = await fetch(`${supabaseUrl}/functions/v1/mcp-perplexity`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              tool: fallbackConfig.tool,
+              arguments: fallbackArgs,
+              credentials: perplexityCredResult.credentials,
+              userId,
+              agentId,
+              taskId,
+              projectId,
+            }),
+          });
+
+          mcpResult = await mcpResponse.json();
+          usedFallback = true;
+          fallbackServer = 'mcp-perplexity';
+          
+          console.log(`[mcp-gateway] Fallback to Perplexity successful`);
+        } else {
+          console.log(`[mcp-gateway] Perplexity fallback failed - no credentials`);
+        }
+      }
+    }
+
     const latencyMs = Date.now() - startTime;
 
     // Log MCP usage
     await supabase.from('agent_mcp_usage').insert({
       agent_id: agentId || 'system',
-      mcp_server_id: mcpServerId,
+      mcp_server_id: usedFallback ? fallbackServer : mcpServerId,
       action: tool,
       task_id: taskId,
       success: mcpResult.success !== false,
       latency_ms: latencyMs,
-      request_payload: { tool, arguments: toolArgs },
+      request_payload: { tool, arguments: toolArgs, usedFallback, originalServer: usedFallback ? mcpServerId : undefined },
       response_payload: mcpResult,
     });
 
     // Update MCP server metrics
     await supabase.rpc('update_mcp_metrics', {
-      p_server_id: mcpServerId,
+      p_server_id: usedFallback ? fallbackServer : mcpServerId,
       p_latency_ms: latencyMs,
       p_requests_increment: 1,
     });
@@ -141,28 +213,32 @@ serve(async (req) => {
       await supabase.from('agent_activity_logs').insert({
         agent_id: agentId,
         agent_name: agentId,
-        action: `MCP Call: ${mcpServerId}.${tool}`,
+        action: `MCP Call: ${usedFallback ? `${mcpServerId}→${fallbackServer}` : mcpServerId}.${tool}`,
         status: mcpResult.success !== false ? 'completed' : 'failed',
         metadata: {
-          mcp_server: mcpServerId,
+          mcp_server: usedFallback ? fallbackServer : mcpServerId,
+          original_server: usedFallback ? mcpServerId : undefined,
           tool,
           latency_ms: latencyMs,
           success: mcpResult.success !== false,
+          used_fallback: usedFallback,
         },
       });
     }
 
-    console.log(`[mcp-gateway] Completed ${mcpServerId}.${tool} in ${latencyMs}ms - success: ${mcpResult.success !== false}`);
+    console.log(`[mcp-gateway] Completed ${mcpServerId}.${tool} in ${latencyMs}ms - success: ${mcpResult.success !== false}${usedFallback ? ' (via fallback)' : ''}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: mcpResult,
         metadata: {
-          mcpServer: mcpServerId,
+          mcpServer: usedFallback ? fallbackServer : mcpServerId,
+          originalServer: usedFallback ? mcpServerId : undefined,
           tool,
           latencyMs,
           credentialSource: credentialsResult.source,
+          usedFallback,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
