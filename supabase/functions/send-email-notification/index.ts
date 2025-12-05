@@ -16,7 +16,7 @@ const logStep = (step: string, details?: any) => {
 
 interface EmailNotificationRequest {
   userId: string;
-  type: 'ceo_review' | 'phase_completion' | 'deliverable_approved' | 'project_created' | 'subscription_update';
+  type: 'ceo_review' | 'phase_completion' | 'phase_started' | 'deliverable_approved' | 'deliverable_ready' | 'project_created' | 'subscription_update';
   data: {
     projectName?: string;
     deliverableName?: string;
@@ -103,6 +103,56 @@ const getEmailTemplate = (type: string, data: any, email: string): { subject: st
                 <strong style="color: #22c55e;">${data.deliverableName}</strong> has been approved by both the CEO Agent and you!
               </p>
               <a href="https://shelvey.pro/pipeline" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Progress</a>
+            </div>
+          </div>
+        `,
+      };
+
+    case 'phase_started':
+      return {
+        subject: `Phase ${data.phaseNumber} Started: ${data.phaseName}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0a3d2e 0%, #1a5c45 100%); padding: 40px; border-radius: 16px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #22c55e; font-size: 28px; margin: 0;">ShelVey</h1>
+              <p style="color: #9ca3af; margin-top: 5px;">AI Business Building Platform</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <h2 style="color: #fff; margin-top: 0;">🚀 New Phase Started!</h2>
+              <p style="color: #d1d5db; line-height: 1.6;">
+                <strong style="color: #22c55e;">Phase ${data.phaseNumber}: ${data.phaseName}</strong> is now active
+                ${data.projectName ? ` for your project <strong style="color: #22c55e;">${data.projectName}</strong>` : ''}.
+              </p>
+              <div style="background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                <p style="color: #3b82f6; font-weight: bold; margin: 0 0 5px 0;">Your AI agents are now working!</p>
+                <p style="color: #d1d5db; margin: 0;">Check the dashboard to monitor progress and review deliverables.</p>
+              </div>
+              <a href="https://shelvey.pro/organization" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Organization</a>
+            </div>
+          </div>
+        `,
+      };
+
+    case 'deliverable_ready':
+      return {
+        subject: `Deliverable Ready for Review: ${data.deliverableName}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0a3d2e 0%, #1a5c45 100%); padding: 40px; border-radius: 16px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #22c55e; font-size: 28px; margin: 0;">ShelVey</h1>
+              <p style="color: #9ca3af; margin-top: 5px;">AI Business Building Platform</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <h2 style="color: #fff; margin-top: 0;">📋 Deliverable Ready for Review</h2>
+              <p style="color: #d1d5db; line-height: 1.6;">
+                <strong style="color: #22c55e;">${data.deliverableName}</strong> has been generated and is awaiting your review
+                ${data.projectName ? ` for project <strong style="color: #22c55e;">${data.projectName}</strong>` : ''}.
+              </p>
+              <div style="background: rgba(251, 191, 36, 0.1); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #fbbf24;">
+                <p style="color: #fbbf24; font-weight: bold; margin: 0 0 5px 0;">Action Required</p>
+                <p style="color: #d1d5db; margin: 0;">Please review and approve to continue progress.</p>
+              </div>
+              <a href="https://shelvey.pro/organization" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review Now</a>
             </div>
           </div>
         `,
