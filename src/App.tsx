@@ -29,6 +29,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PricingPage from "./pages/PricingPage";
 import LiveDemoPage from "./pages/LiveDemoPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/security" element={<SecurityPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/live-demo" element={<LiveDemoPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
