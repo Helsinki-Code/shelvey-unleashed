@@ -50,7 +50,7 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-11-20.acacia" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
@@ -95,7 +95,26 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      
+      // Defensive timestamp handling for different formats
+      logStep("Subscription period_end raw", { 
+        value: subscription.current_period_end, 
+        type: typeof subscription.current_period_end 
+      });
+      
+      let subscriptionEndDate: Date;
+      if (typeof subscription.current_period_end === 'number') {
+        subscriptionEndDate = new Date(subscription.current_period_end * 1000);
+      } else if (subscription.current_period_end instanceof Date) {
+        subscriptionEndDate = subscription.current_period_end;
+      } else if (typeof subscription.current_period_end === 'string') {
+        subscriptionEndDate = new Date(subscription.current_period_end);
+      } else {
+        // Fallback: try to convert whatever it is
+        subscriptionEndDate = new Date(String(subscription.current_period_end));
+      }
+      
+      subscriptionEnd = subscriptionEndDate.toISOString();
       productId = subscription.items.data[0].price.product;
       status = subscription.status;
       
