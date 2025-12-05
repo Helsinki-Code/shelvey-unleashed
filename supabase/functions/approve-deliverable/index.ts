@@ -73,8 +73,24 @@ Only approve if quality_score is 7 or higher.`;
   };
 }
 
+// Send notification helper
+async function sendNotification(supabaseUrl: string, supabaseKey: string, userId: string, type: string, title: string, message: string, metadata: any = {}) {
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ userId, type, title, message, metadata }),
+    });
+  } catch (error) {
+    console.error('Failed to send notification:', error);
+  }
+}
+
 // Check phase completion and trigger next phase
-async function checkPhaseCompletion(supabase: any, deliverable: any) {
+async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl: string, supabaseKey: string) {
   // Check if all deliverables in this phase are approved
   const { data: phaseDeliverables } = await supabase
     .from('phase_deliverables')
@@ -89,7 +105,7 @@ async function checkPhaseCompletion(supabase: any, deliverable: any) {
     // Get phase info
     const { data: phase } = await supabase
       .from('business_phases')
-      .select('*')
+      .select('*, business_projects(name)')
       .eq('id', deliverable.phase_id)
       .single();
 
@@ -103,16 +119,42 @@ async function checkPhaseCompletion(supabase: any, deliverable: any) {
         })
         .eq('id', phase.id);
 
+      // Send phase completion notification
+      await sendNotification(
+        supabaseUrl,
+        supabaseKey,
+        deliverable.user_id,
+        'phase_completed',
+        `Phase ${phase.phase_number} Complete!`,
+        `${phase.phase_name} has been completed for ${phase.business_projects?.name || 'your project'}.`,
+        { phaseId: phase.id, phaseName: phase.phase_name, phaseNumber: phase.phase_number }
+      );
+
       // Activate next phase
       const nextPhaseNumber = phase.phase_number + 1;
-      await supabase
+      const { data: nextPhase } = await supabase
         .from('business_phases')
         .update({ 
           status: 'active', 
           started_at: new Date().toISOString() 
         })
         .eq('project_id', phase.project_id)
-        .eq('phase_number', nextPhaseNumber);
+        .eq('phase_number', nextPhaseNumber)
+        .select()
+        .single();
+
+      if (nextPhase) {
+        // Send next phase started notification
+        await sendNotification(
+          supabaseUrl,
+          supabaseKey,
+          deliverable.user_id,
+          'phase_started',
+          `Phase ${nextPhaseNumber} Started!`,
+          `${nextPhase.phase_name} is now active. Your agents are ready to work.`,
+          { phaseId: nextPhase.id, phaseName: nextPhase.phase_name, phaseNumber: nextPhaseNumber }
+        );
+      }
 
       console.log(`Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
       
@@ -224,10 +266,21 @@ serve(async (req) => {
           console.error('Failed to send email notification:', emailError);
         }
 
+        // Send notification for deliverable ready for review
+        await sendNotification(
+          supabaseUrl,
+          supabaseKey,
+          user.id,
+          'deliverable_reviewed',
+          review.approved ? 'Deliverable Approved by CEO!' : 'Deliverable Needs Revision',
+          `${deliverable.name} has been ${review.approved ? 'approved' : 'reviewed'} by CEO Agent. ${review.approved ? 'Awaiting your approval.' : 'Please review feedback.'}`,
+          { deliverableId, deliverableName: deliverable.name, approved: review.approved }
+        );
+
         // Check phase completion if approved
         let phaseStatus = { phaseCompleted: false };
         if (review.approved && deliverable.user_approved) {
-          phaseStatus = await checkPhaseCompletion(supabase, deliverable);
+          phaseStatus = await checkPhaseCompletion(supabase, deliverable, supabaseUrl, supabaseKey);
         }
 
         return new Response(JSON.stringify({
@@ -267,7 +320,7 @@ serve(async (req) => {
         // Check phase completion
         let phaseStatus = { phaseCompleted: false };
         if (deliverable.ceo_approved) {
-          phaseStatus = await checkPhaseCompletion(supabase, deliverable);
+          phaseStatus = await checkPhaseCompletion(supabase, deliverable, supabaseUrl, supabaseKey);
         }
 
         return new Response(JSON.stringify({
