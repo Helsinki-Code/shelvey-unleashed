@@ -162,6 +162,91 @@ export type Database = {
           },
         ]
       }
+      agent_messages: {
+        Row: {
+          attachments: Json | null
+          content: string
+          context: Json | null
+          created_at: string | null
+          from_agent_id: string
+          from_agent_name: string
+          id: string
+          message_type: string
+          parent_message_id: string | null
+          priority: string | null
+          project_id: string | null
+          read_at: string | null
+          replied_at: string | null
+          subject: string | null
+          team_id: string | null
+          to_agent_id: string | null
+          to_agent_name: string | null
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          context?: Json | null
+          created_at?: string | null
+          from_agent_id: string
+          from_agent_name: string
+          id?: string
+          message_type: string
+          parent_message_id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          subject?: string | null
+          team_id?: string | null
+          to_agent_id?: string | null
+          to_agent_name?: string | null
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          context?: Json | null
+          created_at?: string | null
+          from_agent_id?: string
+          from_agent_name?: string
+          id?: string
+          message_type?: string
+          parent_message_id?: string | null
+          priority?: string | null
+          project_id?: string | null
+          read_at?: string | null
+          replied_at?: string | null
+          subject?: string | null
+          team_id?: string | null
+          to_agent_id?: string | null
+          to_agent_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "agent_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_tasks: {
         Row: {
           assigned_agent_id: string
@@ -397,6 +482,109 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      escalations: {
+        Row: {
+          attempted_solutions: Json | null
+          context: Json | null
+          created_at: string | null
+          created_by_agent_id: string
+          created_by_agent_name: string
+          current_handler_id: string | null
+          current_handler_type: string
+          deliverable_id: string | null
+          escalated_to_ceo_at: string | null
+          escalated_to_human_at: string | null
+          escalated_to_manager_at: string | null
+          escalation_level: number | null
+          id: string
+          issue_description: string
+          issue_type: string
+          project_id: string | null
+          resolution: string | null
+          resolution_type: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+          task_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempted_solutions?: Json | null
+          context?: Json | null
+          created_at?: string | null
+          created_by_agent_id: string
+          created_by_agent_name: string
+          current_handler_id?: string | null
+          current_handler_type: string
+          deliverable_id?: string | null
+          escalated_to_ceo_at?: string | null
+          escalated_to_human_at?: string | null
+          escalated_to_manager_at?: string | null
+          escalation_level?: number | null
+          id?: string
+          issue_description: string
+          issue_type: string
+          project_id?: string | null
+          resolution?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempted_solutions?: Json | null
+          context?: Json | null
+          created_at?: string | null
+          created_by_agent_id?: string
+          created_by_agent_name?: string
+          current_handler_id?: string | null
+          current_handler_type?: string
+          deliverable_id?: string | null
+          escalated_to_ceo_at?: string | null
+          escalated_to_human_at?: string | null
+          escalated_to_manager_at?: string | null
+          escalation_level?: number | null
+          id?: string
+          issue_description?: string
+          issue_type?: string
+          project_id?: string | null
+          resolution?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalations_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "phase_deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "agent_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_websites: {
         Row: {
@@ -685,6 +873,162 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      progress_reports: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          agent_id: string
+          agent_name: string
+          blockers: Json | null
+          content: string
+          created_at: string | null
+          deliverables_completed: Json | null
+          feedback: string | null
+          id: string
+          metrics: Json | null
+          next_steps: Json | null
+          project_id: string | null
+          report_to_agent_id: string
+          report_to_agent_name: string
+          report_type: string
+          tasks_in_progress: Json | null
+          team_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          agent_id: string
+          agent_name: string
+          blockers?: Json | null
+          content: string
+          created_at?: string | null
+          deliverables_completed?: Json | null
+          feedback?: string | null
+          id?: string
+          metrics?: Json | null
+          next_steps?: Json | null
+          project_id?: string | null
+          report_to_agent_id: string
+          report_to_agent_name: string
+          report_type: string
+          tasks_in_progress?: Json | null
+          team_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          agent_id?: string
+          agent_name?: string
+          blockers?: Json | null
+          content?: string
+          created_at?: string | null
+          deliverables_completed?: Json | null
+          feedback?: string | null
+          id?: string
+          metrics?: Json | null
+          next_steps?: Json | null
+          project_id?: string | null
+          report_to_agent_id?: string
+          report_to_agent_name?: string
+          report_type?: string
+          tasks_in_progress?: Json | null
+          team_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progress_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progress_reports_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_meetings: {
+        Row: {
+          action_items: Json | null
+          agenda: Json | null
+          attendees: Json | null
+          completed_at: string | null
+          created_at: string | null
+          decisions: Json | null
+          id: string
+          meeting_type: string
+          minutes: string | null
+          project_id: string | null
+          scheduled_at: string
+          started_at: string | null
+          status: string | null
+          team_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action_items?: Json | null
+          agenda?: Json | null
+          attendees?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          decisions?: Json | null
+          id?: string
+          meeting_type: string
+          minutes?: string | null
+          project_id?: string | null
+          scheduled_at: string
+          started_at?: string | null
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action_items?: Json | null
+          agenda?: Json | null
+          attendees?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          decisions?: Json | null
+          id?: string
+          meeting_type?: string
+          minutes?: string | null
+          project_id?: string | null
+          scheduled_at?: string
+          started_at?: string | null
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_meetings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_meetings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
