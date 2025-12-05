@@ -45,137 +45,153 @@ export const AnalyticsDashboard = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (!user) return;
+  const fetchAnalytics = async () => {
+    if (!user) return;
 
-      try {
-        // Fetch all tasks
-        const { data: tasks } = await supabase
-          .from('agent_tasks')
-          .select('*')
-          .eq('user_id', user.id);
+    try {
+      // Fetch all tasks
+      const { data: tasks } = await supabase
+        .from('agent_tasks')
+        .select('*')
+        .eq('user_id', user.id);
 
-        // Fetch all deliverables
-        const { data: deliverables } = await supabase
-          .from('phase_deliverables')
-          .select('*, business_phases!inner(phase_name, phase_number)')
-          .eq('user_id', user.id);
+      // Fetch all deliverables
+      const { data: deliverables } = await supabase
+        .from('phase_deliverables')
+        .select('*, business_phases!inner(phase_name, phase_number)')
+        .eq('user_id', user.id);
 
-        // Fetch agent activity
-        const { data: activity } = await supabase
-          .from('user_agent_activity')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+      // Fetch agent activity
+      const { data: activity } = await supabase
+        .from('user_agent_activity')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-        // Calculate metrics
-        const completedTasks = tasks?.filter(t => t.status === 'completed') || [];
-        const pendingTasks = tasks?.filter(t => t.status === 'pending' || t.status === 'in_progress') || [];
-        const taskCompletionRate = tasks?.length ? (completedTasks.length / tasks.length) * 100 : 0;
+      // Calculate metrics
+      const completedTasks = tasks?.filter(t => t.status === 'completed') || [];
+      const pendingTasks = tasks?.filter(t => t.status === 'pending' || t.status === 'in_progress') || [];
+      const taskCompletionRate = tasks?.length ? (completedTasks.length / tasks.length) * 100 : 0;
 
-        // Calculate average review time (from started to completed)
-        const reviewTimes = completedTasks
-          .filter(t => t.started_at && t.completed_at)
-          .map(t => {
-            const start = new Date(t.started_at!).getTime();
-            const end = new Date(t.completed_at!).getTime();
-            return (end - start) / (1000 * 60 * 60); // hours
-          });
-        const averageReviewTime = reviewTimes.length 
-          ? reviewTimes.reduce((a, b) => a + b, 0) / reviewTimes.length 
-          : 0;
-
-        // Phase completion rates
-        const phaseGroups: Record<string, { completed: number; total: number }> = {};
-        deliverables?.forEach((d: any) => {
-          const phaseName = d.business_phases?.phase_name || 'Unknown';
-          if (!phaseGroups[phaseName]) {
-            phaseGroups[phaseName] = { completed: 0, total: 0 };
-          }
-          phaseGroups[phaseName].total++;
-          if (d.status === 'approved') {
-            phaseGroups[phaseName].completed++;
-          }
+      // Calculate average review time (from started to completed)
+      const reviewTimes = completedTasks
+        .filter(t => t.started_at && t.completed_at)
+        .map(t => {
+          const start = new Date(t.started_at!).getTime();
+          const end = new Date(t.completed_at!).getTime();
+          return (end - start) / (1000 * 60 * 60); // hours
         });
-        const phaseCompletionRates = Object.entries(phaseGroups).map(([name, data]) => ({
-          name,
-          completed: data.completed,
-          total: data.total,
-          rate: data.total ? Math.round((data.completed / data.total) * 100) : 0,
-        }));
+      const averageReviewTime = reviewTimes.length 
+        ? reviewTimes.reduce((a, b) => a + b, 0) / reviewTimes.length 
+        : 0;
 
-        // Agent performance
-        const agentGroups: Record<string, { completed: number; totalTime: number; count: number }> = {};
-        activity?.forEach((a: any) => {
-          if (!agentGroups[a.agent_name]) {
-            agentGroups[a.agent_name] = { completed: 0, totalTime: 0, count: 0 };
-          }
-          if (a.status === 'completed') {
-            agentGroups[a.agent_name].completed++;
-          }
-          agentGroups[a.agent_name].count++;
-        });
-        const agentPerformance = Object.entries(agentGroups)
-          .map(([agent, data]) => ({
-            agent: agent.replace(' Agent', ''),
-            completed: data.completed,
-            avgTime: data.count ? Math.round((data.totalTime / data.count) * 10) / 10 : 0,
-          }))
-          .slice(0, 8);
-
-        // Weekly activity
-        const now = new Date();
-        const weeklyActivity = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-          const dayStart = new Date(date.setHours(0, 0, 0, 0));
-          const dayEnd = new Date(date.setHours(23, 59, 59, 999));
-          
-          const dayTasks = tasks?.filter(t => {
-            const created = new Date(t.created_at);
-            return created >= dayStart && created <= dayEnd;
-          }).length || 0;
-          
-          const dayApprovals = deliverables?.filter((d: any) => {
-            if (!d.approved_at) return false;
-            const approved = new Date(d.approved_at);
-            return approved >= dayStart && approved <= dayEnd;
-          }).length || 0;
-
-          weeklyActivity.push({ day: dayName, tasks: dayTasks, approvals: dayApprovals });
+      // Phase completion rates
+      const phaseGroups: Record<string, { completed: number; total: number }> = {};
+      deliverables?.forEach((d: any) => {
+        const phaseName = d.business_phases?.phase_name || 'Unknown';
+        if (!phaseGroups[phaseName]) {
+          phaseGroups[phaseName] = { completed: 0, total: 0 };
         }
+        phaseGroups[phaseName].total++;
+        if (d.status === 'approved') {
+          phaseGroups[phaseName].completed++;
+        }
+      });
+      const phaseCompletionRates = Object.entries(phaseGroups).map(([name, data]) => ({
+        name,
+        completed: data.completed,
+        total: data.total,
+        rate: data.total ? Math.round((data.completed / data.total) * 100) : 0,
+      }));
 
-        // Deliverables by type
-        const typeGroups: Record<string, number> = {};
-        deliverables?.forEach((d: any) => {
-          const type = d.deliverable_type || 'Other';
-          typeGroups[type] = (typeGroups[type] || 0) + 1;
-        });
-        const deliverablesByType = Object.entries(typeGroups)
-          .map(([type, count]) => ({ type, count }))
-          .slice(0, 6);
+      // Agent performance
+      const agentGroups: Record<string, { completed: number; totalTime: number; count: number }> = {};
+      activity?.forEach((a: any) => {
+        if (!agentGroups[a.agent_name]) {
+          agentGroups[a.agent_name] = { completed: 0, totalTime: 0, count: 0 };
+        }
+        if (a.status === 'completed') {
+          agentGroups[a.agent_name].completed++;
+        }
+        agentGroups[a.agent_name].count++;
+      });
+      const agentPerformance = Object.entries(agentGroups)
+        .map(([agent, data]) => ({
+          agent: agent.replace(' Agent', ''),
+          completed: data.completed,
+          avgTime: data.count ? Math.round((data.totalTime / data.count) * 10) / 10 : 0,
+        }))
+        .slice(0, 8);
 
-        setAnalytics({
-          taskCompletionRate: Math.round(taskCompletionRate),
-          averageReviewTime: Math.round(averageReviewTime * 10) / 10,
-          totalTasksCompleted: completedTasks.length,
-          totalTasksPending: pendingTasks.length,
-          phaseCompletionRates,
-          agentPerformance,
-          weeklyActivity,
-          deliverablesByType,
-        });
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setIsLoading(false);
+      // Weekly activity
+      const now = new Date();
+      const weeklyActivity = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayStart = new Date(date.setHours(0, 0, 0, 0));
+        const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+        
+        const dayTasks = tasks?.filter(t => {
+          const created = new Date(t.created_at);
+          return created >= dayStart && created <= dayEnd;
+        }).length || 0;
+        
+        const dayApprovals = deliverables?.filter((d: any) => {
+          if (!d.approved_at) return false;
+          const approved = new Date(d.approved_at);
+          return approved >= dayStart && approved <= dayEnd;
+        }).length || 0;
+
+        weeklyActivity.push({ day: dayName, tasks: dayTasks, approvals: dayApprovals });
       }
-    };
 
+      // Deliverables by type
+      const typeGroups: Record<string, number> = {};
+      deliverables?.forEach((d: any) => {
+        const type = d.deliverable_type || 'Other';
+        typeGroups[type] = (typeGroups[type] || 0) + 1;
+      });
+      const deliverablesByType = Object.entries(typeGroups)
+        .map(([type, count]) => ({ type, count }))
+        .slice(0, 6);
+
+      setAnalytics({
+        taskCompletionRate: Math.round(taskCompletionRate),
+        averageReviewTime: Math.round(averageReviewTime * 10) / 10,
+        totalTasksCompleted: completedTasks.length,
+        totalTasksPending: pendingTasks.length,
+        phaseCompletionRates,
+        agentPerformance,
+        weeklyActivity,
+        deliverablesByType,
+      });
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAnalytics();
+  }, [user]);
+
+  // Real-time subscriptions for live updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('analytics-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_tasks', filter: `user_id=eq.${user.id}` }, () => fetchAnalytics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'phase_deliverables', filter: `user_id=eq.${user.id}` }, () => fetchAnalytics())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_agent_activity', filter: `user_id=eq.${user.id}` }, () => fetchAnalytics())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   if (isLoading) {

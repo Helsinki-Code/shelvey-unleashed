@@ -9,6 +9,7 @@ import { TeamDashboard } from '@/components/TeamDashboard';
 import { DeliverableTracker } from '@/components/DeliverableTracker';
 import { RealTimeActivityFeed } from '@/components/RealTimeActivityFeed';
 import { CEOAgentChat } from '@/components/CEOAgentChat';
+import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   Building2, Users, Clock, FileText, Play, 
-  Plus, Loader2, Briefcase, Activity, Bot
+  Plus, Loader2, Briefcase, Activity, Bot, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -161,7 +162,7 @@ export default function OrganizationPage() {
                 </Card>
               ) : (
                 <Tabs defaultValue="timeline" className="space-y-6">
-                  <TabsList className="grid w-full max-w-2xl grid-cols-6">
+                  <TabsList className="grid w-full max-w-3xl grid-cols-7">
                     <TabsTrigger value="timeline" className="gap-2">
                       <Clock className="w-4 h-4" />
                       Timeline
@@ -173,6 +174,10 @@ export default function OrganizationPage() {
                     <TabsTrigger value="activity" className="gap-2">
                       <Activity className="w-4 h-4" />
                       Activity
+                    </TabsTrigger>
+                    <TabsTrigger value="analytics" className="gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Analytics
                     </TabsTrigger>
                     <TabsTrigger value="org" className="gap-2">
                       <Users className="w-4 h-4" />
@@ -198,6 +203,10 @@ export default function OrganizationPage() {
 
                   <TabsContent value="activity">
                     <RealTimeActivityFeed userId={user?.id} projectId={selectedProject || undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="analytics">
+                    <AnalyticsDashboard />
                   </TabsContent>
 
                   <TabsContent value="org">
