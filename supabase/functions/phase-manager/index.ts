@@ -131,6 +131,28 @@ serve(async (req) => {
               completedPhase: activePhase.phase_name,
               newPhase: nextPhase.phase_name
             };
+
+            // Send phase completion email notification
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  userId,
+                  type: 'phase_completion',
+                  data: {
+                    phaseName: activePhase.phase_name,
+                    phaseNumber: activePhase.phase_number,
+                    nextPhaseName: nextPhase.phase_name,
+                  },
+                }),
+              });
+            } catch (emailError) {
+              console.error('Failed to send phase completion email:', emailError);
+            }
           }
         } else {
           result = { 
@@ -139,6 +161,27 @@ serve(async (req) => {
             completedPhase: activePhase.phase_name,
             projectComplete: true
           };
+
+          // Send final phase completion email
+          try {
+            await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({
+                userId,
+                type: 'phase_completion',
+                data: {
+                  phaseName: activePhase.phase_name,
+                  phaseNumber: activePhase.phase_number,
+                },
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send final phase completion email:', emailError);
+          }
         }
         break;
 

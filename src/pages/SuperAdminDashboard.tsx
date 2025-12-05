@@ -33,6 +33,7 @@ import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { SuperAdminAPIKeys } from '@/components/SuperAdminAPIKeys';
 import { UserMCPServers } from '@/components/UserMCPServers';
 import { UserProjects } from '@/components/UserProjects';
+import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
@@ -202,62 +203,70 @@ const SuperAdminDashboard = () => {
 
             {/* Overview Tab */}
             <TabsContent value="overview">
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Subscription Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span>Standard Plan ($2,999/mo)</span>
-                        <Badge variant="outline">
-                          {stats.activeSubscriptions - stats.dfySubscriptions}
-                        </Badge>
+              <div className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Subscription Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span>Standard Plan ($2,999/mo)</span>
+                          <Badge variant="outline">
+                            {stats.activeSubscriptions - stats.dfySubscriptions}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>DFY Plan ($4,999/mo)</span>
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-500">
+                            {stats.dfySubscriptions}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Trial/Free</span>
+                          <Badge variant="secondary">
+                            {stats.totalUsers - stats.activeSubscriptions}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>DFY Plan ($4,999/mo)</span>
-                        <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-                          {stats.dfySubscriptions}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Trial/Free</span>
-                        <Badge variant="secondary">
-                          {stats.totalUsers - stats.activeSubscriptions}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue Breakdown</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span>Standard Subscriptions</span>
-                        <span className="font-mono">
-                          ${((stats.activeSubscriptions - stats.dfySubscriptions) * 2999).toLocaleString()}
-                        </span>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Revenue Breakdown</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span>Standard Subscriptions</span>
+                          <span className="font-mono">
+                            ${((stats.activeSubscriptions - stats.dfySubscriptions) * 2999).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>DFY Subscriptions</span>
+                          <span className="font-mono">
+                            ${(stats.dfySubscriptions * 4999).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="border-t pt-4 flex items-center justify-between font-bold">
+                          <span>Total Monthly</span>
+                          <span className="font-mono text-green-500">
+                            ${stats.totalRevenue.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>DFY Subscriptions</span>
-                        <span className="font-mono">
-                          ${(stats.dfySubscriptions * 4999).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="border-t pt-4 flex items-center justify-between font-bold">
-                        <span>Total Monthly</span>
-                        <span className="font-mono text-green-500">
-                          ${stats.totalRevenue.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Analytics Dashboard */}
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold mb-4">Agent & Task Analytics</h3>
+                  <AnalyticsDashboard />
+                </div>
               </div>
             </TabsContent>
 

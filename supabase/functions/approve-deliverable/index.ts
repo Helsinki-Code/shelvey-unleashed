@@ -202,6 +202,28 @@ serve(async (req) => {
           result: { deliverableId, approved: review.approved },
         });
 
+        // Send email notification for CEO review
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              type: 'ceo_review',
+              data: {
+                deliverableName: deliverable.name,
+                approved: review.approved,
+                feedback: review.feedback,
+              },
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
+        }
+
         // Check phase completion if approved
         let phaseStatus = { phaseCompleted: false };
         if (review.approved && deliverable.user_approved) {
