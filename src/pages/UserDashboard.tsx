@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  Bot, Settings, MessageSquare, Briefcase, Server, Key, 
-  TrendingUp, Loader2, Plus, LogOut, Crown, Building2, Globe, Users
+  Bot, MessageSquare, Briefcase, Plus, Loader2, ChevronRight,
+  Sparkles, Users, HelpCircle, BookOpen
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { FeatureGuide } from '@/components/FeatureGuide';
+import { QuickActivityFeed } from '@/components/QuickActivityFeed';
+import { AllAgentVoiceCall } from '@/components/AllAgentVoiceCall';
 import { CEOAgentChat } from '@/components/CEOAgentChat';
 import { UserAPIKeys } from '@/components/UserAPIKeys';
 import { UserMCPServers } from '@/components/UserMCPServers';
@@ -26,9 +30,13 @@ import { ProgressReportsPanel } from '@/components/ProgressReportsPanel';
 const UserDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, isLoading, isSubscribed, signOut } = useAuth();
-  const [activityCount, setActivityCount] = useState(0);
-  const [projectCount, setProjectCount] = useState(0);
+  const { user, profile, isLoading, signOut } = useAuth();
+  const [activeSection, setActiveSection] = useState('home');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showFeatureGuide, setShowFeatureGuide] = useState(false);
+  const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -37,27 +45,35 @@ const UserDashboard = () => {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
-      // Fetch activity count
-      supabase
-        .from('user_agent_activity')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .then(({ count }) => setActivityCount(count || 0));
+    // Check if onboarding is needed (simplified check)
+    if (profile && !profile.full_name) {
+      setShowOnboarding(true);
+    }
+  }, [profile]);
 
-      // Fetch project count
+  useEffect(() => {
+    if (user) {
       supabase
         .from('business_projects')
-        .select('id', { count: 'exact', head: true })
+        .select('*')
         .eq('user_id', user.id)
-        .then(({ count }) => setProjectCount(count || 0));
+        .order('created_at', { ascending: false })
+        .limit(5)
+        .then(({ data }) => {
+          setProjects(data || []);
+          setProjectsLoading(false);
+        });
     }
   }, [user]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast({ title: 'Signed out', description: 'You have been signed out successfully.' });
-    navigate('/');
+  const handleNavigation = (section: string) => {
+    if (section === 'help') {
+      setShowFeatureGuide(true);
+    } else if (section === 'features') {
+      setShowFeatureGuide(true);
+    } else {
+      setActiveSection(section);
+    }
   };
 
   if (isLoading) {
@@ -70,179 +86,151 @@ const UserDashboard = () => {
 
   if (!user) return null;
 
-  const trialDaysLeft = profile?.subscription_expires_at 
-    ? Math.max(0, Math.ceil((new Date(profile.subscription_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
+  const firstName = profile?.full_name?.split(' ')[0] || 'there';
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      
-      <main className="container mx-auto px-4 py-8 pt-24">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4"
-        >
-          <div>
-            <h1 className="cyber-text text-3xl font-bold text-gradient">
-              Welcome, {profile?.full_name || 'Business Builder'}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Your AI-powered business command center
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {profile?.subscription_status === 'trial' && (
-              <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
-                <Crown className="w-3 h-3 mr-1" />
-                {trialDaysLeft} days left in trial
-              </Badge>
-            )}
-            {profile?.subscription_status === 'active' && (
-              <Badge className="bg-primary/10 text-primary border-primary/20">
-                <Crown className="w-3 h-3 mr-1" />
-                Pro Member
-              </Badge>
-            )}
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </motion.div>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <DashboardSidebar onNavigate={handleNavigation} activeSection={activeSection} />
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { title: 'Business Projects', value: projectCount, icon: Briefcase, color: 'text-primary' },
-            { title: 'Agent Actions', value: activityCount, icon: Bot, color: 'text-accent' },
-            { title: 'MCP Servers', value: '10', icon: Server, color: 'text-chart-3' },
-            { title: 'Revenue Generated', value: '$0', icon: TrendingUp, color: 'text-chart-4' },
-          ].map((stat, i) => (
+      {/* Main Content */}
+      <main className="flex-1 ml-[260px] p-6">
+        {activeSection === 'home' && (
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Greeting Header */}
             <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              className="flex items-center justify-between"
             >
-              <Card className="glass-morphism cyber-border">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <stat.icon className={`w-8 h-8 ${stat.color}`} />
-                    <div>
-                      <p className="text-2xl font-bold cyber-text">{stat.value}</p>
-                      <p className="text-xs text-muted-foreground">{stat.title}</p>
-                    </div>
+              <div>
+                <h1 className="text-3xl font-bold">
+                  {greeting}, {firstName}! 👋
+                </h1>
+                <p className="text-muted-foreground">
+                  Here's what's happening with your AI team
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowFeatureGuide(true)}>
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Features Guide
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowVoiceCall(true)}>
+                  <Bot className="w-4 h-4 mr-2" />
+                  Voice Call
+                </Button>
+              </div>
+            </motion.div>
+
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Quick Chat */}
+              <Card className="row-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    Quick Chat with CEO
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] overflow-hidden">
+                    <CEOAgentChat />
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          ))}
-        </div>
 
-        {/* Quick Navigation for Organization & Websites */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card 
-              className="glass-morphism cyber-border cursor-pointer hover:border-primary/50 transition-all"
-              onClick={() => navigate('/organization')}
-            >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-primary/10">
-                  <Building2 className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Organization</h3>
-                  <p className="text-sm text-muted-foreground">View your AI agent workforce structure</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card 
-              className="glass-morphism cyber-border cursor-pointer hover:border-primary/50 transition-all"
-              onClick={() => navigate('/websites')}
-            >
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-accent/10">
-                  <Globe className="w-8 h-8 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Websites</h3>
-                  <p className="text-sm text-muted-foreground">Manage your generated business websites</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+              {/* Projects */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    📋 Your Projects
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveSection('projects')}>
+                    View All <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {projectsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : projects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Briefcase className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground mb-4">No projects yet</p>
+                      <Button onClick={() => setActiveSection('ceo')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Start New Project
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {projects.slice(0, 3).map((project) => (
+                        <div
+                          key={project.id}
+                          className="p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                          onClick={() => navigate(`/projects/${project.id}`)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{project.name}</span>
+                            <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
+                              {project.stage || 'Research'}
+                            </Badge>
+                          </div>
+                          <Progress value={45} className="h-2" />
+                        </div>
+                      ))}
+                      <Button variant="outline" className="w-full" onClick={() => setActiveSection('ceo')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Start New Project
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="ceo" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="ceo" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              CEO Agent
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="gap-2">
-              <Briefcase className="w-4 h-4" />
-              Projects
-            </TabsTrigger>
-            <TabsTrigger value="team" className="gap-2">
-              <Users className="w-4 h-4" />
-              Team
-            </TabsTrigger>
-            <TabsTrigger value="servers" className="gap-2">
-              <Server className="w-4 h-4" />
-              MCP Servers
-            </TabsTrigger>
-            <TabsTrigger value="keys" className="gap-2">
-              <Key className="w-4 h-4" />
-              API Keys
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="ceo">
-            <CEOAgentChat />
-          </TabsContent>
-
-          <TabsContent value="projects">
-            <UserProjects />
-          </TabsContent>
-
-          <TabsContent value="team">
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TeamMeetingView />
-                <AgentMessagesPanel />
-              </div>
-              <ProgressReportsPanel />
-              <EscalationTracker />
+              {/* Activity Feed */}
+              <QuickActivityFeed onViewAll={() => setActiveSection('team')} />
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="servers">
-            <UserMCPServers />
-          </TabsContent>
+        {activeSection === 'ceo' && (
+          <div className="max-w-4xl mx-auto">
+            <CEOAgentChat />
+          </div>
+        )}
 
-          <TabsContent value="keys">
-            <UserAPIKeys />
-          </TabsContent>
-        </Tabs>
+        {activeSection === 'projects' && <UserProjects />}
+
+        {activeSection === 'team' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TeamMeetingView />
+              <AgentMessagesPanel />
+            </div>
+            <ProgressReportsPanel />
+            <EscalationTracker />
+          </div>
+        )}
+
+        {activeSection === 'servers' && <UserMCPServers />}
+        {activeSection === 'keys' && <UserAPIKeys />}
       </main>
 
-      <Footer />
+      {/* Modals */}
+      {showOnboarding && (
+        <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
+      )}
+
+      <FeatureGuide isOpen={showFeatureGuide} onClose={() => setShowFeatureGuide(false)} />
+
+      <AllAgentVoiceCall
+        isOpen={showVoiceCall}
+        onClose={() => setShowVoiceCall(false)}
+      />
     </div>
   );
 };
