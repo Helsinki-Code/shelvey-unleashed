@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ActivityItem {
@@ -24,31 +23,18 @@ interface QuickActivityFeedProps {
 }
 
 export const QuickActivityFeed = ({ onViewAll, maxItems = 5 }: QuickActivityFeedProps) => {
-  const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-
     const fetchActivities = async () => {
       try {
-        // Fetch recent agent activity
+        // Fetch from agent_activity_logs (real agent work) - publicly readable
         const { data: activityData } = await supabase
-          .from('user_agent_activity')
+          .from('agent_activity_logs')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(maxItems);
-
-        // Fetch notifications needing attention
-        const { data: notifications } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('read', false)
-          .order('created_at', { ascending: false })
-          .limit(3);
 
         const formattedActivities: ActivityItem[] = [];
 
@@ -64,17 +50,6 @@ export const QuickActivityFeed = ({ onViewAll, maxItems = 5 }: QuickActivityFeed
           });
         });
 
-        // Add notifications
-        notifications?.forEach((notif) => {
-          formattedActivities.push({
-            id: notif.id,
-            type: notif.type === 'approval_needed' ? 'needs_attention' : 'notification',
-            agentName: 'System',
-            action: notif.message,
-            timestamp: new Date(notif.created_at || Date.now()),
-          });
-        });
-
         // Sort by timestamp
         formattedActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
         setActivities(formattedActivities.slice(0, maxItems));
@@ -87,16 +62,15 @@ export const QuickActivityFeed = ({ onViewAll, maxItems = 5 }: QuickActivityFeed
 
     fetchActivities();
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates on agent_activity_logs
     const channel = supabase
-      .channel('activity-feed')
+      .channel('activity-feed-realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'user_agent_activity',
-          filter: `user_id=eq.${user.id}`,
+          table: 'agent_activity_logs',
         },
         (payload) => {
           const newActivity: ActivityItem = {
@@ -105,6 +79,7 @@ export const QuickActivityFeed = ({ onViewAll, maxItems = 5 }: QuickActivityFeed
             agentName: payload.new.agent_name,
             action: payload.new.action,
             timestamp: new Date(payload.new.created_at || Date.now()),
+            metadata: payload.new.metadata as Record<string, unknown> | undefined,
           };
           setActivities((prev) => [newActivity, ...prev].slice(0, maxItems));
         }
@@ -114,7 +89,7 @@ export const QuickActivityFeed = ({ onViewAll, maxItems = 5 }: QuickActivityFeed
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, maxItems]);
+  }, [maxItems]);
 
   const getIcon = (type: ActivityItem['type']) => {
     switch (type) {

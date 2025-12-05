@@ -387,31 +387,41 @@ export const AnalyticsDashboard = () => {
               <CardDescription>Distribution of deliverable types</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={analytics.deliverablesByType}
-                    dataKey="count"
-                    nameKey="type"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ type, percent }) => `${type} (${(percent * 100).toFixed(0)}%)`}
-                    labelLine={false}
-                  >
-                    {analytics.deliverablesByType.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }} 
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {analytics.deliverablesByType.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={analytics.deliverablesByType}
+                      dataKey="count"
+                      nameKey="type"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ type, percent }) => `${type} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={false}
+                    >
+                      {analytics.deliverablesByType.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                    <p>No deliverables yet</p>
+                    <p className="text-sm">Create a project to see data</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
