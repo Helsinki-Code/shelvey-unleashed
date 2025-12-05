@@ -9,11 +9,11 @@ import { useAuth } from '@/hooks/useAuth';
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Agents', href: '/agents' },
+  { name: 'Organization', href: '/organization' },
+  { name: 'Branding', href: '/branding' },
+  { name: 'Websites', href: '/websites' },
   { name: 'MCP', href: '/mcp' },
   { name: 'Pipeline', href: '/pipeline' },
-  { name: 'Neural', href: '/neural' },
-  { name: 'Meetings', href: '/meetings' },
-  { name: 'Voice', href: '/voice' },
 ];
 
 export const Navbar = () => {

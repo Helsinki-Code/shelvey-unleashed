@@ -6,6 +6,123 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// CEO Review function using AI
+async function performCEOReview(deliverable: any, lovableApiKey: string): Promise<{ approved: boolean; feedback: string }> {
+  const reviewPrompt = `You are the CEO Agent reviewing a ${deliverable.deliverable_type} deliverable for a business project.
+
+Deliverable Name: ${deliverable.name}
+Description: ${deliverable.description || 'No description provided'}
+Generated Content: ${JSON.stringify(deliverable.generated_content || deliverable.content, null, 2)}
+
+As CEO, evaluate this deliverable on:
+1. Quality and professionalism (is it market-ready?)
+2. Brand consistency and messaging
+3. Strategic alignment with business goals
+4. Technical execution
+
+Respond in JSON format only:
+{
+  "quality_score": <1-10>,
+  "approved": <true/false>,
+  "feedback": "<constructive feedback>",
+  "strengths": ["<strength 1>", "<strength 2>"],
+  "improvements": ["<improvement 1>", "<improvement 2>"]
+}
+
+Only approve if quality_score is 7 or higher.`;
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${lovableApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "You are a discerning CEO with high standards. Be constructive but thorough in your reviews." },
+        { role: "user", content: reviewPrompt },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get CEO review from AI');
+  }
+
+  const aiResponse = await response.json();
+  const reviewText = aiResponse.choices?.[0]?.message?.content || '';
+  
+  try {
+    const jsonMatch = reviewText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const review = JSON.parse(jsonMatch[0]);
+      return {
+        approved: review.approved === true && review.quality_score >= 7,
+        feedback: review.feedback || 'Review completed',
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse CEO review:', e);
+  }
+
+  // Fallback
+  return {
+    approved: false,
+    feedback: 'Unable to parse review. Please try again.',
+  };
+}
+
+// Check phase completion and trigger next phase
+async function checkPhaseCompletion(supabase: any, deliverable: any) {
+  // Check if all deliverables in this phase are approved
+  const { data: phaseDeliverables } = await supabase
+    .from('phase_deliverables')
+    .select('*')
+    .eq('phase_id', deliverable.phase_id);
+
+  const allApproved = phaseDeliverables?.every((d: any) => 
+    d.ceo_approved === true && d.user_approved === true
+  );
+
+  if (allApproved && phaseDeliverables?.length > 0) {
+    // Get phase info
+    const { data: phase } = await supabase
+      .from('business_phases')
+      .select('*')
+      .eq('id', deliverable.phase_id)
+      .single();
+
+    if (phase) {
+      // Complete current phase
+      await supabase
+        .from('business_phases')
+        .update({ 
+          status: 'completed', 
+          completed_at: new Date().toISOString() 
+        })
+        .eq('id', phase.id);
+
+      // Activate next phase
+      const nextPhaseNumber = phase.phase_number + 1;
+      await supabase
+        .from('business_phases')
+        .update({ 
+          status: 'active', 
+          started_at: new Date().toISOString() 
+        })
+        .eq('project_id', phase.project_id)
+        .eq('phase_number', nextPhaseNumber);
+
+      console.log(`Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
+      
+      return { phaseCompleted: true, nextPhase: nextPhaseNumber };
+    }
+  }
+
+  return { phaseCompleted: false };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +131,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -37,7 +154,7 @@ serve(async (req) => {
       });
     }
 
-    const { deliverableId, websiteId, approver, approved, feedback } = await req.json();
+    const { deliverableId, websiteId, action, approver, approved, feedback } = await req.json();
 
     // Handle deliverable approval
     if (deliverableId) {
@@ -54,7 +171,121 @@ serve(async (req) => {
         });
       }
 
-      // If not approved, add feedback and request regeneration
+      // Handle CEO auto-review
+      if (action === 'ceo_review') {
+        const review = await performCEOReview(deliverable, lovableApiKey);
+        
+        const feedbackHistory = [...(deliverable.feedback_history || []), {
+          source: 'CEO Agent',
+          feedback: review.feedback,
+          timestamp: new Date().toISOString(),
+          approved: review.approved,
+        }];
+
+        await supabase
+          .from('phase_deliverables')
+          .update({
+            ceo_approved: review.approved,
+            reviewed_by: 'CEO Agent',
+            feedback_history: feedbackHistory,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', deliverableId);
+
+        // Log activity
+        await supabase.from('user_agent_activity').insert({
+          user_id: user.id,
+          agent_id: 'ceo-agent',
+          agent_name: 'CEO Agent',
+          action: `Reviewed ${deliverable.deliverable_type}: ${review.approved ? 'Approved' : 'Needs revision'}`,
+          status: 'completed',
+          result: { deliverableId, approved: review.approved },
+        });
+
+        // Check phase completion if approved
+        let phaseStatus = { phaseCompleted: false };
+        if (review.approved && deliverable.user_approved) {
+          phaseStatus = await checkPhaseCompletion(supabase, deliverable);
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          ceoApproved: review.approved,
+          feedback: review.feedback,
+          ...phaseStatus,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Handle user approval
+      if (action === 'user_approve') {
+        const feedbackHistory = [...(deliverable.feedback_history || [])];
+        if (feedback) {
+          feedbackHistory.push({
+            source: 'User',
+            feedback,
+            timestamp: new Date().toISOString(),
+            approved: true,
+          });
+        }
+
+        await supabase
+          .from('phase_deliverables')
+          .update({
+            user_approved: true,
+            approved_by: user.id,
+            approved_at: new Date().toISOString(),
+            feedback_history: feedbackHistory,
+            status: deliverable.ceo_approved ? 'approved' : deliverable.status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', deliverableId);
+
+        // Check phase completion
+        let phaseStatus = { phaseCompleted: false };
+        if (deliverable.ceo_approved) {
+          phaseStatus = await checkPhaseCompletion(supabase, deliverable);
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          userApproved: true,
+          fullyApproved: deliverable.ceo_approved,
+          ...phaseStatus,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Handle user rejection with feedback
+      if (action === 'user_reject' && feedback) {
+        const feedbackHistory = [...(deliverable.feedback_history || []), {
+          source: 'User',
+          feedback,
+          timestamp: new Date().toISOString(),
+          approved: false,
+        }];
+
+        await supabase
+          .from('phase_deliverables')
+          .update({
+            feedback_history: feedbackHistory,
+            status: 'revision_requested',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', deliverableId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Feedback submitted, revision requested',
+          requiresRegeneration: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Legacy approval handling
       if (!approved && feedback) {
         const feedbackHistory = [...(deliverable.feedback_history || []), {
           from: approver,
@@ -81,7 +312,7 @@ serve(async (req) => {
         });
       }
 
-      // Handle approval
+      // Handle direct approval
       const updateData: any = {
         updated_at: new Date().toISOString(),
       };
@@ -95,7 +326,6 @@ serve(async (req) => {
         updateData.approved_at = new Date().toISOString();
       }
 
-      // Check if both approved
       const willBeCeoApproved = approver === 'ceo' ? true : deliverable.ceo_approved;
       const willBeUserApproved = approver === 'user' ? true : deliverable.user_approved;
 
@@ -147,9 +377,13 @@ serve(async (req) => {
         });
       }
 
-      // Handle CEO auto-review if requested
-      if (approver === 'ceo' && !approved) {
-        // Generate CEO feedback using AI
+      // Handle CEO auto-review for website
+      if (action === 'ceo_review') {
+        const reviewPrompt = `Review this website HTML for quality, design, UX, and brand alignment. Respond with JSON: { "quality_score": 1-10, "approved": true/false, "feedback": "your feedback" }
+
+Website Name: ${website.name}
+HTML (truncated): ${website.html_content?.substring(0, 4000)}`;
+
         const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -159,36 +393,49 @@ serve(async (req) => {
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { 
-                role: 'system', 
-                content: `You are a CEO reviewing a website for your company. Provide constructive feedback in 2-3 short bullet points. Be specific about design, messaging, and UX improvements.` 
-              },
-              { 
-                role: 'user', 
-                content: `Review this website HTML and provide feedback:\n${website.html_content?.substring(0, 3000)}` 
-              }
+              { role: 'system', content: 'You are a CEO reviewing websites. Be constructive and professional.' },
+              { role: 'user', content: reviewPrompt }
             ],
           }),
         });
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          const ceoFeedback = aiData.choices?.[0]?.message?.content || 'Looks good overall.';
+          const reviewText = aiData.choices?.[0]?.message?.content || '';
+          
+          let ceoApproved = false;
+          let ceoFeedback = 'Review completed';
+          
+          try {
+            const jsonMatch = reviewText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const review = JSON.parse(jsonMatch[0]);
+              ceoApproved = review.approved && review.quality_score >= 7;
+              ceoFeedback = review.feedback;
+            }
+          } catch {
+            ceoFeedback = reviewText.slice(0, 500);
+          }
 
           const feedbackHistory = [...(website.feedback_history || []), {
-            from: 'ceo',
+            source: 'CEO Agent',
             feedback: ceoFeedback,
             timestamp: new Date().toISOString(),
+            approved: ceoApproved,
             version: website.version,
           }];
 
           await supabase
             .from('generated_websites')
-            .update({ feedback_history: feedbackHistory })
+            .update({ 
+              feedback_history: feedbackHistory,
+              ceo_approved: ceoApproved,
+            })
             .eq('id', websiteId);
 
           return new Response(JSON.stringify({
             success: true,
+            ceoApproved,
             ceoFeedback,
             feedbackHistory,
           }), {
@@ -197,7 +444,58 @@ serve(async (req) => {
         }
       }
 
-      // Handle approval
+      // Handle user approval for website
+      if (action === 'user_approve') {
+        const willBeFullyApproved = website.ceo_approved;
+        
+        await supabase
+          .from('generated_websites')
+          .update({
+            user_approved: true,
+            status: willBeFullyApproved ? 'approved' : website.status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', websiteId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          userApproved: true,
+          fullyApproved: willBeFullyApproved,
+          readyForHosting: willBeFullyApproved,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Handle user rejection
+      if (action === 'user_reject' && feedback) {
+        const feedbackHistory = [...(website.feedback_history || []), {
+          source: 'User',
+          feedback,
+          timestamp: new Date().toISOString(),
+          approved: false,
+          version: website.version,
+        }];
+
+        await supabase
+          .from('generated_websites')
+          .update({
+            feedback_history: feedbackHistory,
+            status: 'revision_requested',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', websiteId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Feedback submitted for website revision',
+          requiresRegeneration: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Legacy approval handling for website
       const updateData: any = {
         updated_at: new Date().toISOString(),
       };

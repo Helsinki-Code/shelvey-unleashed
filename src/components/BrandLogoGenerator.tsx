@@ -19,8 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface BrandLogoGeneratorProps {
-  projectId: string;
-  businessName: string;
+  projectId?: string;
+  businessName?: string;
   brandColors?: {
     primary?: string;
     secondary?: string;
@@ -30,8 +30,8 @@ interface BrandLogoGeneratorProps {
 }
 
 export const BrandLogoGenerator = ({
-  projectId,
-  businessName,
+  projectId = '',
+  businessName = 'Your Brand',
   brandColors,
   onLogoGenerated
 }: BrandLogoGeneratorProps) => {
