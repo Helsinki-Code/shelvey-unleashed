@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Briefcase, Plus, TrendingUp, Target, Loader2, MoreVertical, Trash2 } from 'lucide-react';
+import { Briefcase, Plus, TrendingUp, Target, Loader2, MoreVertical, Trash2, Eye, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,7 @@ const stageColors: Record<string, string> = {
 };
 
 export const UserProjects = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -219,7 +221,10 @@ export const UserProjects = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <Card className="glass-morphism cyber-border h-full">
+              <Card 
+                className="glass-morphism cyber-border h-full cursor-pointer hover:border-primary/50 transition-all"
+                onClick={() => navigate(`/projects/${project.id}`)}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -232,14 +237,31 @@ export const UserProjects = () => {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/projects/${project.id}`);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
                           className="text-destructive"
-                          onClick={() => deleteProject(project.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteProject(project.id);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -259,7 +281,7 @@ export const UserProjects = () => {
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm mb-3">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <TrendingUp className="w-4 h-4" />
                       Revenue
@@ -268,6 +290,11 @@ export const UserProjects = () => {
                       ${(project.revenue || 0).toLocaleString()}
                     </span>
                   </div>
+
+                  <Button variant="outline" size="sm" className="w-full gap-2">
+                    View Journey
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </CardContent>
               </Card>
             </motion.div>

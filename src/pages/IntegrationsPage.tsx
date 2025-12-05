@@ -1,27 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Server, Link2, Plug, Sparkles } from 'lucide-react';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
+import { Server, Link2, Plug, Sparkles, HelpCircle } from 'lucide-react';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
+import { HelpTooltip, HELP_CONTENT } from '@/components/HelpTooltip';
 import MCPBrowser from '@/components/MCPBrowser';
 import ConnectorAuth from '@/components/ConnectorAuth';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
 
 const IntegrationsPage: React.FC = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simple loading state
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
     const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [user, authLoading, navigate]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -29,9 +32,7 @@ const IntegrationsPage: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+  if (!user) return null;
 
   return (
     <>
@@ -40,20 +41,24 @@ const IntegrationsPage: React.FC = () => {
         <meta name="description" content="Connect MCP servers and productivity tools to supercharge your AI agents" />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex flex-col">
-        <Navbar />
+      <div className="min-h-screen bg-background flex">
+        <DashboardSidebar />
         
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 ml-[260px] p-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
+            className="max-w-6xl mx-auto space-y-8"
           >
             {/* Header */}
             <div className="space-y-2">
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Plug className="h-8 w-8 text-primary" />
                 Integrations
+                <HelpTooltip
+                  title={HELP_CONTENT.mcp.title}
+                  description={HELP_CONTENT.mcp.description}
+                />
               </h1>
               <p className="text-muted-foreground">
                 Connect external services to supercharge your AI agents with real-world capabilities
@@ -154,8 +159,6 @@ const IntegrationsPage: React.FC = () => {
             </Tabs>
           </motion.div>
         </main>
-
-        <Footer />
       </div>
     </>
   );

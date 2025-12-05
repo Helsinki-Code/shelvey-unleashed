@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Home, MessageSquare, Briefcase, Users, Server, Key, Globe,
-  Building2, Settings, HelpCircle, ChevronLeft, ChevronRight,
-  Phone, BarChart, Zap, BookOpen, Sparkles, Bot, Mic
+  Building2, HelpCircle, ChevronLeft, ChevronRight,
+  Phone, BarChart, Zap, BookOpen, Sparkles, Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import shelveyLogo from '@/assets/shelvey-logo.png';
 
 interface NavItem {
   id: string;
@@ -190,11 +191,20 @@ export const DashboardSidebar = ({ onNavigate, activeSection }: DashboardSidebar
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => navigate('/')}
           >
-            <img src="/src/assets/shelvey-logo.png" alt="ShelVey" className="h-8 w-8" />
+            <img src={shelveyLogo} alt="ShelVey" className="h-8 w-8" />
             <span className="font-bold text-lg text-gradient">ShelVey</span>
           </motion.div>
+        )}
+        {isCollapsed && (
+          <img 
+            src={shelveyLogo} 
+            alt="ShelVey" 
+            className="h-8 w-8 cursor-pointer" 
+            onClick={() => navigate('/')}
+          />
         )}
         <Button
           variant="ghost"

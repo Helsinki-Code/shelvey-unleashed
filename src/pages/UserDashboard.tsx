@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Bot, MessageSquare, Briefcase, Plus, Loader2, ChevronRight,
-  Sparkles, Users, HelpCircle, BookOpen
+  Sparkles, Users, HelpCircle, BookOpen, Mic
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { FeatureGuide } from '@/components/FeatureGuide';
+import { FeatureTour, useTour } from '@/components/FeatureTour';
 import { QuickActivityFeed } from '@/components/QuickActivityFeed';
 import { AllAgentVoiceCall } from '@/components/AllAgentVoiceCall';
 import { CEOAgentChat } from '@/components/CEOAgentChat';
@@ -26,6 +26,7 @@ import { TeamMeetingView } from '@/components/TeamMeetingView';
 import { AgentMessagesPanel } from '@/components/AgentMessagesPanel';
 import { EscalationTracker } from '@/components/EscalationTracker';
 import { ProgressReportsPanel } from '@/components/ProgressReportsPanel';
+import { HelpTooltip, HELP_CONTENT } from '@/components/HelpTooltip';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -37,6 +38,9 @@ const UserDashboard = () => {
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
+  
+  // Feature tour
+  const { showTour, completeTour, skipTour } = useTour('dashboard');
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -117,8 +121,13 @@ const UserDashboard = () => {
                   <BookOpen className="w-4 h-4 mr-2" />
                   Features Guide
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowVoiceCall(true)}>
-                  <Bot className="w-4 h-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowVoiceCall(true)}
+                  data-tour="voice"
+                >
+                  <Mic className="w-4 h-4 mr-2" />
                   Voice Call
                 </Button>
               </div>
@@ -127,11 +136,15 @@ const UserDashboard = () => {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Quick Chat */}
-              <Card className="row-span-2">
-                <CardHeader>
+              <Card className="row-span-2" data-tour="ceo-chat">
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-primary" />
                     Quick Chat with CEO
+                    <HelpTooltip
+                      title="CEO Agent"
+                      description="Chat with Ava, your AI CEO. She can help plan projects, delegate tasks to your AI team, and answer any business questions."
+                    />
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -142,10 +155,14 @@ const UserDashboard = () => {
               </Card>
 
               {/* Projects */}
-              <Card>
+              <Card data-tour="projects">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     📋 Your Projects
+                    <HelpTooltip
+                      title={HELP_CONTENT.phase.title}
+                      description={HELP_CONTENT.phase.description}
+                    />
                   </CardTitle>
                   <Button variant="ghost" size="sm" onClick={() => setActiveSection('projects')}>
                     View All <ChevronRight className="w-4 h-4 ml-1" />
@@ -192,7 +209,9 @@ const UserDashboard = () => {
               </Card>
 
               {/* Activity Feed */}
-              <QuickActivityFeed onViewAll={() => setActiveSection('team')} />
+              <div data-tour="activity">
+                <QuickActivityFeed onViewAll={() => setActiveSection('team')} />
+              </div>
             </div>
           </div>
         )}
@@ -231,6 +250,16 @@ const UserDashboard = () => {
         isOpen={showVoiceCall}
         onClose={() => setShowVoiceCall(false)}
       />
+
+      {/* Feature Tour */}
+      {showTour && !showOnboarding && (
+        <FeatureTour
+          tourId="dashboard"
+          steps={[]}
+          onComplete={completeTour}
+          onSkip={skipTour}
+        />
+      )}
     </div>
   );
 };
