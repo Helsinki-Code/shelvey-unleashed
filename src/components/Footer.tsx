@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { Zap, Github, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import shelveyLogo from '@/assets/shelvey-logo.png';
 const footerLinks = {
   product: [
     { name: 'Features', href: '/#features' },
@@ -39,21 +39,16 @@ export const Footer = () => {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-6">
-              <div className="relative w-10 h-10 flex items-center justify-center">
-                <svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full">
-                  <polygon
-                    points="20,2 38,11 38,29 20,38 2,29 2,11"
-                    fill="hsl(var(--primary) / 0.1)"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="1.5"
-                  />
-                </svg>
-                <Zap className="w-5 h-5 text-primary relative z-10" />
-              </div>
+              <img 
+                src={shelveyLogo} 
+                alt="ShelVey Logo" 
+                className="w-10 h-10 object-contain drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]" 
+              />
               <div>
                 <span className="font-cyber text-lg font-bold tracking-wider text-foreground">
                   SHEL<span className="text-primary">VEY</span>
                 </span>
+                <p className="text-xs text-muted-foreground font-mono tracking-wider">THE REAL WORKFORCE AI</p>
               </div>
             </Link>
             <p className="text-muted-foreground mb-4 max-w-sm">
