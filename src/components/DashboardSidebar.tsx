@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Home, MessageSquare, Briefcase, Users, Server, Key, Globe,
   Building2, HelpCircle, ChevronLeft, ChevronRight,
-  Phone, BarChart, Zap, BookOpen, Sparkles, Mic
+  Phone, BarChart, Zap, BookOpen, Sparkles, Mic, LayoutDashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,8 +60,15 @@ export const DashboardSidebar = ({ onNavigate, activeSection }: DashboardSidebar
           label: 'Voice Calls', 
           icon: Mic, 
           path: '/voice',
-          badge: 'New',
           helpText: 'Have real-time voice conversations with any AI agent'
+        },
+        { 
+          id: 'workspace', 
+          label: 'Command Center', 
+          icon: LayoutDashboard, 
+          path: '/workspace',
+          badge: 'New',
+          helpText: 'Monitor all tasks, teams, MCP servers, and workflows'
         },
       ]
     },
