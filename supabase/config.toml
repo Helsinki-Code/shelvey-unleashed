@@ -62,3 +62,60 @@ verify_jwt = false
 
 [functions.auth-email-handler]
 verify_jwt = false
+
+[functions.get-mcp-credentials]
+verify_jwt = false
+
+[functions.mcp-gateway]
+verify_jwt = false
+
+[functions.mcp-perplexity]
+verify_jwt = false
+
+[functions.mcp-twitter]
+verify_jwt = false
+
+[functions.mcp-linkedin]
+verify_jwt = false
+
+[functions.mcp-falai]
+verify_jwt = false
+
+[functions.mcp-github]
+verify_jwt = false
+
+[functions.mcp-vapi]
+verify_jwt = false
+
+[functions.mcp-facebook]
+verify_jwt = false
+
+[functions.mcp-whatsapp]
+verify_jwt = false
+
+[functions.mcp-youtube]
+verify_jwt = false
+
+[functions.mcp-googleads]
+verify_jwt = false
+
+[functions.mcp-canva]
+verify_jwt = false
+
+[functions.mcp-googlemaps]
+verify_jwt = false
+
+[functions.team-communication]
+verify_jwt = false
+
+[functions.meeting-orchestrator]
+verify_jwt = false
+
+[functions.escalation-handler]
+verify_jwt = false
+
+[functions.agent-work-executor]
+verify_jwt = false
+
+[functions.phase-auto-worker]
+verify_jwt = false
