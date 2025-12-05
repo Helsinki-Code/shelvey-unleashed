@@ -28,28 +28,47 @@ const MCP_KEY_MAPPING: Record<string, string[]> = {
   'mcp-contentcore': [],
   'mcp-kokorotts': ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
   'mcp-artifacts': ['ARTIFACTS_MMO_TOKEN'],
-  // Modern React website generation MCPs
   'mcp-21st-magic': ['TWENTY_FIRST_API_KEY'],
-  'mcp-shadcn': [], // No API key needed - uses GitHub public API
-  // E-Commerce MCPs (USER KEYS ONLY - connects to user's stores)
+  'mcp-shadcn': [],
+  // E-Commerce MCPs (USER KEYS ONLY)
   'mcp-shopify': ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_STORE_URL'],
   'mcp-etsy': ['ETSY_API_KEY', 'ETSY_ACCESS_TOKEN'],
   'mcp-woocommerce': ['WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
-  // Trading MCPs (USER KEYS ONLY - connects to user's brokerage accounts)
+  // Trading MCPs (USER KEYS ONLY)
   'mcp-alpaca': ['ALPACA_API_KEY', 'ALPACA_SECRET_KEY'],
   'mcp-coinbase': ['COINBASE_API_KEY', 'COINBASE_API_SECRET'],
   'mcp-binance': ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY'],
+  // NEW 18 MCPs
+  'mcp-amazon': ['AMAZON_CLIENT_ID', 'AMAZON_CLIENT_SECRET', 'AMAZON_REFRESH_TOKEN', 'AMAZON_MARKETPLACE_ID'],
+  'mcp-googleanalytics': ['GA_PROPERTY_ID', 'GA_CLIENT_EMAIL', 'GA_PRIVATE_KEY'],
+  'mcp-hubspot': ['HUBSPOT_ACCESS_TOKEN'],
+  'mcp-instagram': ['INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ID'],
+  'mcp-tiktok': ['TIKTOK_ACCESS_TOKEN', 'TIKTOK_OPEN_ID'],
+  'mcp-vercel': ['VERCEL_API_KEY'],
+  'mcp-cloudflare': ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'],
+  'mcp-calendly': ['CALENDLY_API_KEY'],
+  'mcp-twilio': ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER'],
+  'mcp-brightdata': ['BRIGHTDATA_API_KEY'],
+  'mcp-wordpress': ['WORDPRESS_URL', 'WORDPRESS_USERNAME', 'WORDPRESS_APP_PASSWORD'],
+  'mcp-medium': ['MEDIUM_INTEGRATION_TOKEN'],
+  'mcp-openai': ['OPENAI_API_KEY'],
+  'mcp-claude': ['ANTHROPIC_API_KEY'],
+  'mcp-gemini': ['GOOGLE_AI_API_KEY'],
+  'mcp-postgresql': ['POSTGRES_CONNECTION_STRING'],
+  'mcp-n8n': ['N8N_HOST', 'N8N_API_KEY'],
+  'mcp-serpapi': ['SERPAPI_KEY'],
 };
 
 // MCPs that MUST use user's own keys (connects to their personal accounts/stores)
 // Even DFY users must provide their own keys for these
 const USER_ONLY_MCPS = [
-  'mcp-shopify',
-  'mcp-etsy',
-  'mcp-woocommerce',
-  'mcp-alpaca',
-  'mcp-coinbase',
-  'mcp-binance',
+  'mcp-shopify', 'mcp-etsy', 'mcp-woocommerce',
+  'mcp-alpaca', 'mcp-coinbase', 'mcp-binance',
+  // New user-only MCPs (personal accounts)
+  'mcp-amazon', 'mcp-googleanalytics', 'mcp-hubspot',
+  'mcp-instagram', 'mcp-tiktok', 'mcp-vercel', 'mcp-cloudflare',
+  'mcp-calendly', 'mcp-twilio', 'mcp-wordpress', 'mcp-medium',
+  'mcp-postgresql', 'mcp-n8n',
 ];
 
 serve(async (req) => {
