@@ -676,6 +676,54 @@ export type Database = {
           },
         ]
       }
+      mcp_server_registry: {
+        Row: {
+          auth_type: string | null
+          category: string
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          id: string
+          is_public: boolean | null
+          requires_auth: boolean | null
+          server_id: string
+          server_name: string
+          server_url: string
+          tools: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          auth_type?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          requires_auth?: boolean | null
+          server_id: string
+          server_name: string
+          server_url: string
+          tools?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          auth_type?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          requires_auth?: boolean | null
+          server_id?: string
+          server_name?: string
+          server_url?: string
+          tools?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       mcp_server_status: {
         Row: {
           id: string
@@ -1233,6 +1281,48 @@ export type Database = {
           server_id?: string
           server_name?: string
           status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_oauth_tokens: {
+        Row: {
+          access_token: string
+          connector_type: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          provider: string
+          refresh_token: string | null
+          scopes: string[] | null
+          token_expiry: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connector_type: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          provider: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expiry?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connector_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expiry?: string | null
           updated_at?: string | null
           user_id?: string
         }

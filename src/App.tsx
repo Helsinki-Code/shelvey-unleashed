@@ -31,6 +31,7 @@ import PricingPage from "./pages/PricingPage";
 import LiveDemoPage from "./pages/LiveDemoPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import TeamCollaborationPage from "./pages/TeamCollaborationPage";
+import IntegrationsPage from "./pages/IntegrationsPage";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/live-demo" element={<LiveDemoPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/team-collaboration" element={<TeamCollaborationPage />} />
+              <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
