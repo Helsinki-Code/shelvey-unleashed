@@ -245,6 +245,7 @@ serve(async (req) => {
 
 function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] {
   // Updated mapping: Use Perplexity for sentiment/social analysis (more reliable than Twitter)
+  // Use Artifacts MMO for website/report/dashboard generation
   const taskMCPMapping: Record<string, string[]> = {
     'market_research': ['mcp-perplexity'],
     'competitor_analysis': ['mcp-perplexity'],
@@ -259,6 +260,13 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'lead_generation': ['mcp-linkedin'],
     'sales_outreach': ['mcp-vapi', 'mcp-linkedin'],
     'code_development': ['mcp-github'],
+    // Artifacts MMO for generation tasks
+    'website_generation': ['mcp-artifacts'],
+    'report_generation': ['mcp-artifacts'],
+    'dashboard_generation': ['mcp-artifacts'],
+    'chart_generation': ['mcp-artifacts'],
+    'document_generation': ['mcp-artifacts'],
+    'presentation_generation': ['mcp-artifacts'],
   };
 
   return taskMCPMapping[taskType] || suggestedMCPs.slice(0, 2);
@@ -309,6 +317,15 @@ async function executeMCPWork(
     'mcp-vapi': {
       'sales_outreach': { tool: 'get_assistants', args: {} },
       'default': { tool: 'get_assistants', args: {} },
+    },
+    'mcp-artifacts': {
+      'website_generation': { tool: 'generate_website', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, branding: inputData?.branding } },
+      'report_generation': { tool: 'generate_report', args: { title: inputData?.title, data: inputData?.data, reportType: inputData?.reportType, sections: inputData?.sections } },
+      'dashboard_generation': { tool: 'generate_dashboard', args: { title: inputData?.title, widgets: inputData?.widgets, data: inputData?.data, theme: inputData?.theme } },
+      'chart_generation': { tool: 'generate_chart', args: { chartType: inputData?.chartType, data: inputData?.data, title: inputData?.title } },
+      'document_generation': { tool: 'generate_document', args: { title: inputData?.title, content: inputData?.content, template: inputData?.template } },
+      'presentation_generation': { tool: 'generate_presentation', args: { title: inputData?.title, slides: inputData?.slides, theme: inputData?.theme } },
+      'default': { tool: 'generate_website', args: inputData },
     },
   };
 
