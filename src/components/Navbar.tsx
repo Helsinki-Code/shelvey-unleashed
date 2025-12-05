@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { Menu, X, Zap } from 'lucide-react';
+import { Menu, X, Zap, LogIn, LayoutDashboard } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 const navLinks = [
   { name: 'Home', href: '/' },
@@ -12,11 +14,11 @@ const navLinks = [
   { name: 'Neural', href: '/neural' },
   { name: 'Meetings', href: '/meetings' },
   { name: 'Voice', href: '/voice' },
-  { name: 'Admin', href: '/admin' },
 ];
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, isLoading } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
@@ -103,18 +105,27 @@ export const Navbar = () => {
           </div>
 
           {/* Right section */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <ThemeToggle />
             
-            {/* Status indicator */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-              <motion.div 
-                className="w-2 h-2 rounded-full bg-primary"
-                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <span className="font-mono text-xs text-primary">ONLINE</span>
-            </div>
+            {/* Auth buttons */}
+            {!isLoading && (
+              user ? (
+                <Link to="/dashboard">
+                  <Button size="sm" className="gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/auth">
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
+                  </Button>
+                </Link>
+              )
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -175,6 +186,31 @@ export const Navbar = () => {
                   </Link>
                 </motion.div>
               ))}
+              
+              {/* Mobile auth link */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: navLinks.length * 0.05 }}
+              >
+                {user ? (
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-mono text-sm uppercase tracking-wider text-primary"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/auth"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-mono text-sm uppercase tracking-wider text-primary"
+                  >
+                    Sign In
+                  </Link>
+                )}
+              </motion.div>
             </div>
           </motion.div>
         )}

@@ -44,6 +44,44 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_conversations: {
+        Row: {
+          agent_type: string | null
+          created_at: string | null
+          id: string
+          messages: Json | null
+          project_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          agent_type?: string | null
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          project_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          agent_type?: string | null
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          project_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           category: string | null
@@ -107,6 +145,51 @@ export type Database = {
         }
         Relationships: []
       }
+      business_projects: {
+        Row: {
+          business_model: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          industry: string | null
+          name: string
+          revenue: number | null
+          stage: string | null
+          status: string | null
+          target_market: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          business_model?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          industry?: string | null
+          name: string
+          revenue?: number | null
+          stage?: string | null
+          status?: string | null
+          target_market?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          business_model?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          industry?: string | null
+          name?: string
+          revenue?: number | null
+          stage?: string | null
+          status?: string | null
+          target_market?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       mcp_server_status: {
         Row: {
           id: string
@@ -140,6 +223,188 @@ export type Database = {
           server_name?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          subscription_expires_at: string | null
+          subscription_status:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          subscription_expires_at?: string | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          subscription_expires_at?: string | null
+          subscription_status?:
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_agent_activity: {
+        Row: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          project_id: string | null
+          result: Json | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          result?: Json | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          agent_name?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          result?: Json | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_agent_activity_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_api_keys: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          display_name: string
+          encrypted_value: string | null
+          id: string
+          is_configured: boolean | null
+          key_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          display_name: string
+          encrypted_value?: string | null
+          id?: string
+          is_configured?: boolean | null
+          key_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          display_name?: string
+          encrypted_value?: string | null
+          id?: string
+          is_configured?: boolean | null
+          key_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_mcp_servers: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_ping: string | null
+          latency_ms: number | null
+          metadata: Json | null
+          requests_today: number | null
+          server_id: string
+          server_name: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_ping?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          requests_today?: number | null
+          server_id: string
+          server_name: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_ping?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          requests_today?: number | null
+          server_id?: string
+          server_name?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -178,6 +443,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      initialize_user_mcp_servers: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       update_mcp_metrics: {
         Args: {
           p_latency_ms: number
@@ -188,7 +465,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "subscriber" | "user"
+      subscription_status: "trial" | "active" | "canceled" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -315,6 +593,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "subscriber", "user"],
+      subscription_status: ["trial", "active", "canceled", "expired"],
+    },
   },
 } as const
