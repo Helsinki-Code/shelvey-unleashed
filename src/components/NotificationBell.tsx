@@ -9,15 +9,21 @@ import { formatDistanceToNow } from 'date-fns';
 const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'ceo_review_complete':
+    case 'deliverable_reviewed':
       return '👔';
     case 'deliverable_approved':
       return '✅';
     case 'phase_complete':
+    case 'phase_completed':
       return '🎯';
     case 'phase_started':
       return '🚀';
     case 'revision_requested':
       return '📝';
+    case 'deliverable_ready':
+      return '📋';
+    case 'task_delegated':
+      return '📤';
     default:
       return '🔔';
   }
