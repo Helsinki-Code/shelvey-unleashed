@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { Menu, X, LogIn, LayoutDashboard, Crown, Users } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, LayoutDashboard, Crown, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,7 +17,7 @@ const navLinks = [
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, isLoading, isSuperAdmin } = useAuth();
+  const { user, isLoading, isSuperAdmin, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
@@ -120,6 +120,10 @@ export const Navbar = () => {
                       <span className="hidden sm:inline">Dashboard</span>
                     </Button>
                   </Link>
+                  <Button size="sm" variant="ghost" onClick={signOut} className="gap-2 text-muted-foreground hover:text-destructive">
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
                 </div>
               ) : (
                 <Link to="/auth">
@@ -251,6 +255,26 @@ export const Navbar = () => {
                   </Link>
                 )}
               </motion.div>
+              
+              {/* Mobile sign out */}
+              {user && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (navLinks.length + 1.5) * 0.05 }}
+                >
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setIsOpen(false);
+                    }}
+                    className="w-full block px-4 py-3 rounded-lg bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 transition-all font-mono text-sm uppercase tracking-wider text-destructive text-left"
+                  >
+                    <LogOut className="h-4 w-4 inline mr-2" />
+                    Sign Out
+                  </button>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}
