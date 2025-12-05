@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_api_keys: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          display_name: string
+          encrypted_value: string | null
+          id: string
+          is_configured: boolean | null
+          key_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          display_name: string
+          encrypted_value?: string | null
+          id?: string
+          is_configured?: boolean | null
+          key_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          display_name?: string
+          encrypted_value?: string | null
+          id?: string
+          is_configured?: boolean | null
+          key_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       agent_activity_logs: {
         Row: {
           action: string
@@ -491,6 +524,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       phase_deliverables: {
         Row: {
           approved_at: string | null
@@ -589,6 +655,7 @@ export type Database = {
           subscription_status:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          subscription_tier: string | null
           updated_at: string | null
         }
         Insert: {
@@ -601,6 +668,7 @@ export type Database = {
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          subscription_tier?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -613,6 +681,7 @@ export type Database = {
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          subscription_tier?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -937,6 +1006,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_api_key_for_dfy: {
+        Args: { _key_name: string; _user_id: string }
+        Returns: string
+      }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -949,6 +1022,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       update_mcp_metrics: {
         Args: {
           p_latency_ms: number
