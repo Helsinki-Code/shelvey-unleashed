@@ -224,3 +224,9 @@ verify_jwt = false
 
 [functions.voice-session]
 verify_jwt = false
+
+[functions.code-generator]
+verify_jwt = false
+
+[functions.shell-executor]
+verify_jwt = false
