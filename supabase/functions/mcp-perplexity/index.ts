@@ -64,7 +64,7 @@ serve(async (req) => {
   }
 });
 
-async function callPerplexity(apiKey: string, messages: any[], model = 'llama-3.1-sonar-large-128k-online') {
+async function callPerplexity(apiKey: string, messages: any[], model = 'sonar-pro') {
   const response = await fetch(PERPLEXITY_API_URL, {
     method: 'POST',
     headers: {
