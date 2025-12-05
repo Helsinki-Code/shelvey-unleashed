@@ -26,17 +26,33 @@ const MCP_ENDPOINTS: Record<string, string> = {
   'mcp-googlemaps': 'mcp-googlemaps',
   'mcp-contentcore': 'mcp-contentcore',
   'mcp-artifacts': 'mcp-artifacts',
-  // Modern React website generation MCPs
   'mcp-21st-magic': 'mcp-21st-magic',
   'mcp-shadcn': 'mcp-shadcn',
-  // E-Commerce MCPs (user keys only)
   'mcp-shopify': 'mcp-shopify',
   'mcp-etsy': 'mcp-etsy',
   'mcp-woocommerce': 'mcp-woocommerce',
-  // Trading MCPs (user keys only)
   'mcp-alpaca': 'mcp-alpaca',
   'mcp-coinbase': 'mcp-coinbase',
   'mcp-binance': 'mcp-binance',
+  // NEW 18 MCPs
+  'mcp-amazon': 'mcp-amazon',
+  'mcp-googleanalytics': 'mcp-googleanalytics',
+  'mcp-hubspot': 'mcp-hubspot',
+  'mcp-instagram': 'mcp-instagram',
+  'mcp-tiktok': 'mcp-tiktok',
+  'mcp-vercel': 'mcp-vercel',
+  'mcp-cloudflare': 'mcp-cloudflare',
+  'mcp-calendly': 'mcp-calendly',
+  'mcp-twilio': 'mcp-twilio',
+  'mcp-brightdata': 'mcp-brightdata',
+  'mcp-wordpress': 'mcp-wordpress',
+  'mcp-medium': 'mcp-medium',
+  'mcp-openai': 'mcp-openai',
+  'mcp-claude': 'mcp-claude',
+  'mcp-gemini': 'mcp-gemini',
+  'mcp-postgresql': 'mcp-postgresql',
+  'mcp-n8n': 'mcp-n8n',
+  'mcp-serpapi': 'mcp-serpapi',
 };
 
 // Twitter tool to Perplexity fallback mapping

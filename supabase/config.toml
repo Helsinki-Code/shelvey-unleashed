@@ -155,3 +155,57 @@ verify_jwt = false
 
 [functions.mcp-binance]
 verify_jwt = false
+
+[functions.mcp-amazon]
+verify_jwt = false
+
+[functions.mcp-googleanalytics]
+verify_jwt = false
+
+[functions.mcp-hubspot]
+verify_jwt = false
+
+[functions.mcp-instagram]
+verify_jwt = false
+
+[functions.mcp-tiktok]
+verify_jwt = false
+
+[functions.mcp-vercel]
+verify_jwt = false
+
+[functions.mcp-cloudflare]
+verify_jwt = false
+
+[functions.mcp-calendly]
+verify_jwt = false
+
+[functions.mcp-twilio]
+verify_jwt = false
+
+[functions.mcp-brightdata]
+verify_jwt = false
+
+[functions.mcp-wordpress]
+verify_jwt = false
+
+[functions.mcp-medium]
+verify_jwt = false
+
+[functions.mcp-openai]
+verify_jwt = false
+
+[functions.mcp-claude]
+verify_jwt = false
+
+[functions.mcp-gemini]
+verify_jwt = false
+
+[functions.mcp-postgresql]
+verify_jwt = false
+
+[functions.mcp-n8n]
+verify_jwt = false
+
+[functions.mcp-serpapi]
+verify_jwt = false
