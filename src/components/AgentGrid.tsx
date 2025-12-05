@@ -67,21 +67,37 @@ const AgentCard = ({ agent, onClick }: { agent: Agent; onClick: () => void }) =>
           </motion.div>
         </div>
         
-        {/* Connected MCP servers */}
-        <div className="flex items-center gap-1 mb-4">
+        {/* Connected MCP servers with live status */}
+        <div className="flex items-center gap-1.5 mb-4">
           <Server className="w-3 h-3 text-muted-foreground" />
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             {connectedServers.slice(0, 3).map(serverId => {
               const server = mcpServers.find(s => s.id === serverId);
-              return server ? (
-                <span key={serverId} className="text-sm" title={server.name}>
-                  {server.icon}
-                </span>
-              ) : null;
+              if (!server) return null;
+              const isConnected = server.status === 'connected';
+              const isSyncing = server.status === 'syncing';
+              return (
+                <div 
+                  key={serverId} 
+                  className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/50"
+                  title={`${server.name} - ${server.status}`}
+                >
+                  <span className="text-sm">{server.icon}</span>
+                  <motion.div
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isConnected ? 'bg-emerald-500' : isSyncing ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}
+                    animate={isConnected ? { scale: [1, 1.3, 1] } : isSyncing ? { opacity: [1, 0.5, 1] } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                </div>
+              );
             })}
           </div>
           {connectedServers.length > 3 && (
-            <span className="text-[10px] text-muted-foreground">+{connectedServers.length - 3}</span>
+            <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+              +{connectedServers.length - 3}
+            </span>
           )}
         </div>
         
@@ -168,7 +184,7 @@ const AgentDetailModal = ({ agent, onClose }: { agent: Agent; onClose: () => voi
             </p>
           </div>
           
-          {/* Connected MCP Servers */}
+          {/* Connected MCP Servers with live status */}
           <div>
             <h4 className="text-xs font-mono text-muted-foreground mb-3 uppercase tracking-wider">
               Connected MCP Servers
@@ -176,16 +192,34 @@ const AgentDetailModal = ({ agent, onClose }: { agent: Agent; onClose: () => voi
             <div className="flex flex-wrap gap-2">
               {connectedServers.map(serverId => {
                 const server = mcpServers.find(s => s.id === serverId);
-                return server ? (
+                if (!server) return null;
+                const isConnected = server.status === 'connected';
+                const isSyncing = server.status === 'syncing';
+                return (
                   <div 
                     key={serverId} 
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                      isConnected ? 'bg-emerald-500/5 border-emerald-500/30' :
+                      isSyncing ? 'bg-amber-500/5 border-amber-500/30' :
+                      'bg-rose-500/5 border-rose-500/30'
+                    }`}
                   >
                     <span className="text-lg">{server.icon}</span>
                     <span className="text-sm">{server.name}</span>
-                    <span className="text-[10px] text-emerald-400">●</span>
+                    <motion.span 
+                      className={`text-xs ${
+                        isConnected ? 'text-emerald-400' : isSyncing ? 'text-amber-400' : 'text-rose-400'
+                      }`}
+                      animate={isConnected || isSyncing ? { opacity: [1, 0.5, 1] } : {}}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      ●
+                    </motion.span>
+                    {server.latency && (
+                      <span className="text-[10px] text-muted-foreground font-mono">{server.latency}ms</span>
+                    )}
                   </div>
-                ) : null;
+                );
               })}
             </div>
           </div>
