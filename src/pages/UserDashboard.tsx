@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Bot, Settings, MessageSquare, Briefcase, Server, Key, 
-  TrendingUp, Loader2, Plus, LogOut, Crown, Building2, Globe
+  TrendingUp, Loader2, Plus, LogOut, Crown, Building2, Globe, Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,9 @@ import { CEOAgentChat } from '@/components/CEOAgentChat';
 import { UserAPIKeys } from '@/components/UserAPIKeys';
 import { UserMCPServers } from '@/components/UserMCPServers';
 import { UserProjects } from '@/components/UserProjects';
+import { TeamMeetingView } from '@/components/TeamMeetingView';
+import { AgentMessagesPanel } from '@/components/AgentMessagesPanel';
+import { EscalationTracker } from '@/components/EscalationTracker';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -186,7 +189,7 @@ const UserDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="ceo" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="ceo" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               CEO Agent
@@ -194,6 +197,10 @@ const UserDashboard = () => {
             <TabsTrigger value="projects" className="gap-2">
               <Briefcase className="w-4 h-4" />
               Projects
+            </TabsTrigger>
+            <TabsTrigger value="team" className="gap-2">
+              <Users className="w-4 h-4" />
+              Team
             </TabsTrigger>
             <TabsTrigger value="servers" className="gap-2">
               <Server className="w-4 h-4" />
@@ -211,6 +218,16 @@ const UserDashboard = () => {
 
           <TabsContent value="projects">
             <UserProjects />
+          </TabsContent>
+
+          <TabsContent value="team">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TeamMeetingView />
+                <AgentMessagesPanel />
+              </div>
+              <EscalationTracker />
+            </div>
           </TabsContent>
 
           <TabsContent value="servers">
