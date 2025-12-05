@@ -68,23 +68,38 @@ export const mcpServers: MCPServer[] = [
     latency: 34, 
     requestsToday: 1234 
   },
+
+  // Modern React Website Generation (NEW)
+  { 
+    id: 'mcp-21st-magic', 
+    name: '21st.dev Magic', 
+    description: 'AI-powered React component generation with premium UI library', 
+    category: 'design', 
+    status: 'connected', 
+    icon: '✨', 
+    envRequired: ['TWENTY_FIRST_API_KEY'],
+    toolCount: 5,
+    latency: 120, 
+    requestsToday: 0 
+  },
   { 
     id: 'mcp-shadcn', 
-    name: 'Shadcn UI', 
-    description: 'UI components for React, Svelte, Vue, React Native', 
+    name: 'shadcn/ui', 
+    description: 'Premium React component library with 45+ UI primitives', 
     category: 'design', 
     status: 'connected', 
     icon: '🎨', 
-    latency: 22, 
-    requestsToday: 2341 
+    toolCount: 4,
+    latency: 45, 
+    requestsToday: 0 
   },
   { 
     id: 'mcp-21stdev', 
-    name: '21st.dev Magic', 
-    description: 'AI-powered UI component generation', 
+    name: '21st.dev Components', 
+    description: 'Browse and search 21st.dev component library', 
     category: 'design', 
-    status: 'requires-key', 
-    icon: '✨', 
+    status: 'connected', 
+    icon: '🧩', 
     envRequired: ['21ST_DEV_API_KEY'],
     latency: 156, 
     requestsToday: 567 
@@ -310,12 +325,12 @@ export const mcpServers: MCPServer[] = [
   { 
     id: 'mcp-artifacts', 
     name: 'Artifacts MMO', 
-    description: 'Website generation, report rendering, dashboards, and visual artifacts', 
+    description: 'Report rendering, dashboards, charts, and document generation', 
     category: 'design', 
     status: 'requires-key', 
     icon: '🎪', 
     envRequired: ['ARTIFACTS_MMO_TOKEN'],
-    toolCount: 8,
+    toolCount: 6,
     latency: 120, 
     requestsToday: 0 
   },
