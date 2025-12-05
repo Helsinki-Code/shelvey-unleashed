@@ -38,3 +38,18 @@ verify_jwt = false
 
 [functions.phase-manager]
 verify_jwt = false
+
+[functions.generate-deliverable]
+verify_jwt = false
+
+[functions.regenerate-website]
+verify_jwt = false
+
+[functions.approve-deliverable]
+verify_jwt = false
+
+[functions.setup-hosting]
+verify_jwt = false
+
+[functions.verify-dns]
+verify_jwt = false

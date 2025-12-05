@@ -367,51 +367,85 @@ export type Database = {
       }
       generated_websites: {
         Row: {
+          branding_deliverable_id: string | null
+          ceo_approved: boolean | null
           created_at: string
           css_content: string | null
+          custom_domain: string | null
           deployed_url: string | null
+          dns_records: Json | null
           domain_name: string | null
+          feedback_history: Json | null
+          hosting_type: string | null
           html_content: string
           id: string
           js_content: string | null
           metadata: Json | null
           name: string
           project_id: string | null
+          ssl_status: string | null
           status: string
           updated_at: string
+          user_approved: boolean | null
           user_id: string
+          version: number | null
         }
         Insert: {
+          branding_deliverable_id?: string | null
+          ceo_approved?: boolean | null
           created_at?: string
           css_content?: string | null
+          custom_domain?: string | null
           deployed_url?: string | null
+          dns_records?: Json | null
           domain_name?: string | null
+          feedback_history?: Json | null
+          hosting_type?: string | null
           html_content: string
           id?: string
           js_content?: string | null
           metadata?: Json | null
           name: string
           project_id?: string | null
+          ssl_status?: string | null
           status?: string
           updated_at?: string
+          user_approved?: boolean | null
           user_id: string
+          version?: number | null
         }
         Update: {
+          branding_deliverable_id?: string | null
+          ceo_approved?: boolean | null
           created_at?: string
           css_content?: string | null
+          custom_domain?: string | null
           deployed_url?: string | null
+          dns_records?: Json | null
           domain_name?: string | null
+          feedback_history?: Json | null
+          hosting_type?: string | null
           html_content?: string
           id?: string
           js_content?: string | null
           metadata?: Json | null
           name?: string
           project_id?: string | null
+          ssl_status?: string | null
           status?: string
           updated_at?: string
+          user_approved?: boolean | null
           user_id?: string
+          version?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "generated_websites_branding_deliverable_id_fkey"
+            columns: ["branding_deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "phase_deliverables"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "generated_websites_project_id_fkey"
             columns: ["project_id"]
@@ -463,54 +497,69 @@ export type Database = {
           approved_by: string | null
           assigned_agent_id: string | null
           assigned_team_id: string | null
+          ceo_approved: boolean | null
           content: Json | null
           created_at: string | null
           deliverable_type: string
           description: string | null
           feedback: string | null
+          feedback_history: Json | null
+          generated_content: Json | null
           id: string
           name: string
           phase_id: string
           reviewed_by: string | null
           status: string | null
           updated_at: string | null
+          user_approved: boolean | null
           user_id: string
+          version: number | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
+          ceo_approved?: boolean | null
           content?: Json | null
           created_at?: string | null
           deliverable_type: string
           description?: string | null
           feedback?: string | null
+          feedback_history?: Json | null
+          generated_content?: Json | null
           id?: string
           name: string
           phase_id: string
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
+          user_approved?: boolean | null
           user_id: string
+          version?: number | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
+          ceo_approved?: boolean | null
           content?: Json | null
           created_at?: string | null
           deliverable_type?: string
           description?: string | null
           feedback?: string | null
+          feedback_history?: Json | null
+          generated_content?: Json | null
           id?: string
           name?: string
           phase_id?: string
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
+          user_approved?: boolean | null
           user_id?: string
+          version?: number | null
         }
         Relationships: [
           {
@@ -823,6 +872,65 @@ export type Database = {
           transcript?: string | null
         }
         Relationships: []
+      }
+      website_hosting: {
+        Row: {
+          a_record: string | null
+          cname_record: string | null
+          created_at: string
+          dns_verified: boolean | null
+          domain: string
+          hosting_type: string
+          id: string
+          ssl_provisioned: boolean | null
+          subdomain: string | null
+          txt_verification: string | null
+          updated_at: string
+          user_id: string
+          verification_code: string | null
+          website_id: string
+        }
+        Insert: {
+          a_record?: string | null
+          cname_record?: string | null
+          created_at?: string
+          dns_verified?: boolean | null
+          domain: string
+          hosting_type?: string
+          id?: string
+          ssl_provisioned?: boolean | null
+          subdomain?: string | null
+          txt_verification?: string | null
+          updated_at?: string
+          user_id: string
+          verification_code?: string | null
+          website_id: string
+        }
+        Update: {
+          a_record?: string | null
+          cname_record?: string | null
+          created_at?: string
+          dns_verified?: boolean | null
+          domain?: string
+          hosting_type?: string
+          id?: string
+          ssl_provisioned?: boolean | null
+          subdomain?: string | null
+          txt_verification?: string | null
+          updated_at?: string
+          user_id?: string
+          verification_code?: string | null
+          website_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_hosting_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: true
+            referencedRelation: "generated_websites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
