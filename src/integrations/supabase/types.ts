@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_configured: boolean | null
+          is_required: boolean | null
+          key_name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_configured?: boolean | null
+          is_required?: boolean | null
+          key_name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_configured?: boolean | null
+          is_required?: boolean | null
+          key_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_metrics: {
         Row: {
           id: string
@@ -142,7 +178,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_mcp_metrics: {
+        Args: {
+          p_latency_ms: number
+          p_requests_increment?: number
+          p_server_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
