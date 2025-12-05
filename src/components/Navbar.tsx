@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { Menu, X, Zap, LogIn, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Zap, LogIn, LayoutDashboard, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationBell } from './NotificationBell';
 
 const navLinks = [
   { name: 'Home', href: '/' },
@@ -18,7 +19,7 @@ const navLinks = [
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isSuperAdmin } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
@@ -108,15 +109,28 @@ export const Navbar = () => {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             
+            {/* Notifications (only for logged in users) */}
+            {user && <NotificationBell />}
+            
             {/* Auth buttons */}
             {!isLoading && (
               user ? (
-                <Link to="/dashboard">
-                  <Button size="sm" className="gap-2">
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span className="hidden sm:inline">Dashboard</span>
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  {isSuperAdmin && (
+                    <Link to="/super-admin">
+                      <Button size="sm" variant="outline" className="gap-2 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10">
+                        <Crown className="w-4 h-4" />
+                        <span className="hidden sm:inline">Admin</span>
+                      </Button>
+                    </Link>
+                  )}
+                  <Link to="/dashboard">
+                    <Button size="sm" className="gap-2">
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span className="hidden sm:inline">Dashboard</span>
+                    </Button>
+                  </Link>
+                </div>
               ) : (
                 <Link to="/auth">
                   <Button size="sm" variant="outline" className="gap-2">
@@ -187,11 +201,29 @@ export const Navbar = () => {
                 </motion.div>
               ))}
               
+              {/* Mobile super admin link */}
+              {isSuperAdmin && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navLinks.length * 0.05 }}
+                >
+                  <Link
+                    to="/super-admin"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-4 py-3 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 transition-all font-mono text-sm uppercase tracking-wider text-yellow-500"
+                  >
+                    <Crown className="h-4 w-4 inline mr-2" />
+                    Super Admin
+                  </Link>
+                </motion.div>
+              )}
+              
               {/* Mobile auth link */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: navLinks.length * 0.05 }}
+                transition={{ delay: (navLinks.length + 1) * 0.05 }}
               >
                 {user ? (
                   <Link

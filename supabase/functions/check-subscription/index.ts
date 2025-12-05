@@ -9,8 +9,10 @@ const corsHeaders = {
 
 // ShelVey product IDs
 const PRODUCTS = {
-  subscription: "prod_TXxrn59Wdi61O4",
-  setup_fee: "prod_TXxrPQXdjQcJPl",
+  standard_subscription: "prod_TXxrn59Wdi61O4",
+  standard_setup_fee: "prod_TXxrPQXdjQcJPl",
+  dfy_subscription: "prod_TXysVPTCBGfrbU",
+  dfy_setup_fee: "prod_TXytvSCc76U65A",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -59,7 +61,8 @@ serve(async (req) => {
         .from('profiles')
         .update({ 
           subscription_status: 'expired',
-          subscription_expires_at: null 
+          subscription_expires_at: null,
+          subscription_tier: 'standard'
         })
         .eq('id', user.id);
 
@@ -67,7 +70,8 @@ serve(async (req) => {
         subscribed: false,
         product_id: null,
         subscription_end: null,
-        status: 'none'
+        status: 'none',
+        tier: 'standard'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -87,24 +91,35 @@ serve(async (req) => {
     let productId = null;
     let subscriptionEnd = null;
     let status = 'none';
+    let tier = 'standard';
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       productId = subscription.items.data[0].price.product;
       status = subscription.status;
+      
+      // Determine tier based on product ID
+      if (productId === PRODUCTS.dfy_subscription) {
+        tier = 'dfy';
+      } else {
+        tier = 'standard';
+      }
+      
       logStep("Active subscription found", { 
         subscriptionId: subscription.id, 
         endDate: subscriptionEnd,
-        productId 
+        productId,
+        tier
       });
 
-      // Update profile with active subscription
+      // Update profile with active subscription and tier
       await supabaseClient
         .from('profiles')
         .update({ 
           subscription_status: 'active',
-          subscription_expires_at: subscriptionEnd
+          subscription_expires_at: subscriptionEnd,
+          subscription_tier: tier
         })
         .eq('id', user.id);
 
@@ -116,7 +131,8 @@ serve(async (req) => {
         .from('profiles')
         .update({ 
           subscription_status: 'expired',
-          subscription_expires_at: null 
+          subscription_expires_at: null,
+          subscription_tier: 'standard'
         })
         .eq('id', user.id);
     }
@@ -125,7 +141,8 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       product_id: productId,
       subscription_end: subscriptionEnd,
-      status: status
+      status: status,
+      tier: tier
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
