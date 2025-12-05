@@ -248,8 +248,8 @@ export const HeroSection = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
               </span>
-            <span className="text-sm font-mono text-primary tracking-wide">
-                25 AGENTS • 27 MCP SERVERS • AMROGEN
+              <span className="text-sm font-mono text-primary tracking-wide">
+                25 AGENTS • 52 MCP SERVERS • AMROGEN
               </span>
             </motion.div>
             
@@ -287,7 +287,7 @@ export const HeroSection = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              ShelVey deploys 25 specialized AI agents connected to real-time MCP servers. 
+              ShelVey deploys 25 specialized AI agents connected to 52 real-time MCP servers. 
               They identify opportunities, build products, and generate revenue 24/7.
             </motion.p>
             
