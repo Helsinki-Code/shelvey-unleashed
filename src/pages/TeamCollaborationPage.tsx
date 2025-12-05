@@ -8,10 +8,11 @@ import { Footer } from '@/components/Footer';
 import { TeamMeetingView } from '@/components/TeamMeetingView';
 import { AgentMessagesPanel } from '@/components/AgentMessagesPanel';
 import { EscalationTracker } from '@/components/EscalationTracker';
+import { ProgressReportsPanel } from '@/components/ProgressReportsPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, MessageSquare, AlertTriangle, Calendar, Activity, Loader2 } from 'lucide-react';
+import { Users, MessageSquare, AlertTriangle, Calendar, FileText, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -153,7 +154,7 @@ export default function TeamCollaborationPage() {
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="meetings" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+              <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
                 <TabsTrigger value="meetings" className="gap-2">
                   <Calendar className="h-4 w-4" />
                   Meetings
@@ -161,6 +162,10 @@ export default function TeamCollaborationPage() {
                 <TabsTrigger value="messages" className="gap-2">
                   <MessageSquare className="h-4 w-4" />
                   Messages
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Reports
                 </TabsTrigger>
                 <TabsTrigger value="escalations" className="gap-2">
                   <AlertTriangle className="h-4 w-4" />
@@ -174,6 +179,10 @@ export default function TeamCollaborationPage() {
 
               <TabsContent value="messages">
                 <AgentMessagesPanel />
+              </TabsContent>
+
+              <TabsContent value="reports">
+                <ProgressReportsPanel />
               </TabsContent>
 
               <TabsContent value="escalations">

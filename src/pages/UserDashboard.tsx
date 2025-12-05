@@ -21,6 +21,7 @@ import { UserProjects } from '@/components/UserProjects';
 import { TeamMeetingView } from '@/components/TeamMeetingView';
 import { AgentMessagesPanel } from '@/components/AgentMessagesPanel';
 import { EscalationTracker } from '@/components/EscalationTracker';
+import { ProgressReportsPanel } from '@/components/ProgressReportsPanel';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -226,6 +227,7 @@ const UserDashboard = () => {
                 <TeamMeetingView />
                 <AgentMessagesPanel />
               </div>
+              <ProgressReportsPanel />
               <EscalationTracker />
             </div>
           </TabsContent>
