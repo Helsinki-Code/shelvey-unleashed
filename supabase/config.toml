@@ -119,3 +119,12 @@ verify_jwt = false
 
 [functions.phase-auto-worker]
 verify_jwt = false
+
+[functions.mcp-stripe]
+verify_jwt = false
+
+[functions.mcp-linear]
+verify_jwt = false
+
+[functions.mcp-googlecalendar]
+verify_jwt = false
