@@ -938,8 +938,11 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           email: string | null
+          experience_mode: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean | null
+          onboarding_goal: string | null
           subscription_expires_at: string | null
           subscription_status:
             | Database["public"]["Enums"]["subscription_status"]
@@ -951,8 +954,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
+          experience_mode?: string | null
           full_name?: string | null
           id: string
+          onboarding_completed?: boolean | null
+          onboarding_goal?: string | null
           subscription_expires_at?: string | null
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
@@ -964,8 +970,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
+          experience_mode?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
+          onboarding_goal?: string | null
           subscription_expires_at?: string | null
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]

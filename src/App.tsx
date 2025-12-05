@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ExperienceModeProvider } from "@/contexts/ExperienceModeContext";
 import Index from "./pages/Index";
 import AgentsPage from "./pages/AgentsPage";
 import PipelinePage from "./pages/PipelinePage";
@@ -41,43 +42,45 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/dashboard" element={<UserDashboard />} />
-              <Route path="/agents" element={<AgentsPage />} />
-              <Route path="/pipeline" element={<PipelinePage />} />
-              <Route path="/neural" element={<NeuralPage />} />
-              <Route path="/meetings" element={<MeetingsPage />} />
-              <Route path="/voice" element={<VoicePage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/mcp" element={<MCPServersPage />} />
-              <Route path="/websites" element={<WebsitesPage />} />
-              <Route path="/organization" element={<OrganizationPage />} />
-              <Route path="/branding" element={<BrandingPage />} />
-              <Route path="/super-admin" element={<SuperAdminDashboard />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/security" element={<SecurityPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/live-demo" element={<LiveDemoPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/team-collaboration" element={<TeamCollaborationPage />} />
-              <Route path="/integrations" element={<IntegrationsPage />} />
-              <Route path="/computer-use" element={<ComputerUsePage />} />
-              <Route path="/developer-tools" element={<DeveloperToolsPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <ExperienceModeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path="/agents" element={<AgentsPage />} />
+                <Route path="/pipeline" element={<PipelinePage />} />
+                <Route path="/neural" element={<NeuralPage />} />
+                <Route path="/meetings" element={<MeetingsPage />} />
+                <Route path="/voice" element={<VoicePage />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/mcp" element={<MCPServersPage />} />
+                <Route path="/websites" element={<WebsitesPage />} />
+                <Route path="/organization" element={<OrganizationPage />} />
+                <Route path="/branding" element={<BrandingPage />} />
+                <Route path="/super-admin" element={<SuperAdminDashboard />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/security" element={<SecurityPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/live-demo" element={<LiveDemoPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/team-collaboration" element={<TeamCollaborationPage />} />
+                <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/computer-use" element={<ComputerUsePage />} />
+                <Route path="/developer-tools" element={<DeveloperToolsPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ExperienceModeProvider>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
