@@ -10,26 +10,9 @@ import {
   RefreshCw, AlertCircle, CheckCircle2, Loader2, Key
 } from 'lucide-react';
 import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, 
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
-
-// Generate latency history from current latency
-const generateLatencyHistory = (baseLatency: number) => {
-  return Array.from({ length: 24 }, (_, i) => ({
-    hour: `${i}:00`,
-    latency: Math.max(5, baseLatency + Math.floor(Math.random() * 40) - 20),
-  }));
-};
-
-// Generate request history
-const generateRequestHistory = (baseRequests: number) => {
-  return Array.from({ length: 7 }, (_, i) => ({
-    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-    requests: Math.max(100, Math.floor(baseRequests / 7) + Math.floor(Math.random() * 500) - 250),
-  }));
-};
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { icon: any; color: string; bg: string; label: string }> = {
@@ -49,8 +32,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const ServerDetailCard = ({ server, onClose }: { server: MCPServerDB; onClose: () => void }) => {
   const metadata = getServerMetadata(server.metadata);
-  const latencyData = generateLatencyHistory(server.latency_ms || 50);
-  const requestData = generateRequestHistory(server.requests_today || 1000);
+  // Show message that historical data is not available - only real-time current values
   const categoryStyle = categoryColors[metadata.category as keyof typeof categoryColors] || 
     { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border' };
   
@@ -121,67 +103,38 @@ const ServerDetailCard = ({ server, onClose }: { server: MCPServerDB; onClose: (
           </div>
         </div>
         
-        {/* Charts */}
+        {/* Real-time Status - No fake historical data */}
         <div className="p-6 space-y-6">
-          {/* Latency Chart */}
+          {/* Current Real Values */}
           <div>
             <h3 className="text-sm font-mono text-muted-foreground mb-4 uppercase tracking-wider">
-              24h Latency Trend
+              Current Real-Time Metrics
             </h3>
-            <div className="h-48 w-full">
-              <ResponsiveContainer>
-                <AreaChart data={latencyData}>
-                  <defs>
-                    <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="latency" 
-                    stroke="hsl(var(--primary))" 
-                    fill="url(#latencyGradient)" 
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                <div className="text-xs text-muted-foreground mb-1">Current Latency</div>
+                <div className="text-2xl font-bold text-primary">{server.latency_ms || 0}ms</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Last ping: {server.last_ping ? new Date(server.last_ping).toLocaleString() : 'Never'}
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <div className="text-xs text-muted-foreground mb-1">Requests Today</div>
+                <div className="text-2xl font-bold text-emerald-400">{server.requests_today || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Real requests through this MCP server
+                </div>
+              </div>
             </div>
           </div>
           
-          {/* Request Volume Chart */}
-          <div>
-            <h3 className="text-sm font-mono text-muted-foreground mb-4 uppercase tracking-wider">
-              Weekly Request Volume
-            </h3>
-            <div className="h-48 w-full">
-              <ResponsiveContainer>
-                <BarChart data={requestData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  />
-                  <Bar dataKey="requests" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <div className="p-4 rounded-xl bg-muted/50 border border-border">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">
+                Historical charts will show once the server processes real requests. 
+                Metrics update in real-time as agents use this MCP server.
+              </span>
             </div>
           </div>
           
@@ -212,20 +165,14 @@ const ServerDetailCard = ({ server, onClose }: { server: MCPServerDB; onClose: (
 };
 
 const MCPServersPage = () => {
-  const { servers, isLoading, stats, refreshServers, simulateActivity } = useMCPServers();
+  const { servers, isLoading, stats, refreshServers, runHealthCheck } = useMCPServers();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedServer, setSelectedServer] = useState<MCPServerDB | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Auto-simulate activity every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      simulateActivity();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  // No auto-simulation - data is REAL and updates only when actual requests happen
   
   const categories = [...new Set(servers.map(s => getServerMetadata(s.metadata).category))];
   
@@ -239,7 +186,7 @@ const MCPServersPage = () => {
   
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await simulateActivity();
+    await runHealthCheck();
     refreshServers();
     setTimeout(() => setIsRefreshing(false), 1000);
   };
