@@ -1,271 +1,279 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Float, Sphere, MeshDistortMaterial, Environment, Stars, Trail, OrbitControls } from '@react-three/drei';
+import { Float, MeshDistortMaterial, Stars, Trail, OrbitControls, Sparkles } from '@react-three/drei';
 import { useRef, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 
-// Animated floating sphere with glow
-const GlowingSphere = ({ position, color, size = 1, speed = 1 }: { 
-  position: [number, number, number]; 
-  color: string; 
-  size?: number;
-  speed?: number;
-}) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  
+// Massive glowing central node with energy pulses
+const CentralNode = () => {
+  const coreRef = useRef<THREE.Mesh>(null);
+  const innerRef = useRef<THREE.Mesh>(null);
+  const outerRef = useRef<THREE.Mesh>(null);
+
   useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x = state.clock.elapsedTime * 0.2 * speed;
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.3 * speed;
+    const t = state.clock.elapsedTime;
+    if (coreRef.current) {
+      coreRef.current.rotation.x = t * 0.3;
+      coreRef.current.rotation.y = t * 0.5;
+      const scale = 1 + Math.sin(t * 2) * 0.1;
+      coreRef.current.scale.setScalar(scale);
+    }
+    if (innerRef.current) {
+      innerRef.current.rotation.y = t * 0.8;
+      innerRef.current.rotation.z = t * 0.3;
+    }
+    if (outerRef.current) {
+      const pulse = 1.5 + Math.sin(t * 3) * 0.3;
+      outerRef.current.scale.setScalar(pulse);
     }
   });
 
   return (
-    <Float speed={speed} rotationIntensity={0.5} floatIntensity={1}>
-      <mesh ref={meshRef} position={position}>
-        <sphereGeometry args={[size, 64, 64]} />
-        <MeshDistortMaterial
-          color={color}
-          attach="material"
-          distort={0.4}
-          speed={2}
-          roughness={0.2}
-          metalness={0.8}
-        />
-      </mesh>
-    </Float>
-  );
-};
-
-// Central core with pulsing effect
-const CentralCore = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.5;
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.1;
-      meshRef.current.scale.setScalar(scale);
-    }
-    if (glowRef.current) {
-      const glowScale = 1.5 + Math.sin(state.clock.elapsedTime * 1.5) * 0.2;
-      glowRef.current.scale.setScalar(glowScale);
-    }
-  });
-
-  return (
-    <group>
-      {/* Inner core */}
-      <mesh ref={meshRef}>
-        <icosahedronGeometry args={[1.2, 4]} />
-        <MeshDistortMaterial
+    <group position={[0, 0, 0]}>
+      {/* Inner wireframe */}
+      <mesh ref={innerRef}>
+        <dodecahedronGeometry args={[0.8, 0]} />
+        <meshStandardMaterial
           color="#22c55e"
-          attach="material"
-          distort={0.3}
-          speed={3}
-          roughness={0.1}
-          metalness={0.9}
           emissive="#22c55e"
-          emissiveIntensity={0.5}
+          emissiveIntensity={2}
+          wireframe
         />
       </mesh>
-      
-      {/* Outer glow */}
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[1.8, 32, 32]} />
-        <meshBasicMaterial
-          color="#22c55e"
-          transparent
-          opacity={0.1}
+
+      {/* Main core */}
+      <mesh ref={coreRef}>
+        <icosahedronGeometry args={[1.2, 2]} />
+        <MeshDistortMaterial
+          color="#10b981"
+          emissive="#22c55e"
+          emissiveIntensity={0.8}
+          distort={0.4}
+          speed={5}
+          metalness={0.9}
+          roughness={0.1}
         />
+      </mesh>
+
+      {/* Outer glow */}
+      <mesh ref={outerRef}>
+        <sphereGeometry args={[1.8, 32, 32]} />
+        <meshBasicMaterial color="#22c55e" transparent opacity={0.08} side={THREE.BackSide} />
       </mesh>
     </group>
   );
 };
 
 // Orbiting rings
-const OrbitRing = ({ radius, speed, color }: { radius: number; speed: number; color: string }) => {
-  const ringRef = useRef<THREE.Mesh>(null);
+const OrbitRings = () => {
+  const ring1 = useRef<THREE.Mesh>(null);
+  const ring2 = useRef<THREE.Mesh>(null);
+  const ring3 = useRef<THREE.Mesh>(null);
 
   useFrame((state) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.z = state.clock.elapsedTime * speed;
-      ringRef.current.rotation.x = Math.PI / 2 + Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+    const t = state.clock.elapsedTime;
+    if (ring1.current) {
+      ring1.current.rotation.x = Math.PI / 2;
+      ring1.current.rotation.z = t * 0.3;
+    }
+    if (ring2.current) {
+      ring2.current.rotation.x = Math.PI / 3;
+      ring2.current.rotation.z = -t * 0.2;
+    }
+    if (ring3.current) {
+      ring3.current.rotation.x = Math.PI / 2.5;
+      ring3.current.rotation.y = t * 0.15;
     }
   });
 
   return (
-    <mesh ref={ringRef}>
-      <torusGeometry args={[radius, 0.02, 16, 100]} />
-      <meshBasicMaterial color={color} transparent opacity={0.6} />
-    </mesh>
+    <>
+      <mesh ref={ring1}>
+        <torusGeometry args={[2.5, 0.03, 16, 100]} />
+        <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={1} />
+      </mesh>
+      <mesh ref={ring2}>
+        <torusGeometry args={[3.2, 0.02, 16, 100]} />
+        <meshStandardMaterial color="#14b8a6" emissive="#14b8a6" emissiveIntensity={0.8} />
+      </mesh>
+      <mesh ref={ring3}>
+        <torusGeometry args={[4, 0.02, 16, 100]} />
+        <meshStandardMaterial color="#10b981" emissive="#10b981" emissiveIntensity={0.6} />
+      </mesh>
+    </>
   );
 };
 
-// Floating particles system
-const ParticleField = ({ count = 200 }: { count?: number }) => {
+// Orbiting satellite with trail
+const Satellite = ({ radius, speed, color, startAngle = 0, tilt = 0 }: {
+  radius: number;
+  speed: number;
+  color: string;
+  startAngle?: number;
+  tilt?: number;
+}) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime * speed + startAngle;
+    if (meshRef.current) {
+      meshRef.current.position.x = Math.cos(t) * radius;
+      meshRef.current.position.z = Math.sin(t) * radius;
+      meshRef.current.position.y = Math.sin(t * 2) * 0.5;
+      meshRef.current.rotation.x = t * 2;
+      meshRef.current.rotation.y = t * 3;
+    }
+  });
+
+  return (
+    <group rotation={[tilt, 0, 0]}>
+      <Trail width={0.4} length={5} color={color} attenuation={(t) => t * t}>
+        <mesh ref={meshRef}>
+          <octahedronGeometry args={[0.2, 0]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1} metalness={0.9} roughness={0.1} />
+        </mesh>
+      </Trail>
+    </group>
+  );
+};
+
+// Floating crystal shards
+const Crystals = () => {
+  const crystals = useMemo(() => {
+    return Array.from({ length: 15 }).map(() => ({
+      position: [
+        (Math.random() - 0.5) * 12,
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 12,
+      ] as [number, number, number],
+      scale: 0.1 + Math.random() * 0.2,
+      speed: 0.5 + Math.random() * 1,
+    }));
+  }, []);
+
+  return (
+    <>
+      {crystals.map((crystal, i) => (
+        <Float key={i} speed={crystal.speed} rotationIntensity={1} floatIntensity={2}>
+          <mesh position={crystal.position} scale={crystal.scale}>
+            <octahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial
+              color={i % 2 === 0 ? '#22c55e' : '#14b8a6'}
+              emissive={i % 2 === 0 ? '#22c55e' : '#14b8a6'}
+              emissiveIntensity={0.5}
+              metalness={0.9}
+              roughness={0.1}
+              transparent
+              opacity={0.7}
+            />
+          </mesh>
+        </Float>
+      ))}
+    </>
+  );
+};
+
+// Spiral particle storm
+const ParticleStorm = () => {
   const points = useRef<THREE.Points>(null);
   
-  const particlesPosition = useMemo(() => {
-    const positions = new Float32Array(count * 3);
+  const positions = useMemo(() => {
+    const count = 400;
+    const pos = new Float32Array(count * 3);
+    
     for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = 5 + Math.random() * 10;
+      const angle = (i / count) * Math.PI * 6;
+      const radius = 3 + (i / count) * 6;
+      const y = (Math.random() - 0.5) * 8;
       
-      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = r * Math.cos(phi);
+      pos[i * 3] = Math.cos(angle) * radius + (Math.random() - 0.5);
+      pos[i * 3 + 1] = y;
+      pos[i * 3 + 2] = Math.sin(angle) * radius + (Math.random() - 0.5);
     }
-    return positions;
-  }, [count]);
+    
+    return pos;
+  }, []);
 
   useFrame((state) => {
     if (points.current) {
-      points.current.rotation.y = state.clock.elapsedTime * 0.05;
-      points.current.rotation.x = state.clock.elapsedTime * 0.03;
+      points.current.rotation.y = state.clock.elapsedTime * 0.08;
     }
   });
 
   return (
     <points ref={points}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={particlesPosition}
-          itemSize={3}
-        />
+        <bufferAttribute attach="attributes-position" count={400} array={positions} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.05}
-        color="#22c55e"
-        transparent
-        opacity={0.6}
-        sizeAttenuation
-      />
+      <pointsMaterial size={0.06} color="#22c55e" transparent opacity={0.7} sizeAttenuation />
     </points>
   );
 };
 
-// Connection lines between spheres
-const ConnectionLines = () => {
-  const linesRef = useRef<THREE.LineSegments>(null);
-  
-  const positions = useMemo(() => {
-    const points: number[] = [];
-    const spherePositions = [
-      [-3, 2, -2],
-      [3, -1, -3],
-      [-2, -2, 2],
-      [2.5, 1.5, 1],
-      [-1.5, 3, -1],
-      [1, -3, 2],
-    ];
-    
-    // Connect to center
-    spherePositions.forEach(pos => {
-      points.push(0, 0, 0);
-      points.push(pos[0] * 0.5, pos[1] * 0.5, pos[2] * 0.5);
-    });
-    
-    return new Float32Array(points);
-  }, []);
+// Energy beams
+const EnergyBeams = () => {
+  const beamsRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
-    if (linesRef.current) {
-      linesRef.current.rotation.y = state.clock.elapsedTime * 0.1;
+    if (beamsRef.current) {
+      beamsRef.current.rotation.y = state.clock.elapsedTime * 0.15;
     }
   });
 
   return (
-    <lineSegments ref={linesRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={positions.length / 3}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color="#22c55e" transparent opacity={0.3} />
-    </lineSegments>
+    <group ref={beamsRef}>
+      {Array.from({ length: 6 }).map((_, i) => {
+        const angle = (i / 6) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(angle) * 1.5, 0, Math.sin(angle) * 1.5]} rotation={[0, 0, angle + Math.PI / 2]}>
+            <cylinderGeometry args={[0.02, 0.06, 3, 8]} />
+            <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={2} transparent opacity={0.5} />
+          </mesh>
+        );
+      })}
+    </group>
   );
 };
 
-// Mouse-following camera effect
+// Camera controller
 const CameraController = () => {
-  const { camera } = useThree();
+  const { camera, mouse } = useThree();
   
-  useFrame((state) => {
-    // Subtle camera movement based on time
-    camera.position.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.5;
-    camera.position.y = Math.cos(state.clock.elapsedTime * 0.15) * 0.3;
+  useFrame(() => {
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, mouse.x * 1.5, 0.02);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, mouse.y * 0.8 + 1, 0.02);
     camera.lookAt(0, 0, 0);
   });
 
   return null;
 };
 
-// Main 3D Scene
+// Main Scene
 export const Hero3DScene = () => {
   return (
     <div className="absolute inset-0 -z-10">
-      <Canvas
-        camera={{ position: [0, 0, 8], fov: 60 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true }}
-      >
+      <Canvas camera={{ position: [0, 1, 9], fov: 55 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
         <Suspense fallback={null}>
-          {/* Lighting */}
-          <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} intensity={1} color="#22c55e" />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} color="#14b8a6" />
-          <spotLight
-            position={[0, 10, 0]}
-            angle={0.3}
-            penumbra={1}
-            intensity={1}
-            color="#22c55e"
-          />
+          <ambientLight intensity={0.2} />
+          <pointLight position={[10, 10, 10]} intensity={2} color="#22c55e" />
+          <pointLight position={[-10, -10, -10]} intensity={1} color="#14b8a6" />
+          <pointLight position={[0, 0, 0]} intensity={3} color="#22c55e" distance={5} />
 
-          {/* Central core */}
-          <CentralCore />
+          <CentralNode />
+          <OrbitRings />
+          <EnergyBeams />
 
-          {/* Orbiting rings */}
-          <OrbitRing radius={2.5} speed={0.3} color="#22c55e" />
-          <OrbitRing radius={3.2} speed={-0.2} color="#14b8a6" />
-          <OrbitRing radius={4} speed={0.15} color="#22c55e" />
+          <Satellite radius={3} speed={0.5} color="#22c55e" startAngle={0} tilt={0.2} />
+          <Satellite radius={4} speed={0.35} color="#14b8a6" startAngle={Math.PI} tilt={-0.3} />
+          <Satellite radius={5} speed={0.25} color="#10b981" startAngle={Math.PI / 2} tilt={0.4} />
 
-          {/* Floating spheres */}
-          <GlowingSphere position={[-3, 2, -2]} color="#22c55e" size={0.4} speed={1.2} />
-          <GlowingSphere position={[3, -1, -3]} color="#14b8a6" size={0.5} speed={0.8} />
-          <GlowingSphere position={[-2, -2, 2]} color="#10b981" size={0.35} speed={1} />
-          <GlowingSphere position={[2.5, 1.5, 1]} color="#22c55e" size={0.45} speed={0.9} />
-          <GlowingSphere position={[-1.5, 3, -1]} color="#059669" size={0.3} speed={1.1} />
-          <GlowingSphere position={[1, -3, 2]} color="#14b8a6" size={0.4} speed={1.3} />
+          <Crystals />
+          <ParticleStorm />
+          
+          <Sparkles count={80} size={2} scale={[15, 15, 15]} color="#22c55e" speed={0.4} />
+          <Stars radius={60} depth={50} count={1500} factor={4} saturation={0} fade speed={1} />
 
-          {/* Connection lines */}
-          <ConnectionLines />
-
-          {/* Particle field */}
-          <ParticleField count={300} />
-
-          {/* Stars background */}
-          <Stars radius={50} depth={50} count={1000} factor={4} saturation={0} fade speed={1} />
-
-          {/* Camera animation */}
           <CameraController />
-
-          {/* Allow user interaction */}
-          <OrbitControls
-            enableZoom={false}
-            enablePan={false}
-            maxPolarAngle={Math.PI / 1.5}
-            minPolarAngle={Math.PI / 3}
-            autoRotate
-            autoRotateSpeed={0.5}
-          />
+          <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.3} />
         </Suspense>
       </Canvas>
     </div>
