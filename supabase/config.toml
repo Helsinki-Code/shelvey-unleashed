@@ -1,1 +1,4 @@
 project_id = "isoafhjneixsoygrpgtt"
+
+[functions.simulate-mcp-activity]
+verify_jwt = false

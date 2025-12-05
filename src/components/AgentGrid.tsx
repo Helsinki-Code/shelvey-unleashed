@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { agents, Agent, AgentStatus, divisionNames } from '@/lib/agents-data';
-import { mcpServers, agentMCPConnections } from '@/lib/mcp-servers';
+import { agentMCPConnections, mcpServers as staticMcpServers } from '@/lib/mcp-servers';
+import { useMCPServers, getServerMetadata } from '@/hooks/useMCPServers';
 import { X, Mic, Activity, Zap, Server, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -12,9 +13,24 @@ const statusConfig: Record<AgentStatus, { color: string; bg: string; label: stri
   idle: { color: 'text-muted-foreground', bg: 'bg-muted-foreground', label: 'Idle' },
 };
 
-const AgentCard = ({ agent, onClick }: { agent: Agent; onClick: () => void }) => {
+const AgentCard = ({ agent, onClick, dbServers }: { agent: Agent; onClick: () => void; dbServers: ReturnType<typeof useMCPServers>['servers'] }) => {
   const status = statusConfig[agent.status];
   const connectedServers = agentMCPConnections[agent.id] || [];
+  
+  // Get server info from database or fallback to static
+  const getServer = (serverId: string) => {
+    const dbServer = dbServers.find(s => s.server_id === serverId);
+    if (dbServer) {
+      return {
+        id: dbServer.server_id,
+        name: dbServer.server_name,
+        status: dbServer.status,
+        icon: staticMcpServers.find(s => s.id === serverId)?.icon || '🔧',
+        latency: dbServer.latency_ms,
+      };
+    }
+    return staticMcpServers.find(s => s.id === serverId);
+  };
   
   return (
     <motion.div
@@ -72,7 +88,7 @@ const AgentCard = ({ agent, onClick }: { agent: Agent; onClick: () => void }) =>
           <Server className="w-3 h-3 text-muted-foreground" />
           <div className="flex gap-1.5">
             {connectedServers.slice(0, 3).map(serverId => {
-              const server = mcpServers.find(s => s.id === serverId);
+              const server = getServer(serverId);
               if (!server) return null;
               const isConnected = server.status === 'connected';
               const isSyncing = server.status === 'syncing';
@@ -191,7 +207,7 @@ const AgentDetailModal = ({ agent, onClose }: { agent: Agent; onClose: () => voi
             </h4>
             <div className="flex flex-wrap gap-2">
               {connectedServers.map(serverId => {
-                const server = mcpServers.find(s => s.id === serverId);
+                const server = staticMcpServers.find(s => s.id === serverId);
                 if (!server) return null;
                 const isConnected = server.status === 'connected';
                 const isSyncing = server.status === 'syncing';
@@ -255,6 +271,7 @@ const AgentDetailModal = ({ agent, onClose }: { agent: Agent; onClose: () => voi
 export const AgentGrid = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [filter, setFilter] = useState<AgentStatus | 'all'>('all');
+  const { servers: dbServers } = useMCPServers();
   
   const filteredAgents = filter === 'all' ? agents : agents.filter(a => a.status === filter);
   
@@ -317,6 +334,7 @@ export const AgentGrid = () => {
                 key={agent.id}
                 agent={agent}
                 onClick={() => setSelectedAgent(agent)}
+                dbServers={dbServers}
               />
             ))}
           </AnimatePresence>
