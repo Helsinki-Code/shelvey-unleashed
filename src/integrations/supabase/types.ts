@@ -483,6 +483,59 @@ export type Database = {
         }
         Relationships: []
       }
+      code_patches: {
+        Row: {
+          applied_at: string | null
+          created_at: string | null
+          file_path: string
+          id: string
+          metadata: Json | null
+          new_content: string | null
+          original_content: string | null
+          patch_content: string
+          patch_type: string | null
+          project_id: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string | null
+          file_path: string
+          id?: string
+          metadata?: Json | null
+          new_content?: string | null
+          original_content?: string | null
+          patch_content: string
+          patch_type?: string | null
+          project_id?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string | null
+          file_path?: string
+          id?: string
+          metadata?: Json | null
+          new_content?: string | null
+          original_content?: string | null
+          patch_content?: string
+          patch_type?: string | null
+          project_id?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_patches_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escalations: {
         Row: {
           attempted_solutions: Json | null
@@ -1005,6 +1058,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shell_command_approvals: {
+        Row: {
+          approved_at: string | null
+          command: string
+          created_at: string | null
+          error: string | null
+          executed_at: string | null
+          id: string
+          metadata: Json | null
+          output: string | null
+          risk_level: string | null
+          status: string | null
+          user_id: string
+          working_directory: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          command: string
+          created_at?: string | null
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output?: string | null
+          risk_level?: string | null
+          status?: string | null
+          user_id: string
+          working_directory?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          command?: string
+          created_at?: string | null
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output?: string | null
+          risk_level?: string | null
+          status?: string | null
+          user_id?: string
+          working_directory?: string | null
+        }
+        Relationships: []
       }
       team_meetings: {
         Row: {
