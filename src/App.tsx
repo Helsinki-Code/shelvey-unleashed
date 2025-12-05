@@ -11,6 +11,7 @@ import NeuralPage from "./pages/NeuralPage";
 import MeetingsPage from "./pages/MeetingsPage";
 import VoicePage from "./pages/VoicePage";
 import AdminDashboard from "./pages/AdminDashboard";
+import MCPServersPage from "./pages/MCPServersPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/voice" element={<VoicePage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/mcp" element={<MCPServersPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
