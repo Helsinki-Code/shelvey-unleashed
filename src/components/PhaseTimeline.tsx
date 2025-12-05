@@ -33,6 +33,7 @@ export function PhaseTimeline({ projectId }: PhaseTimelineProps) {
   const [phases, setPhases] = useState<BusinessPhase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [advancingPhase, setAdvancingPhase] = useState(false);
+  const [startingWork, setStartingWork] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -113,8 +114,37 @@ export function PhaseTimeline({ projectId }: PhaseTimelineProps) {
     }
   };
 
+  const handleStartWork = async () => {
+    if (!activePhase) return;
+    setStartingWork(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('phase-auto-worker', {
+        body: { 
+          action: 'start_phase_work', 
+          userId: user.id,
+          projectId,
+          phaseId: activePhase.id 
+        }
+      });
+
+      if (response.error) throw response.error;
+      
+      toast.success(`Work started! ${response.data?.data?.successfullyStarted || 0} agents now working.`);
+      fetchPhases();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to start work');
+    } finally {
+      setStartingWork(false);
+    }
+  };
+
   const activePhase = phases.find(p => p.status === 'active');
   const canAdvance = activePhase && getPhaseProgress(activePhase) === 100;
+  const hasNoProgress = activePhase && getPhaseProgress(activePhase) === 0 && 
+    activePhase.phase_deliverables?.every(d => d.status === 'pending');
 
   if (isLoading) {
     return (
@@ -145,20 +175,37 @@ export function PhaseTimeline({ projectId }: PhaseTimelineProps) {
           <Clock className="w-5 h-5 text-primary" />
           Business Phase Timeline
         </CardTitle>
-        {canAdvance && (
-          <Button 
-            onClick={handleAdvancePhase} 
-            disabled={advancingPhase}
-            className="gap-2"
-          >
-            {advancingPhase ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ChevronRight className="w-4 h-4" />
-            )}
-            Advance to Next Phase
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {hasNoProgress && (
+            <Button 
+              onClick={handleStartWork} 
+              disabled={startingWork}
+              variant="default"
+              className="gap-2"
+            >
+              {startingWork ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              Start Agents
+            </Button>
+          )}
+          {canAdvance && (
+            <Button 
+              onClick={handleAdvancePhase} 
+              disabled={advancingPhase}
+              className="gap-2"
+            >
+              {advancingPhase ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+              Advance to Next Phase
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {/* Timeline */}
