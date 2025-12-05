@@ -137,3 +137,21 @@ verify_jwt = false
 
 [functions.mcp-shadcn]
 verify_jwt = false
+
+[functions.mcp-shopify]
+verify_jwt = false
+
+[functions.mcp-etsy]
+verify_jwt = false
+
+[functions.mcp-woocommerce]
+verify_jwt = false
+
+[functions.mcp-alpaca]
+verify_jwt = false
+
+[functions.mcp-coinbase]
+verify_jwt = false
+
+[functions.mcp-binance]
+verify_jwt = false

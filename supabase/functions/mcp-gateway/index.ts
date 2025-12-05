@@ -29,6 +29,14 @@ const MCP_ENDPOINTS: Record<string, string> = {
   // Modern React website generation MCPs
   'mcp-21st-magic': 'mcp-21st-magic',
   'mcp-shadcn': 'mcp-shadcn',
+  // E-Commerce MCPs (user keys only)
+  'mcp-shopify': 'mcp-shopify',
+  'mcp-etsy': 'mcp-etsy',
+  'mcp-woocommerce': 'mcp-woocommerce',
+  // Trading MCPs (user keys only)
+  'mcp-alpaca': 'mcp-alpaca',
+  'mcp-coinbase': 'mcp-coinbase',
+  'mcp-binance': 'mcp-binance',
 };
 
 // Twitter tool to Perplexity fallback mapping
