@@ -218,3 +218,9 @@ verify_jwt = false
 
 [functions.oauth-callback]
 verify_jwt = false
+
+[functions.computer-use-agent]
+verify_jwt = false
+
+[functions.voice-session]
+verify_jwt = false
