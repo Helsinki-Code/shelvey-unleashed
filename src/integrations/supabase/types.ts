@@ -257,6 +257,69 @@ export type Database = {
         }
         Relationships: []
       }
+      business_phases: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          entry_criteria: Json | null
+          exit_criteria: Json | null
+          id: string
+          phase_name: string
+          phase_number: number
+          project_id: string
+          started_at: string | null
+          status: string | null
+          team_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          entry_criteria?: Json | null
+          exit_criteria?: Json | null
+          id?: string
+          phase_name: string
+          phase_number: number
+          project_id: string
+          started_at?: string | null
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          entry_criteria?: Json | null
+          exit_criteria?: Json | null
+          id?: string
+          phase_name?: string
+          phase_number?: number
+          project_id?: string
+          started_at?: string | null
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_phases_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_projects: {
         Row: {
           business_model: Json | null
@@ -394,6 +457,78 @@ export type Database = {
         }
         Relationships: []
       }
+      phase_deliverables: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assigned_agent_id: string | null
+          assigned_team_id: string | null
+          content: Json | null
+          created_at: string | null
+          deliverable_type: string
+          description: string | null
+          feedback: string | null
+          id: string
+          name: string
+          phase_id: string
+          reviewed_by: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_agent_id?: string | null
+          assigned_team_id?: string | null
+          content?: Json | null
+          created_at?: string | null
+          deliverable_type: string
+          description?: string | null
+          feedback?: string | null
+          id?: string
+          name: string
+          phase_id: string
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_agent_id?: string | null
+          assigned_team_id?: string | null
+          content?: Json | null
+          created_at?: string | null
+          deliverable_type?: string
+          description?: string | null
+          feedback?: string | null
+          id?: string
+          name?: string
+          phase_id?: string
+          reviewed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase_deliverables_assigned_team_id_fkey"
+            columns: ["assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phase_deliverables_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "business_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -429,6 +564,89 @@ export type Database = {
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          agent_id: string
+          agent_name: string
+          created_at: string | null
+          current_task: string | null
+          id: string
+          reports_to: string | null
+          role: string
+          status: string | null
+          team_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          agent_name: string
+          created_at?: string | null
+          current_task?: string | null
+          id?: string
+          reports_to?: string | null
+          role: string
+          status?: string | null
+          team_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          agent_name?: string
+          created_at?: string | null
+          current_task?: string | null
+          id?: string
+          reports_to?: string | null
+          role?: string
+          status?: string | null
+          team_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          activation_phase: number | null
+          created_at: string | null
+          description: string | null
+          division: string
+          id: string
+          manager_agent_id: string
+          name: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          activation_phase?: number | null
+          created_at?: string | null
+          description?: string | null
+          division: string
+          id?: string
+          manager_agent_id: string
+          name: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          activation_phase?: number | null
+          created_at?: string | null
+          description?: string | null
+          division?: string
+          id?: string
+          manager_agent_id?: string
+          name?: string
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: []

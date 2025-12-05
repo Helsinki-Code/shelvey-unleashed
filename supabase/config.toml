@@ -29,3 +29,12 @@ verify_jwt = false
 
 [functions.deploy-website]
 verify_jwt = false
+
+[functions.coo-coordinator]
+verify_jwt = false
+
+[functions.team-manager]
+verify_jwt = false
+
+[functions.phase-manager]
+verify_jwt = false

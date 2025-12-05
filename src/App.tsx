@@ -17,6 +17,7 @@ import AuthPage from "./pages/AuthPage";
 import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import WebsitesPage from "./pages/WebsitesPage";
+import OrganizationPage from "./pages/OrganizationPage";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/mcp" element={<MCPServersPage />} />
               <Route path="/websites" element={<WebsitesPage />} />
+              <Route path="/organization" element={<OrganizationPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
