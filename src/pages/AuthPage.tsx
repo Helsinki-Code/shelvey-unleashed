@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, Sparkles } from 'lucide-react';
@@ -111,10 +111,9 @@ const AuthPage = () => {
       }
     } else {
       toast({
-        title: 'Account created!',
-        description: 'Welcome to ShelVey! Your 14-day trial has started.',
+        title: 'Check your email!',
+        description: 'We sent you a verification link. Please verify your email to continue.',
       });
-      navigate('/dashboard');
     }
   };
 
@@ -175,7 +174,15 @@ const AuthPage = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="signin-password">Password</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="signin-password">Password</Label>
+                        <Link 
+                          to="/forgot-password" 
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -266,7 +273,10 @@ const AuthPage = () => {
                     </Button>
                     
                     <p className="text-xs text-center text-muted-foreground">
-                      By signing up, you agree to our Terms of Service and Privacy Policy.
+                      By signing up, you agree to our{' '}
+                      <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+                      {' '}and{' '}
+                      <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
                     </p>
                   </form>
                 </TabsContent>

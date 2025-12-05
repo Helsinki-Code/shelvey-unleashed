@@ -20,6 +20,13 @@ import WebsitesPage from "./pages/WebsitesPage";
 import OrganizationPage from "./pages/OrganizationPage";
 import BrandingPage from "./pages/BrandingPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import SecurityPage from "./pages/SecurityPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +41,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/dashboard" element={<UserDashboard />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/pipeline" element={<PipelinePage />} />
@@ -46,6 +55,11 @@ const App = () => (
               <Route path="/organization" element={<OrganizationPage />} />
               <Route path="/branding" element={<BrandingPage />} />
               <Route path="/super-admin" element={<SuperAdminDashboard />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/security" element={<SecurityPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
