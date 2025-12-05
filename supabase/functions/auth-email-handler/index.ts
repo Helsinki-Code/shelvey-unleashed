@@ -167,13 +167,28 @@ const getActivityEmailHtml = (name: string, activity: string, details: string) =
 `;
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log("[auth-email-handler] Function invoked");
+  console.log("[auth-email-handler] Method:", req.method);
+  
   if (req.method === "OPTIONS") {
+    console.log("[auth-email-handler] Handling CORS preflight");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { type, userId, email, name, data } = await req.json();
-    console.log(`Processing ${type} email for user:`, userId || email);
+    const body = await req.json();
+    console.log("[auth-email-handler] Request body:", JSON.stringify(body));
+    
+    const { type, userId, email, name, data } = body;
+    console.log(`[auth-email-handler] Processing ${type} email for:`, email || userId);
+    
+    // Check if RESEND_API_KEY is configured
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) {
+      console.error("[auth-email-handler] RESEND_API_KEY is not configured!");
+      throw new Error("Email service not configured - missing RESEND_API_KEY");
+    }
+    console.log("[auth-email-handler] RESEND_API_KEY is configured (length:", resendKey.length, ")");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     let toEmail = email;
@@ -199,14 +214,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     let emailResponse;
 
+    console.log("[auth-email-handler] Sending email type:", type, "to:", toEmail, "name:", userName);
+    
     switch (type) {
       case "welcome":
+        console.log("[auth-email-handler] Preparing welcome email...");
+        console.log("[auth-email-handler] From:", EMAIL_CONFIG.welcomeFrom);
         emailResponse = await resend.emails.send({
           from: EMAIL_CONFIG.welcomeFrom,
           to: [toEmail],
           subject: "Welcome to ShelVey – Your AI Workforce Awaits! 🚀",
           html: getWelcomeEmailHtml(userName),
         });
+        console.log("[auth-email-handler] Welcome email response:", JSON.stringify(emailResponse));
         break;
 
       case "verification":
@@ -326,16 +346,17 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Unknown email type: ${type}`);
     }
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("[auth-email-handler] Email sent successfully:", JSON.stringify(emailResponse));
 
     return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error sending email:", error);
+    console.error("[auth-email-handler] ERROR:", error.message);
+    console.error("[auth-email-handler] Full error:", JSON.stringify(error));
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, details: error }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

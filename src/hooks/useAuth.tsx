@@ -120,7 +120,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
     
-    const { error } = await supabase.auth.signUp({
+    console.log('[Auth] Starting signup process for:', email);
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -128,6 +130,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         data: { full_name: fullName || '' },
       },
     });
+
+    // If signup successful, send custom welcome email via edge function
+    if (!error && data.user) {
+      console.log('[Auth] Signup successful, sending welcome email...');
+      try {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('auth-email-handler', {
+          body: { 
+            type: 'welcome', 
+            email, 
+            name: fullName || email.split('@')[0]
+          }
+        });
+        
+        if (emailError) {
+          console.error('[Auth] Failed to send welcome email:', emailError);
+        } else {
+          console.log('[Auth] Welcome email sent successfully:', emailData);
+        }
+      } catch (emailErr) {
+        console.error('[Auth] Error invoking email handler:', emailErr);
+      }
+    } else if (error) {
+      console.error('[Auth] Signup failed:', error.message);
+    }
 
     return { error };
   };
