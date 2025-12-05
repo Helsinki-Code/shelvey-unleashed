@@ -17,7 +17,7 @@ import {
 import { toast } from 'sonner';
 
 interface BrandAssetsProps {
-  branding: {
+  branding?: {
     colorPalette?: {
       primary?: string;
       secondary?: string;
@@ -30,11 +30,15 @@ interface BrandAssetsProps {
     logoDescription?: string;
     designPrinciples?: string[];
   };
-  businessName: string;
+  businessName?: string;
   logo?: any;
 }
 
-export const BrandAssetsPanel = ({ branding, businessName, logo }: BrandAssetsProps) => {
+export const BrandAssetsPanel = ({ 
+  branding = {}, 
+  businessName = 'Your Brand', 
+  logo 
+}: BrandAssetsProps) => {
   const colors = branding?.colorPalette || {};
   const typography = branding?.typography || {};
 

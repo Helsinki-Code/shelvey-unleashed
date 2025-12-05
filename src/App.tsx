@@ -18,6 +18,7 @@ import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import WebsitesPage from "./pages/WebsitesPage";
 import OrganizationPage from "./pages/OrganizationPage";
+import BrandingPage from "./pages/BrandingPage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/mcp" element={<MCPServersPage />} />
               <Route path="/websites" element={<WebsitesPage />} />
               <Route path="/organization" element={<OrganizationPage />} />
+              <Route path="/branding" element={<BrandingPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
