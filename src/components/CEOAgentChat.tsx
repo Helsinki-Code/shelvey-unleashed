@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, RefreshCw, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { CEOTaskDelegation } from './CEOTaskDelegation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,12 +15,18 @@ interface Message {
   timestamp: Date;
 }
 
-export const CEOAgentChat = () => {
+interface CEOAgentChatProps {
+  projectId?: string;
+  showDelegation?: boolean;
+}
+
+export const CEOAgentChat = ({ projectId, showDelegation = true }: CEOAgentChatProps) => {
   const { user, session } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showDelegationPanel, setShowDelegationPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -173,24 +180,50 @@ What business opportunity would you like to explore today?`,
   };
 
   return (
-    <Card className="glass-morphism cyber-border h-[600px] flex flex-col">
-      <CardHeader className="border-b border-border/50 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary-foreground" />
+    <div className="flex gap-4">
+      {/* Delegation Panel */}
+      {showDelegation && showDelegationPanel && (
+        <motion.div
+          initial={{ opacity: 0, x: -20, width: 0 }}
+          animate={{ opacity: 1, x: 0, width: 'auto' }}
+          exit={{ opacity: 0, x: -20, width: 0 }}
+          className="w-[400px] flex-shrink-0"
+        >
+          <CEOTaskDelegation projectId={projectId} />
+        </motion.div>
+      )}
+
+      <Card className="glass-morphism cyber-border h-[600px] flex flex-col flex-1">
+        <CardHeader className="border-b border-border/50 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Bot className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="cyber-text text-lg">CEO Agent</CardTitle>
+                <p className="text-xs text-muted-foreground">AI Business Strategist</p>
+              </div>
             </div>
-            <div>
-              <CardTitle className="cyber-text text-lg">CEO Agent</CardTitle>
-              <p className="text-xs text-muted-foreground">AI Business Strategist</p>
+            <div className="flex items-center gap-2">
+              {showDelegation && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowDelegationPanel(!showDelegationPanel)}
+                  className="gap-2"
+                >
+                  {showDelegationPanel ? <ChevronLeft className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                  {showDelegationPanel ? 'Hide' : 'Delegate'}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearChat}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                New Chat
+              </Button>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={clearChat}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            New Chat
-          </Button>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden p-0 flex flex-col">
         {/* Messages */}
@@ -272,7 +305,8 @@ What business opportunity would you like to explore today?`,
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
