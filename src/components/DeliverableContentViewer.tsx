@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ChevronDown, ChevronUp, Check, Clock, 
-  Eye, ThumbsUp, ThumbsDown, Loader2, Code
+  Eye, ThumbsUp, ThumbsDown, Loader2, Code, Bot, Zap
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,13 @@ interface GeneratedContent {
   [key: string]: any;
 }
 
+interface AgentActivity {
+  agent_name: string;
+  action: string;
+  status: string;
+  timestamp: string;
+}
+
 interface DeliverableContentViewerProps {
   deliverable: {
     id: string;
@@ -43,6 +51,7 @@ interface DeliverableContentViewerProps {
     deliverable_type: string;
     generated_content?: any;
     description?: string | null;
+    assigned_agent_id?: string | null;
   };
   onApprove?: (id: string) => void;
   onReject?: (id: string, feedback: string) => void;
@@ -174,9 +183,74 @@ export const DeliverableContentViewer = ({
 }: DeliverableContentViewerProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
+  const [agentActivity, setAgentActivity] = useState<AgentActivity | null>(null);
+  const [isAgentWorking, setIsAgentWorking] = useState(false);
   
   // Parse the content
   const content = parseGeneratedContent(deliverable.generated_content);
+
+  // Subscribe to real-time agent activity for this deliverable
+  useEffect(() => {
+    // Only track if deliverable is in progress
+    if (deliverable.status !== 'in_progress' && deliverable.status !== 'pending') {
+      setIsAgentWorking(false);
+      return;
+    }
+
+    // Fetch recent activity for this deliverable
+    const fetchRecentActivity = async () => {
+      const { data } = await supabase
+        .from('agent_activity_logs')
+        .select('*')
+        .ilike('metadata->>deliverable_id', deliverable.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        const activity = data[0];
+        setAgentActivity({
+          agent_name: activity.agent_name,
+          action: activity.action,
+          status: activity.status,
+          timestamp: activity.created_at,
+        });
+        setIsAgentWorking(activity.status === 'working' || activity.status === 'in_progress');
+      }
+    };
+
+    fetchRecentActivity();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel(`deliverable-activity-${deliverable.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'agent_activity_logs',
+        },
+        (payload) => {
+          const newActivity = payload.new as any;
+          // Check if this activity is for our deliverable
+          if (newActivity.metadata?.deliverable_id === deliverable.id || 
+              newActivity.metadata?.deliverable_name === deliverable.name) {
+            setAgentActivity({
+              agent_name: newActivity.agent_name,
+              action: newActivity.action,
+              status: newActivity.status,
+              timestamp: newActivity.created_at,
+            });
+            setIsAgentWorking(newActivity.status === 'working' || newActivity.status === 'in_progress');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [deliverable.id, deliverable.name, deliverable.status]);
 
   const getStatusBadge = () => {
     switch (deliverable.status) {
@@ -210,11 +284,59 @@ export const DeliverableContentViewer = ({
             ) : (
               <Clock className="w-5 h-5 text-muted-foreground" />
             )}
-            <div>
+            <div className="flex-1">
               <CardTitle className="text-base">{deliverable.name}</CardTitle>
               {deliverable.description && (
                 <p className="text-sm text-muted-foreground mt-1">{deliverable.description}</p>
               )}
+              {/* Real-time Agent Activity Indicator */}
+              <AnimatePresence>
+                {(isAgentWorking || agentActivity) && deliverable.status === 'in_progress' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2 mt-2 p-2 rounded-md bg-primary/10 border border-primary/20"
+                  >
+                    <div className="relative">
+                      <Bot className="w-4 h-4 text-primary" />
+                      {isAgentWorking && (
+                        <motion.div
+                          className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-500"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 1 }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-primary truncate">
+                        {agentActivity?.agent_name || 'Agent'} is working
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <Zap className="w-3 h-3 inline mr-1" />
+                        {agentActivity?.action || 'Processing...'}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <motion.div
+                        className="w-1.5 h-1.5 rounded-full bg-primary"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ repeat: Infinity, duration: 1, delay: 0 }}
+                      />
+                      <motion.div
+                        className="w-1.5 h-1.5 rounded-full bg-primary"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
+                      />
+                      <motion.div
+                        className="w-1.5 h-1.5 rounded-full bg-primary"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -239,7 +361,15 @@ export const DeliverableContentViewer = ({
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
                 <p>Content is being generated...</p>
-                <p className="text-sm">Check back soon</p>
+                {agentActivity && (
+                  <div className="mt-3 p-3 rounded-lg bg-muted/50 max-w-xs mx-auto">
+                    <div className="flex items-center justify-center gap-2">
+                      <Bot className="w-4 h-4 text-primary animate-pulse" />
+                      <span className="text-sm font-medium">{agentActivity.agent_name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{agentActivity.action}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <ScrollArea className="max-h-[400px]">
