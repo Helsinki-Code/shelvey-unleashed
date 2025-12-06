@@ -41,18 +41,18 @@ const AGENT_SPECIALIZATIONS: Record<string, { name: string; suggestedMCPs: strin
   },
   'brand-identity': {
     name: 'Brand Identity Agent',
-    suggestedMCPs: ['mcp-falai', 'mcp-canva'],
+    suggestedMCPs: ['lovable-ai-image', 'mcp-perplexity'],
     capabilities: ['logo_design', 'brand_guidelines', 'visual_identity'],
   },
   'visual-design': {
     name: 'Visual Design Agent',
-    suggestedMCPs: ['mcp-falai', 'mcp-canva'],
+    suggestedMCPs: ['lovable-ai-image', 'mcp-perplexity'],
     capabilities: ['image_generation', 'graphic_design', 'asset_creation'],
   },
   'content-creator': {
     name: 'Content Creator Agent',
-    suggestedMCPs: ['mcp-perplexity', 'mcp-falai'],
-    capabilities: ['content_writing', 'blog_posts', 'social_content'],
+    suggestedMCPs: ['mcp-perplexity', 'lovable-ai-image'],
+    capabilities: ['content_writing', 'blog_posts', 'social_content', 'typography_selection'],
   },
   'social-media': {
     name: 'Social Media Manager',
@@ -467,12 +467,13 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'sentiment_analysis': ['mcp-perplexity'],
     'social_sentiment': ['mcp-perplexity'],
     'community_research': ['mcp-perplexity'],
-    'brand_strategy': ['mcp-perplexity'],
+    'brand_strategy': ['lovable-ai-image', 'mcp-perplexity'],
     'brand_identity': ['lovable-ai-image'],
     'logo_design': ['lovable-ai-image'],
-    'color_palette': ['mcp-perplexity'],
-    'brand_guidelines': ['mcp-perplexity'],
+    'color_palette': ['lovable-ai-image'],
+    'brand_guidelines': ['lovable-ai-image', 'mcp-perplexity'],
     'visual_assets': ['lovable-ai-image'],
+    'typography': ['lovable-ai-image'],
     'content_creation': ['mcp-perplexity'],
     'social_media': ['mcp-perplexity', 'mcp-linkedin'],
     'lead_generation': ['mcp-linkedin'],
@@ -574,12 +575,34 @@ async function executeMCPWork(
 
 async function generateImageWithLovableAI(lovableApiKey: string, taskType: string, inputData: any): Promise<any> {
   let imagePrompt = '';
+  const businessName = inputData?.projectName || inputData?.deliverableName || 'Business';
+  const industry = inputData?.industry || 'general';
   
-  if (taskType === 'logo_design') {
-    imagePrompt = `Create a modern, professional logo for "${inputData?.projectName || 'Business'}". Industry: ${inputData?.industry || 'general'}. Style: Clean, minimalist, memorable.`;
-  } else {
-    imagePrompt = `Create a professional image for ${inputData?.projectName || 'a business'}. ${inputData?.description || ''}`;
+  // Create specialized prompts for different brand asset types
+  switch (taskType) {
+    case 'logo_design':
+      imagePrompt = `Create a modern, professional, high-quality business logo for "${businessName}". Industry: ${industry}. Style: Clean, minimalist, memorable, scalable. The logo should be on a clean white background, suitable for business cards, websites, and marketing materials.`;
+      break;
+    case 'brand_strategy':
+      imagePrompt = `Create a professional brand mood board visual for "${businessName}" in the ${industry} industry. Include visual elements representing: brand values, target audience aesthetics, competitor positioning, and brand personality. Modern, professional business style.`;
+      break;
+    case 'color_palette':
+      imagePrompt = `Create a professional brand color palette visualization for "${businessName}" in the ${industry} industry. Show 5 harmonious colors as large color swatches with hex codes. Include primary, secondary, and accent colors that convey professionalism and trust.`;
+      break;
+    case 'brand_guidelines':
+      imagePrompt = `Create a professional brand guidelines preview page for "${businessName}". Show logo placement rules, color usage examples, typography samples, and spacing guidelines. Clean, modern corporate design style.`;
+      break;
+    case 'visual_assets':
+      imagePrompt = `Create a set of professional marketing visual assets for "${businessName}" in the ${industry} industry. Include social media banner concepts, business card design, and website hero image. Modern, cohesive brand style.`;
+      break;
+    case 'typography':
+      imagePrompt = `Create a professional typography specimen sheet for "${businessName}" brand. Show heading and body font pairings, size hierarchy, and text styling examples. Clean, modern corporate design.`;
+      break;
+    default:
+      imagePrompt = `Create a professional brand visual for "${businessName}" in the ${industry} industry. ${inputData?.description || 'Modern, clean, professional business style.'}`;
   }
+
+  console.log('[generateImageWithLovableAI] Generating image for:', taskType, 'Prompt:', imagePrompt.substring(0, 100));
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -595,21 +618,28 @@ async function generateImageWithLovableAI(lovableApiKey: string, taskType: strin
   });
 
   if (!response.ok) {
-    throw new Error(`Lovable AI image generation failed`);
+    const errorText = await response.text();
+    console.error('[generateImageWithLovableAI] Error:', response.status, errorText);
+    throw new Error(`Lovable AI image generation failed: ${response.status}`);
   }
 
   const result = await response.json();
   const message = result.choices?.[0]?.message;
 
+  console.log('[generateImageWithLovableAI] Generated', message?.images?.length || 0, 'images');
+
   return {
     success: true,
     taskType,
+    assetType: taskType,
     generatedImages: (message?.images || []).map((img: any, idx: number) => ({
-      id: `logo-${idx + 1}`,
+      id: `${taskType}-${idx + 1}`,
       url: img.image_url?.url || img.url,
       type: taskType,
     })),
     description: message?.content || '',
+    brandName: businessName,
+    industry: industry,
   };
 }
 
