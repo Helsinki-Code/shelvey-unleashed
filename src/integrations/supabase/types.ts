@@ -441,6 +441,9 @@ export type Database = {
       business_projects: {
         Row: {
           business_model: Json | null
+          ceo_approved: boolean | null
+          ceo_review_feedback: string | null
+          ceo_reviewed_at: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -451,10 +454,14 @@ export type Database = {
           status: string | null
           target_market: string | null
           updated_at: string | null
+          user_approved: boolean | null
           user_id: string
         }
         Insert: {
           business_model?: Json | null
+          ceo_approved?: boolean | null
+          ceo_review_feedback?: string | null
+          ceo_reviewed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -465,10 +472,14 @@ export type Database = {
           status?: string | null
           target_market?: string | null
           updated_at?: string | null
+          user_approved?: boolean | null
           user_id: string
         }
         Update: {
           business_model?: Json | null
+          ceo_approved?: boolean | null
+          ceo_review_feedback?: string | null
+          ceo_reviewed_at?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -479,6 +490,7 @@ export type Database = {
           status?: string | null
           target_market?: string | null
           updated_at?: string | null
+          user_approved?: boolean | null
           user_id?: string
         }
         Relationships: []
@@ -848,15 +860,18 @@ export type Database = {
       }
       phase_deliverables: {
         Row: {
+          agent_work_steps: Json | null
           approved_at: string | null
           approved_by: string | null
           assigned_agent_id: string | null
           assigned_team_id: string | null
           ceo_approved: boolean | null
+          citations: Json | null
           content: Json | null
           created_at: string | null
           deliverable_type: string
           description: string | null
+          export_formats: Json | null
           feedback: string | null
           feedback_history: Json | null
           generated_content: Json | null
@@ -864,6 +879,8 @@ export type Database = {
           name: string
           phase_id: string
           reviewed_by: string | null
+          screen_recording_url: string | null
+          screenshots: Json | null
           status: string | null
           updated_at: string | null
           user_approved: boolean | null
@@ -871,15 +888,18 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          agent_work_steps?: Json | null
           approved_at?: string | null
           approved_by?: string | null
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
           ceo_approved?: boolean | null
+          citations?: Json | null
           content?: Json | null
           created_at?: string | null
           deliverable_type: string
           description?: string | null
+          export_formats?: Json | null
           feedback?: string | null
           feedback_history?: Json | null
           generated_content?: Json | null
@@ -887,6 +907,8 @@ export type Database = {
           name: string
           phase_id: string
           reviewed_by?: string | null
+          screen_recording_url?: string | null
+          screenshots?: Json | null
           status?: string | null
           updated_at?: string | null
           user_approved?: boolean | null
@@ -894,15 +916,18 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          agent_work_steps?: Json | null
           approved_at?: string | null
           approved_by?: string | null
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
           ceo_approved?: boolean | null
+          citations?: Json | null
           content?: Json | null
           created_at?: string | null
           deliverable_type?: string
           description?: string | null
+          export_formats?: Json | null
           feedback?: string | null
           feedback_history?: Json | null
           generated_content?: Json | null
@@ -910,6 +935,8 @@ export type Database = {
           name?: string
           phase_id?: string
           reviewed_by?: string | null
+          screen_recording_url?: string | null
+          screenshots?: Json | null
           status?: string | null
           updated_at?: string | null
           user_approved?: boolean | null
