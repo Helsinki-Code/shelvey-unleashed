@@ -15,6 +15,7 @@ import { BrandLogoGenerator } from '@/components/BrandLogoGenerator';
 import { BrandAssetsPanel } from '@/components/BrandAssetsPanel';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
+import { StartPhaseButton } from '@/components/StartPhaseButton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -323,6 +324,14 @@ const Phase2Page = () => {
               <Progress value={calculateProgress()} className="h-3" />
             </CardContent>
           </Card>
+
+          {/* Start Phase Button */}
+          <StartPhaseButton
+            projectId={projectId!}
+            phaseNumber={2}
+            phaseStatus={phase?.status || 'pending'}
+            onStart={fetchData}
+          />
 
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>

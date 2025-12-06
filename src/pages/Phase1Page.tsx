@@ -16,6 +16,7 @@ import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
+import { StartPhaseButton } from '@/components/StartPhaseButton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -244,6 +245,14 @@ const Phase1Page = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Start Phase Button */}
+          <StartPhaseButton
+            projectId={projectId!}
+            phaseNumber={1}
+            phaseStatus={phase?.status || 'pending'}
+            onStart={fetchData}
+          />
 
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>

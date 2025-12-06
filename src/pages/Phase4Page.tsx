@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
 import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
+import { StartPhaseButton } from "@/components/StartPhaseButton";
 import ContentStrategyBuilder from "@/components/ContentStrategyBuilder";
 import WebsiteCopyGenerator from "@/components/WebsiteCopyGenerator";
 import BlogArticleGenerator from "@/components/BlogArticleGenerator";
@@ -141,6 +142,14 @@ export default function Phase4Page() {
             <Progress value={getCompletionPercentage()} className="h-2" />
           </div>
         </div>
+
+        {/* Start Phase Button */}
+        <StartPhaseButton
+          projectId={projectId!}
+          phaseNumber={4}
+          phaseStatus={phase?.status || 'pending'}
+          onStart={fetchPhaseData}
+        />
 
         {/* Deliverables Overview */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">

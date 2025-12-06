@@ -23,6 +23,7 @@ import {
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
 import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
+import { StartPhaseButton } from "@/components/StartPhaseButton";
 import { SocialCommandCenter } from "@/components/SocialCommandCenter";
 import { PaidAdsHub } from "@/components/PaidAdsHub";
 import { InfluencerPipeline } from "@/components/InfluencerPipeline";
@@ -239,6 +240,14 @@ export default function Phase5Page() {
                 <Progress value={progressPercent} className="h-3" />
               </CardContent>
             </Card>
+
+            {/* Start Phase Button */}
+            <StartPhaseButton
+              projectId={projectId!}
+              phaseNumber={5}
+              phaseStatus={phase?.status || 'pending'}
+              onStart={loadPhaseData}
+            />
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="social" className="space-y-4">
