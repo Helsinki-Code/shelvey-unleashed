@@ -59,44 +59,18 @@ export const BrandLogoGenerator = ({
     }, 200);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Please sign in');
-        return;
-      }
-
-      // Generate logo concepts using AI
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-deliverable`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          deliverableType: 'logo-concepts',
-          projectId,
-          businessContext: {
-            businessName,
-            brandColors,
-            logoStyle,
-            customDescription: logoDescription,
-          },
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate logos');
-
-      const data = await response.json();
-
-      // Create logo concepts with SVG representations
+      // Generate logo concepts locally using SVG (no API call needed)
+      // This is faster and doesn't require deliverableId
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate generation time
+      
       const concepts = generateLogoSVGs(businessName, brandColors, logoStyle);
       setGeneratedLogos(concepts);
       setProgress(100);
 
       toast.success('Logo concepts generated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logo generation error:', error);
-      toast.error(error.message || 'Failed to generate logos');
+      toast.error(error instanceof Error ? error.message : 'Failed to generate logos');
     } finally {
       clearInterval(progressInterval);
       setIsGenerating(false);
