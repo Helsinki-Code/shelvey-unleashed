@@ -467,13 +467,13 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'sentiment_analysis': ['mcp-perplexity'],
     'social_sentiment': ['mcp-perplexity'],
     'community_research': ['mcp-perplexity'],
-    'brand_strategy': ['mcp-canva', 'mcp-perplexity'],
-    'brand_identity': ['mcp-canva'],
-    'logo_design': ['mcp-canva'],
-    'color_palette': ['mcp-canva'],
-    'brand_guidelines': ['mcp-canva', 'mcp-perplexity'],
-    'visual_assets': ['mcp-canva'],
-    'typography': ['mcp-canva'],
+    'brand_strategy': ['mcp-falai', 'mcp-perplexity'],
+    'brand_identity': ['mcp-falai'],
+    'logo_design': ['mcp-falai'],
+    'color_palette': ['mcp-falai'],
+    'brand_guidelines': ['mcp-falai', 'mcp-perplexity'],
+    'visual_assets': ['mcp-falai'],
+    'typography': ['mcp-falai'],
     'content_creation': ['mcp-perplexity'],
     'social_media': ['mcp-perplexity', 'mcp-linkedin'],
     'lead_generation': ['mcp-linkedin'],
@@ -518,6 +518,9 @@ async function executeMCPWork(
     return await generateImageWithLovableAI(lovableApiKey!, taskType, inputData);
   }
 
+  const brandName = inputData?.projectName || inputData?.deliverableName || 'Business';
+  const industry = inputData?.industry || 'general';
+
   const toolMapping: Record<string, Record<string, { tool: string; args: any }>> = {
     'mcp-perplexity': {
       'market_research': { tool: 'market_research', args: inputData },
@@ -526,14 +529,48 @@ async function executeMCPWork(
       'trend_analysis': { tool: 'trend_analysis', args: inputData },
       'trend_forecast': { tool: 'trend_analysis', args: inputData },
       'target_customer': { tool: 'market_research', args: { ...inputData, focus: 'customer personas' } },
-      'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${inputData?.industry || 'business'}` } },
-      'color_palette': { tool: 'research', args: { query: `brand color palette for ${inputData?.industry || 'business'}` } },
+      'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${industry}` } },
+      'color_palette': { tool: 'research', args: { query: `brand color palette for ${industry}` } },
       'default': { tool: 'research', args: { query: inputData?.query || inputData?.description || inputData?.projectName } },
     },
+    'mcp-falai': {
+      'logo_design': { 
+        tool: 'generate_logo', 
+        args: { brandName, industry, style: inputData?.style || 'modern minimalist', colors: inputData?.colors } 
+      },
+      'brand_strategy': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'mood_board', brandName, industry, style: inputData?.style } 
+      },
+      'brand_identity': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'mood_board', brandName, industry, style: inputData?.style } 
+      },
+      'color_palette': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'color_palette', brandName, industry, style: inputData?.style } 
+      },
+      'brand_guidelines': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'guidelines', brandName, industry, style: inputData?.style } 
+      },
+      'visual_assets': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'marketing_visuals', brandName, industry, style: inputData?.style, colors: inputData?.colors } 
+      },
+      'typography': { 
+        tool: 'generate_brand_assets', 
+        args: { type: 'guidelines', brandName, industry, description: 'Focus on typography and font pairings' } 
+      },
+      'default': { 
+        tool: 'generate_image', 
+        args: { prompt: `Professional brand visual for ${brandName} in the ${industry} industry` } 
+      },
+    },
     'mcp-brightdata': {
-      'market_research': { tool: 'scrape_search', args: { query: `${inputData?.industry} market size trends 2024` } },
-      'competitor_analysis': { tool: 'scrape_search', args: { query: `${inputData?.industry} competitors top companies` } },
-      'default': { tool: 'scrape_search', args: { query: inputData?.query || inputData?.industry } },
+      'market_research': { tool: 'scrape_search', args: { query: `${industry} market size trends 2024` } },
+      'competitor_analysis': { tool: 'scrape_search', args: { query: `${industry} competitors top companies` } },
+      'default': { tool: 'scrape_search', args: { query: inputData?.query || industry } },
     },
     'mcp-linkedin': {
       'lead_generation': { tool: 'search_people', args: inputData },
