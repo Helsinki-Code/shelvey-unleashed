@@ -1,10 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Zap, Clock, Activity, Users, ChevronRight } from 'lucide-react';
+import { Bot, Zap, Clock, Activity, Users, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+
+// Sound notification utility
+const createNotificationSound = () => {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  
+  return {
+    playActivitySound: () => {
+      // Create a pleasant "pop" sound for new activity
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+      oscillator.frequency.exponentialRampToValueAtTime(1760, audioContext.currentTime + 0.05);
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.15);
+    },
+    playCompletionSound: () => {
+      // Create a pleasant "ding" for completed tasks
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+      
+      gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.4);
+    },
+    resume: () => {
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+  };
+};
 
 interface AgentActivity {
   id: string;
@@ -27,6 +77,25 @@ export const GlobalAgentActivityPanel = () => {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [activeAgents, setActiveAgents] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundRef = useRef<ReturnType<typeof createNotificationSound> | null>(null);
+  const isInitialLoad = useRef(true);
+
+  // Initialize sound system
+  useEffect(() => {
+    soundRef.current = createNotificationSound();
+  }, []);
+
+  // Play notification sound
+  const playSound = useCallback((type: 'activity' | 'completion') => {
+    if (!soundEnabled || !soundRef.current) return;
+    soundRef.current.resume();
+    if (type === 'completion') {
+      soundRef.current.playCompletionSound();
+    } else {
+      soundRef.current.playActivitySound();
+    }
+  }, [soundEnabled]);
 
   useEffect(() => {
     // Fetch recent activities
@@ -51,6 +120,7 @@ export const GlobalAgentActivityPanel = () => {
         setActiveAgents(working);
       }
       setIsLoading(false);
+      isInitialLoad.current = false;
     };
 
     fetchActivities();
@@ -69,6 +139,15 @@ export const GlobalAgentActivityPanel = () => {
           const newActivity = payload.new as AgentActivity;
           setActivities((prev) => [newActivity, ...prev.slice(0, 19)]);
           
+          // Play sound notification (only if not initial load)
+          if (!isInitialLoad.current) {
+            if (newActivity.status === 'completed') {
+              playSound('completion');
+            } else {
+              playSound('activity');
+            }
+          }
+          
           // Update active agents
           if (newActivity.status === 'working' || newActivity.status === 'in_progress') {
             setActiveAgents((prev) => new Set([...prev, newActivity.agent_id]));
@@ -86,7 +165,7 @@ export const GlobalAgentActivityPanel = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [playSound]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -163,6 +242,19 @@ export const GlobalAgentActivityPanel = () => {
             Agent Activity
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4 text-primary" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-muted-foreground" />
+              )}
+            </Button>
             <Badge variant="outline" className="gap-1">
               <Users className="w-3 h-3" />
               {activeAgents.size} Active
