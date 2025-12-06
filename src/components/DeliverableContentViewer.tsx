@@ -108,6 +108,23 @@ const normalizeKeys = (obj: any): GeneratedContent => {
   return normalized;
 };
 
+// Sanitize JSON string by escaping control characters
+const sanitizeJsonString = (str: string): string => {
+  // Replace unescaped control characters with their escaped versions
+  return str
+    .replace(/[\x00-\x1F\x7F]/g, (char) => {
+      const code = char.charCodeAt(0);
+      switch (code) {
+        case 8: return '\\b';
+        case 9: return '\\t';
+        case 10: return '\\n';
+        case 12: return '\\f';
+        case 13: return '\\r';
+        default: return `\\u${code.toString(16).padStart(4, '0')}`;
+      }
+    });
+};
+
 // Parse generated_content handling various formats
 const parseGeneratedContent = (rawContent: any): GeneratedContent | null => {
   if (!rawContent) return null;
@@ -127,16 +144,21 @@ const parseGeneratedContent = (rawContent: any): GeneratedContent | null => {
       const jsonMatch = contentStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         try {
-          const parsed = JSON.parse(jsonMatch[1]);
+          // Sanitize the JSON string before parsing
+          const sanitized = sanitizeJsonString(jsonMatch[1].trim());
+          const parsed = JSON.parse(sanitized);
           return normalizeKeys(parsed);
         } catch (e) {
-          console.error('Failed to parse JSON from code block:', e);
+          // If JSON parsing still fails, try returning the content as text
+          console.warn('Failed to parse JSON from code block, treating as text');
+          return { executive_summary: jsonMatch[1].trim() };
         }
       }
       
-      // Try direct JSON parse
+      // Try direct JSON parse with sanitization
       try {
-        const parsed = JSON.parse(contentStr);
+        const sanitized = sanitizeJsonString(contentStr);
+        const parsed = JSON.parse(sanitized);
         return normalizeKeys(parsed);
       } catch (e) {
         // Not JSON, return as executive summary
