@@ -502,6 +502,73 @@ serve(async (req) => {
       });
     }
 
+    // Generate color palette action
+    if (action === 'generate-color-palette') {
+      const { businessName, industry, brandColors } = await req.json().catch(() => ({}));
+      
+      const prompt = `Generate a comprehensive brand color palette for "${businessName || 'Brand'}", a ${industry || 'business'} company. Return as JSON with: primary, secondary, accent, background, text colors as hex values.`;
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: 'You are a brand color expert. Return only valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+        }),
+      });
+
+      let palette = {
+        primary: brandColors?.primary || '#10B981',
+        secondary: '#059669',
+        accent: '#34D399',
+        background: '#FFFFFF',
+        text: '#1E293B',
+      };
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        try {
+          const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          palette = JSON.parse(cleaned);
+        } catch (e) {
+          console.log('[brand-assets-generator] Using default palette');
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: { palette, businessName, generatedAt: new Date().toISOString() },
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Generate typography action
+    if (action === 'generate-typography') {
+      const { businessName, industry } = await req.json().catch(() => ({}));
+      
+      const typography = {
+        heading: { name: 'Inter', weights: [600, 700, 800], style: 'sans-serif' },
+        body: { name: 'Inter', weights: [400, 500, 600], style: 'sans-serif' },
+        display: { name: 'Inter', weights: [700, 800, 900], style: 'sans-serif' },
+        pairingRationale: 'Inter is a highly legible, modern sans-serif that works excellently across all applications.',
+      };
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: { typography, businessName, generatedAt: new Date().toISOString() },
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
