@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   Globe, 
   Server, 
@@ -13,38 +12,36 @@ import {
   CheckCircle2, 
   RefreshCw,
   AlertCircle,
-  Zap,
-  Shield
+  Shield,
+  Settings,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 interface HostingSetupProps {
   website: {
     id: string;
     name: string;
-    deployed_url?: string;
-    hosting_type?: string;
-    custom_domain?: string;
+    deployed_url?: string | null;
+    hosting_type?: string | null;
+    custom_domain?: string | null;
     dns_records?: any;
-    ssl_status?: string;
+    ssl_status?: string | null;
     status: string;
   };
   onUpdate: () => void;
 }
 
 export const HostingSetup = ({ website, onUpdate }: HostingSetupProps) => {
-  const [hostingType, setHostingType] = useState<'subdomain' | 'custom'>(
-    (website.hosting_type as 'subdomain' | 'custom') || 'subdomain'
-  );
   const [customDomain, setCustomDomain] = useState(website.custom_domain || '');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [dnsRecords, setDnsRecords] = useState<any[]>([]);
-  const [instructions, setInstructions] = useState('');
+  const [showDnsSetup, setShowDnsSetup] = useState(false);
 
-  const handleSetupHosting = async () => {
-    if (hostingType === 'custom' && !customDomain.trim()) {
+  const handleSetupCustomDomain = async () => {
+    if (!customDomain.trim()) {
       toast.error('Please enter your custom domain');
       return;
     }
@@ -54,26 +51,19 @@ export const HostingSetup = ({ website, onUpdate }: HostingSetupProps) => {
       const response = await supabase.functions.invoke('setup-hosting', {
         body: {
           websiteId: website.id,
-          hostingType,
-          customDomain: hostingType === 'custom' ? customDomain.trim() : undefined,
+          hostingType: 'custom',
+          customDomain: customDomain.trim(),
         },
       });
 
       if (response.error) throw response.error;
 
       const data = response.data;
-
-      if (data.isLive) {
-        toast.success(`🎉 Your website is live at ${data.liveUrl}`);
-      } else {
-        setDnsRecords(data.dnsRecords || []);
-        setInstructions(data.instructions || '');
-        toast.success('Hosting configured! Please set up DNS records.');
-      }
-
+      setShowDnsSetup(true);
+      toast.success('Custom domain configured! Please set up DNS records.');
       onUpdate();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to set up hosting');
+      toast.error(error.message || 'Failed to set up custom domain');
     } finally {
       setIsSettingUp(false);
     }
@@ -94,7 +84,7 @@ export const HostingSetup = ({ website, onUpdate }: HostingSetupProps) => {
         toast.success(`🎉 DNS verified! Your site is live at ${data.liveUrl}`);
         onUpdate();
       } else {
-        toast.info(data.message);
+        toast.info(data.message || 'DNS not yet verified. Please wait for propagation.');
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to verify DNS');
@@ -108,136 +98,133 @@ export const HostingSetup = ({ website, onUpdate }: HostingSetupProps) => {
     toast.success('Copied to clipboard!');
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-muted text-muted-foreground',
-    'pending-dns': 'bg-amber-500/20 text-amber-400',
-    'dns-verified': 'bg-blue-500/20 text-blue-400',
-    deployed: 'bg-emerald-500/20 text-emerald-400',
-  };
+  // DNS records for custom domain
+  const dnsRecords = website.dns_records || {};
+  const hasDnsRecords = Object.keys(dnsRecords).length > 0;
+  const isPendingDns = website.status === 'pending-dns';
+  const hasCustomDomain = website.hosting_type === 'custom' && website.custom_domain;
 
-  const sslColors: Record<string, string> = {
-    pending: 'bg-muted text-muted-foreground',
-    provisioning: 'bg-amber-500/20 text-amber-400',
-    active: 'bg-emerald-500/20 text-emerald-400',
-  };
-
-  // Already deployed
-  if (website.deployed_url && website.status === 'deployed') {
+  // Show DNS verification UI for pending custom domains
+  if (isPendingDns && hasCustomDomain) {
     return (
-      <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-emerald-500" />
-            <CardTitle>Website is Live!</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-emerald-500/10 rounded-lg">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-              <div>
-                <p className="font-medium">{website.deployed_url}</p>
-                <p className="text-sm text-muted-foreground">
-                  {website.hosting_type === 'custom' ? 'Custom Domain' : 'ShelVey Subdomain'}
-                </p>
-              </div>
-            </div>
-            <a 
-              href={website.deployed_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="sm">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Visit Site
-              </Button>
-            </a>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Badge className={statusColors[website.status]}>
-              Status: {website.status}
-            </Badge>
-            <Badge className={sslColors[website.ssl_status || 'pending']}>
-              <Shield className="h-3 w-3 mr-1" />
-              SSL: {website.ssl_status || 'pending'}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Pending DNS verification
-  if (website.status === 'pending-dns') {
-    return (
-      <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+      <Card className="border-amber-500/30 bg-amber-500/5">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Server className="h-5 w-5 text-amber-500" />
             <CardTitle>DNS Configuration Required</CardTitle>
           </div>
           <CardDescription>
-            Configure the following DNS records at your domain registrar
+            Configure the following DNS records at your domain registrar for <strong>{website.custom_domain}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* DNS Records Table */}
+          {/* DNS Records */}
           <div className="space-y-3">
-            {Object.entries(website.dns_records || {}).map(([key, record]: [string, any]) => {
-              if (!record) return null;
-              return (
-                <div 
-                  key={key}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">{record.type}</Badge>
-                      <span className="font-mono text-sm">{record.name}</span>
-                    </div>
-                    <p className="font-mono text-sm text-muted-foreground">{record.value}</p>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => copyToClipboard(record.value)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+            <h4 className="font-medium text-sm">Required DNS Records:</h4>
+            
+            {/* A Record for root */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between p-3 bg-background/80 rounded-lg border"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs">A</Badge>
+                  <span className="font-mono text-sm font-medium">@</span>
+                  <span className="text-xs text-muted-foreground">(root domain)</span>
                 </div>
-              );
-            })}
+                <p className="font-mono text-sm text-muted-foreground">185.158.133.1</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => copyToClipboard('185.158.133.1')}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </motion.div>
+
+            {/* A Record for www */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center justify-between p-3 bg-background/80 rounded-lg border"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs">A</Badge>
+                  <span className="font-mono text-sm font-medium">www</span>
+                </div>
+                <p className="font-mono text-sm text-muted-foreground">185.158.133.1</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => copyToClipboard('185.158.133.1')}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </motion.div>
+
+            {/* TXT Record for verification */}
+            {dnsRecords.txt_record && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex items-center justify-between p-3 bg-background/80 rounded-lg border"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-xs">TXT</Badge>
+                    <span className="font-mono text-sm font-medium">_shelvey-verify</span>
+                  </div>
+                  <p className="font-mono text-sm text-muted-foreground break-all">{dnsRecords.txt_record.value}</p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => copyToClipboard(dnsRecords.txt_record.value)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            )}
           </div>
 
           {/* Instructions */}
-          {instructions && (
-            <div className="p-4 bg-muted/30 rounded-lg">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                Setup Instructions
-              </h4>
-              <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {instructions}
-              </pre>
-            </div>
-          )}
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              Setup Instructions
+            </h4>
+            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+              <li>Log in to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.)</li>
+              <li>Navigate to DNS settings for <strong>{website.custom_domain}</strong></li>
+              <li>Add the A records and TXT record shown above</li>
+              <li>Wait for DNS propagation (can take up to 48 hours)</li>
+              <li>Click "Verify DNS" once records are configured</li>
+            </ol>
+          </div>
 
-          <div className="flex gap-3">
-            <Button onClick={handleVerifyDns} disabled={isVerifying}>
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleVerifyDns} disabled={isVerifying} className="gap-2">
               {isVerifying ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  <RefreshCw className="h-4 w-4 animate-spin" />
                   Verifying...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  <CheckCircle2 className="h-4 w-4" />
                   Verify DNS
                 </>
               )}
             </Button>
-            <p className="text-sm text-muted-foreground self-center">
+            <p className="text-xs text-muted-foreground">
               DNS changes can take up to 48 hours to propagate
             </p>
           </div>
@@ -246,97 +233,103 @@ export const HostingSetup = ({ website, onUpdate }: HostingSetupProps) => {
     );
   }
 
-  // Initial setup
+  // Show custom domain setup form
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+    <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Globe className="h-5 w-5 text-primary" />
-          <CardTitle>Set Up Website Hosting</CardTitle>
+          <Globe className="h-5 w-5 text-blue-500" />
+          <CardTitle>Custom Domain</CardTitle>
         </div>
         <CardDescription>
-          Choose how you want to host your website
+          Connect your own domain for a professional presence
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <RadioGroup 
-          value={hostingType} 
-          onValueChange={(v) => setHostingType(v as 'subdomain' | 'custom')}
-          className="space-y-4"
-        >
-          <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors ${
-            hostingType === 'subdomain' ? 'border-primary bg-primary/5' : 'border-border'
-          }`}>
-            <RadioGroupItem value="subdomain" id="subdomain" className="mt-1" />
-            <div className="flex-1">
-              <Label htmlFor="subdomain" className="flex items-center gap-2 cursor-pointer">
-                <Zap className="h-4 w-4 text-primary" />
-                ShelVey Subdomain (Instant)
-              </Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                Get a free subdomain like <span className="font-mono">yourbusiness.shelvey.pro</span>
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs">Free</Badge>
-                <Badge variant="outline" className="text-xs">SSL Included</Badge>
-                <Badge variant="outline" className="text-xs">Instant Setup</Badge>
+      <CardContent className="space-y-4">
+        {hasCustomDomain && website.status === 'deployed' ? (
+          // Custom domain is active
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 rounded-lg bg-green-500/10 border border-green-500/30"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-500" />
+                <div>
+                  <p className="font-medium text-green-700 dark:text-green-300">Custom Domain Active</p>
+                  <a 
+                    href={`https://${website.custom_domain}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
+                  >
+                    https://{website.custom_domain}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-green-500/20 text-green-700 dark:text-green-300">
+                  <Shield className="w-3 h-3 mr-1" />
+                  SSL Active
+                </Badge>
               </div>
             </div>
-          </div>
-
-          <div className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors ${
-            hostingType === 'custom' ? 'border-primary bg-primary/5' : 'border-border'
-          }`}>
-            <RadioGroupItem value="custom" id="custom" className="mt-1" />
-            <div className="flex-1">
-              <Label htmlFor="custom" className="flex items-center gap-2 cursor-pointer">
-                <Globe className="h-4 w-4 text-blue-500" />
-                Custom Domain
-              </Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                Use your own domain like <span className="font-mono">www.yourdomain.com</span>
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs">Professional</Badge>
-                <Badge variant="outline" className="text-xs">SSL Included</Badge>
-                <Badge variant="outline" className="text-xs">DNS Required</Badge>
+          </motion.div>
+        ) : (
+          // Setup form
+          <>
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Professional</Badge>
+                  <Badge variant="outline">SSL Included</Badge>
+                  <Badge variant="outline">DNS Required</Badge>
+                </div>
               </div>
             </div>
-          </div>
-        </RadioGroup>
 
-        {hostingType === 'custom' && (
-          <div className="space-y-2">
-            <Label htmlFor="domain">Your Domain</Label>
-            <Input
-              id="domain"
-              placeholder="example.com"
-              value={customDomain}
-              onChange={(e) => setCustomDomain(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter your domain without http:// or www
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="customDomain">Your Domain</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="customDomain"
+                  placeholder="example.com"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, ''))}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={handleSetupCustomDomain} 
+                  disabled={isSettingUp || !customDomain.trim()}
+                  className="gap-2"
+                >
+                  {isSettingUp ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4" />
+                  )}
+                  {isSettingUp ? 'Setting up...' : 'Configure'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter your domain without http:// or www (e.g., mybusiness.com)
+              </p>
+            </div>
+
+            {!website.deployed_url && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Deploy to a ShelVey subdomain first, then you can add a custom domain.
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
         )}
-
-        <Button 
-          onClick={handleSetupHosting} 
-          disabled={isSettingUp}
-          className="w-full"
-        >
-          {isSettingUp ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Setting up...
-            </>
-          ) : (
-            <>
-              <Globe className="h-4 w-4 mr-2" />
-              {hostingType === 'subdomain' ? 'Deploy to ShelVey' : 'Configure Custom Domain'}
-            </>
-          )}
-        </Button>
       </CardContent>
     </Card>
   );
