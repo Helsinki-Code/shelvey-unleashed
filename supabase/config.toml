@@ -251,3 +251,18 @@ verify_jwt = false
 
 [functions.deploy-to-subdomain]
 verify_jwt = false
+
+[functions.deploy-to-vercel]
+verify_jwt = false
+
+[functions.verify-vercel-domain]
+verify_jwt = false
+
+[functions.domain-search]
+verify_jwt = false
+
+[functions.purchase-domain]
+verify_jwt = false
+
+[functions.complete-domain-purchase]
+verify_jwt = false

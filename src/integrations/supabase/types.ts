@@ -1429,6 +1429,80 @@ export type Database = {
         }
         Relationships: []
       }
+      user_domains: {
+        Row: {
+          auto_renew: boolean | null
+          connected_website_id: string | null
+          contact_info: Json | null
+          created_at: string | null
+          dns_configured: boolean | null
+          domain_name: string
+          expires_at: string | null
+          id: string
+          is_premium: boolean | null
+          our_price: number
+          privacy_enabled: boolean | null
+          purchase_price: number
+          purchased_at: string | null
+          registrar: string
+          registrar_domain_id: string | null
+          renewal_price: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean | null
+          connected_website_id?: string | null
+          contact_info?: Json | null
+          created_at?: string | null
+          dns_configured?: boolean | null
+          domain_name: string
+          expires_at?: string | null
+          id?: string
+          is_premium?: boolean | null
+          our_price: number
+          privacy_enabled?: boolean | null
+          purchase_price: number
+          purchased_at?: string | null
+          registrar?: string
+          registrar_domain_id?: string | null
+          renewal_price?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean | null
+          connected_website_id?: string | null
+          contact_info?: Json | null
+          created_at?: string | null
+          dns_configured?: boolean | null
+          domain_name?: string
+          expires_at?: string | null
+          id?: string
+          is_premium?: boolean | null
+          our_price?: number
+          privacy_enabled?: boolean | null
+          purchase_price?: number
+          purchased_at?: string | null
+          registrar?: string
+          registrar_domain_id?: string | null
+          renewal_price?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_domains_connected_website_id_fkey"
+            columns: ["connected_website_id"]
+            isOneToOne: false
+            referencedRelation: "generated_websites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_mcp_servers: {
         Row: {
           created_at: string | null
