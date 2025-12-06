@@ -169,7 +169,7 @@ Each phase is a FULL dedicated page showing:
 Remember: I'm ${ceoName}, available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
 
 // Function to review a deliverable
-async function reviewDeliverable(supabase: any, deliverableId: string, lovableApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
+async function reviewDeliverable(supabase: any, deliverableId: string, openaiApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
   const { data: deliverable, error } = await supabase
     .from('phase_deliverables')
     .select('*, business_phases(*)')
@@ -199,14 +199,14 @@ JSON format:
   "improvements": ["<improvement 1>", "<improvement 2>"]
 }`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${lovableApiKey}`,
+      "Authorization": `Bearer ${openaiApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: `You are ${ceoName}, a discerning CEO reviewing business deliverables. Be constructive but maintain high standards.` },
         { role: "user", content: reviewPrompt },
@@ -289,7 +289,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get("Authorization");
@@ -328,7 +328,7 @@ serve(async (req) => {
 
     // Handle special actions
     if (action === 'review_deliverable' && deliverableId) {
-      const review = await reviewDeliverable(supabase, deliverableId, lovableApiKey, ceoName);
+      const review = await reviewDeliverable(supabase, deliverableId, openaiApiKey, ceoName);
       
       await supabase
         .from('phase_deliverables')
@@ -365,14 +365,14 @@ serve(async (req) => {
       contextualPrompt += `\n\nCURRENT PAGE: The user is currently on ${currentPage}. Provide context-specific guidance if they ask for help.`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "Authorization": `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: contextualPrompt },
           ...messages,
