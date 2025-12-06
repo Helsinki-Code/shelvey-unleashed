@@ -604,6 +604,62 @@ export type Database = {
           },
         ]
       }
+      content_items: {
+        Row: {
+          content: string | null
+          content_type: string
+          created_at: string | null
+          id: string
+          keywords: Json | null
+          metadata: Json | null
+          project_id: string | null
+          published_at: string | null
+          seo_score: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          content_type: string
+          created_at?: string | null
+          id?: string
+          keywords?: Json | null
+          metadata?: Json | null
+          project_id?: string | null
+          published_at?: string | null
+          seo_score?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          keywords?: Json | null
+          metadata?: Json | null
+          project_id?: string | null
+          published_at?: string | null
+          seo_score?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escalations: {
         Row: {
           attempted_solutions: Json | null
@@ -1287,6 +1343,47 @@ export type Database = {
           },
         ]
       }
+      seo_rankings: {
+        Row: {
+          id: string
+          keyword: string
+          position: number | null
+          project_id: string | null
+          search_engine: string | null
+          tracked_at: string | null
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          keyword: string
+          position?: number | null
+          project_id?: string | null
+          search_engine?: string | null
+          tracked_at?: string | null
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          keyword?: string
+          position?: number | null
+          project_id?: string | null
+          search_engine?: string | null
+          tracked_at?: string | null
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_rankings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shell_command_approvals: {
         Row: {
           approved_at: string | null
@@ -1331,6 +1428,68 @@ export type Database = {
           working_directory?: string | null
         }
         Relationships: []
+      }
+      social_content_library: {
+        Row: {
+          caption: string | null
+          content_type: string
+          created_at: string | null
+          engagement_metrics: Json | null
+          hashtags: string[] | null
+          id: string
+          image_urls: string[] | null
+          metadata: Json | null
+          platform: string
+          posted_at: string | null
+          project_id: string | null
+          scheduled_for: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          content_type: string
+          created_at?: string | null
+          engagement_metrics?: Json | null
+          hashtags?: string[] | null
+          id?: string
+          image_urls?: string[] | null
+          metadata?: Json | null
+          platform: string
+          posted_at?: string | null
+          project_id?: string | null
+          scheduled_for?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          content_type?: string
+          created_at?: string | null
+          engagement_metrics?: Json | null
+          hashtags?: string[] | null
+          id?: string
+          image_urls?: string[] | null
+          metadata?: Json | null
+          platform?: string
+          posted_at?: string | null
+          project_id?: string | null
+          scheduled_for?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_library_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_posts: {
         Row: {
