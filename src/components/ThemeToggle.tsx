@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const THEME_KEY = 'shelvey-theme';
+
 export const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    // Check localStorage first, default to dark
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(THEME_KEY);
+      return saved ? saved === 'dark' : true;
+    }
+    return true;
+  });
 
   useEffect(() => {
-    // Set dark mode by default
-    document.documentElement.classList.add('dark');
-  }, []);
+    // Apply theme on mount and save preference
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   const toggleTheme = () => {
     setIsDark(!isDark);

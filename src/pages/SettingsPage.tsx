@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserAPIKeys } from '@/components/UserAPIKeys';
 import { StripeConnectSection } from '@/components/StripeConnectSection';
+import { PageHeader } from '@/components/PageHeader';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -134,10 +135,13 @@ const SettingsPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            <PageHeader showNotifications={true} showLogout={true} />
+          </div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account and preferences</p>
         </motion.div>

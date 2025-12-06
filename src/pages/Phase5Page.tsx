@@ -21,6 +21,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
+import { PageHeader } from "@/components/PageHeader";
 import { SocialCommandCenter } from "@/components/SocialCommandCenter";
 import { PaidAdsHub } from "@/components/PaidAdsHub";
 import { InfluencerPipeline } from "@/components/InfluencerPipeline";
@@ -206,11 +207,12 @@ export default function Phase5Page() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Button variant="outline" onClick={createCampaign}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   New Campaign
                 </Button>
+                <PageHeader showNotifications={true} showLogout={true} />
               </div>
             </div>
 

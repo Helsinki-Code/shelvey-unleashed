@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
+import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -185,9 +186,12 @@ const ProjectOverviewPage = () => {
                 <h1 className="text-3xl font-bold">{project.name}</h1>
                 <p className="text-muted-foreground mt-1">Project Overview</p>
               </div>
-              <Badge className="text-sm px-3 py-1">
-                {project.status || 'Draft'}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Badge className="text-sm px-3 py-1">
+                  {project.status || 'Draft'}
+                </Badge>
+                <PageHeader showNotifications={true} showLogout={true} />
+              </div>
             </div>
           </motion.div>
 
