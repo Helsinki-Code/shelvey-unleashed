@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight
+  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight, Store, TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,34 +27,12 @@ export const SimpleDashboardSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems: NavItem[] = [
-    { 
-      id: 'dashboard', 
-      label: 'Dashboard', 
-      icon: Home, 
-      path: '/dashboard',
-      helpText: 'Your main command center'
-    },
-    { 
-      id: 'projects', 
-      label: 'Projects', 
-      icon: Briefcase, 
-      path: '/dashboard?section=projects',
-      helpText: 'View and manage your business projects'
-    },
-    { 
-      id: 'apikeys', 
-      label: 'API Keys', 
-      icon: Key, 
-      path: '/settings?tab=apikeys',
-      helpText: 'Manage your API keys'
-    },
-    { 
-      id: 'settings', 
-      label: 'Settings', 
-      icon: Settings, 
-      path: '/settings',
-      helpText: 'Account and preferences'
-    },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard', helpText: 'Your main command center' },
+    { id: 'projects', label: 'Projects', icon: Briefcase, path: '/dashboard?section=projects', helpText: 'View and manage your business projects' },
+    { id: 'stores', label: 'Online Stores', icon: Store, path: '/stores', helpText: 'Manage Shopify, Etsy, WooCommerce' },
+    { id: 'trading', label: 'Trading AI', icon: TrendingUp, path: '/trading', helpText: 'Stocks and crypto trading' },
+    { id: 'apikeys', label: 'API Keys', icon: Key, path: '/settings?tab=apikeys', helpText: 'Manage your API keys' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', helpText: 'Account and preferences' },
   ];
 
   const handleNavigation = (path: string) => {

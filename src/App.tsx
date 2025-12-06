@@ -46,6 +46,8 @@ import WorkspacePage from "./pages/WorkspacePage";
 import CreateCEOPage from "./pages/CreateCEOPage";
 import SettingsPage from "./pages/SettingsPage";
 import DomainsPage from "./pages/DomainsPage";
+import OnlineStoresPage from "./pages/OnlineStoresPage";
+import TradingDashboardPage from "./pages/TradingDashboardPage";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +100,8 @@ const App = () => (
               <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/domains" element={<DomainsPage />} />
+              <Route path="/stores" element={<OnlineStoresPage />} />
+              <Route path="/trading" element={<TradingDashboardPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
