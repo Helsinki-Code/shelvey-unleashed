@@ -247,7 +247,7 @@ const ProjectsPage = () => {
       </main>
 
       {/* CEO Chat Sheet */}
-      <CEOChatSheet currentPage="/projects" />
+      <CEOChatSheet />
 
       {/* CEO Project Creation Modal */}
       <ProjectCreationCEOChat

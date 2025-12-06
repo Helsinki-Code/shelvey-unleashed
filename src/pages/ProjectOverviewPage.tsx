@@ -369,7 +369,7 @@ const ProjectOverviewPage = () => {
         </div>
       </main>
 
-      <CEOChatSheet currentPage={`/projects/${projectId}/overview`} />
+      <CEOChatSheet />
     </div>
   );
 };

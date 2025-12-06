@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
+import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,10 +46,11 @@ interface AgentActivity {
 }
 
 const PHASE_1_AGENTS = [
-  { id: 'market-research', name: 'Market Research Agent', icon: Search, color: 'text-blue-500' },
-  { id: 'trend-prediction', name: 'Trend Prediction Agent', icon: TrendingUp, color: 'text-purple-500' },
-  { id: 'customer-profiler', name: 'Customer Profiler Agent', icon: Users, color: 'text-green-500' },
-  { id: 'competitor-analyst', name: 'Competitor Analyst Agent', icon: Target, color: 'text-orange-500' },
+  { id: 'head-of-research', name: 'Head of Research', icon: Bot, color: 'text-primary', role: 'Research Division Manager', isManager: true },
+  { id: 'market-research', name: 'Market Research Agent', icon: Search, color: 'text-blue-500', role: 'Market Analyst' },
+  { id: 'trend-prediction', name: 'Trend Prediction Agent', icon: TrendingUp, color: 'text-purple-500', role: 'Trend Analyst' },
+  { id: 'customer-profiler', name: 'Customer Profiler Agent', icon: Users, color: 'text-green-500', role: 'Customer Insights Specialist' },
+  { id: 'competitor-analyst', name: 'Competitor Analyst Agent', icon: Target, color: 'text-orange-500', role: 'Competitive Intelligence Analyst' },
 ];
 
 const Phase1Page = () => {
@@ -62,6 +64,7 @@ const Phase1Page = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
   const [activeTab, setActiveTab] = useState('deliverables');
+  const [chatAgent, setChatAgent] = useState<typeof PHASE_1_AGENTS[0] | null>(null);
 
   useEffect(() => {
     if (projectId && user) {
@@ -216,15 +219,19 @@ const Phase1Page = () => {
                 const status = getAgentStatus(agent.id);
                 const Icon = agent.icon;
                 return (
-                  <Card key={agent.id} className="relative overflow-hidden">
+                  <Card key={agent.id} className={`relative overflow-hidden ${agent.isManager ? 'border-primary/50 bg-primary/5' : ''}`}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg bg-muted ${agent.color}`}>
+                        <div className={`p-2 rounded-lg ${agent.isManager ? 'bg-primary/20' : 'bg-muted'} ${agent.color}`}>
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{agent.name}</p>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">{agent.name}</p>
+                            {agent.isManager && <Badge variant="secondary" className="text-[10px] px-1">Manager</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{agent.role}</p>
+                          <div className="flex items-center gap-1 mt-1">
                             <span className={`w-2 h-2 rounded-full ${
                               status === 'in_progress' ? 'bg-green-500 animate-pulse' :
                               status === 'completed' ? 'bg-blue-500' : 'bg-muted-foreground'
@@ -234,6 +241,14 @@ const Phase1Page = () => {
                             </span>
                           </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setChatAgent(agent)}
+                          className="shrink-0"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -344,7 +359,21 @@ const Phase1Page = () => {
         </div>
       </main>
 
-      <CEOChatSheet currentPage={`/projects/${projectId}/phase/1`} />
+      <CEOChatSheet />
+
+      {/* Agent Chat Sheet */}
+      {chatAgent && (
+        <AgentChatSheet
+          isOpen={!!chatAgent}
+          onClose={() => setChatAgent(null)}
+          agentId={chatAgent.id}
+          agentName={chatAgent.name}
+          agentRole={chatAgent.role}
+          isManager={chatAgent.isManager}
+          projectId={projectId}
+          phaseId={phase?.id}
+        />
+      )}
     </div>
   );
 };
