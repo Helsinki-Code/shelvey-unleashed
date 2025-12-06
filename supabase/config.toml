@@ -281,3 +281,15 @@ verify_jwt = false
 
 [functions.check-stripe-connect-status]
 verify_jwt = false
+
+[functions.marketing-campaign-manager]
+verify_jwt = false
+
+[functions.social-scheduler]
+verify_jwt = false
+
+[functions.influencer-discovery]
+verify_jwt = false
+
+[functions.ad-creative-generator]
+verify_jwt = false
