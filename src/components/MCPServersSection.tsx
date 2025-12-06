@@ -96,7 +96,7 @@ export const MCPServersSection = () => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MCPServer['category'] | 'all'>('all');
   
-  const categories: Array<MCPServer['category'] | 'all'> = ['all', 'development', 'ai', 'voice', 'social', 'marketing', 'automation', 'design', 'communication', 'storage', 'analytics'];
+  const categories: Array<MCPServer['category'] | 'all'> = ['all', 'development', 'ai', 'voice', 'social', 'marketing', 'ecommerce', 'trading', 'design', 'automation', 'infrastructure', 'crm'];
   
   const filteredServers = mcpServers.filter(server => {
     const matchesSearch = server.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -127,13 +127,13 @@ export const MCPServersSection = () => {
           </div>
           
           <h2 className="text-3xl md:text-5xl font-bold mb-4">
-            <span className="text-gradient">26 MCP Servers</span>
+            <span className="text-gradient">52+ MCP Servers</span>
             <span className="text-foreground"> Connected</span>
           </h2>
           
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            Our agents connect to real MCP servers for databases, CRMs, AI services, and more.
-            All operating in real-time to power autonomous business operations.
+            Real integrations with trading platforms, e-commerce stores, social media, 
+            AI services, and more—powering autonomous business operations 24/7.
           </p>
           
           {/* Quick stats */}
