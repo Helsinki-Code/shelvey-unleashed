@@ -419,7 +419,10 @@ const ProjectDetailPage = () => {
                         key={index}
                         onClick={() => {
                           const phase = phases.find(p => p.phase_number === index + 1);
-                          if (phase && status !== 'pending') handlePhaseSelect(phase);
+                          if (phase && status !== 'pending') {
+                            // Navigate to full phase page
+                            navigate(`/projects/${projectId}/phase/${index + 1}`);
+                          }
                         }}
                         disabled={status === 'pending'}
                         className="flex flex-col items-center gap-2 group"
