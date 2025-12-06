@@ -37,6 +37,7 @@ import ComputerUsePage from "./pages/ComputerUsePage";
 import DeveloperToolsPage from "./pages/DeveloperToolsPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import CreateCEOPage from "./pages/CreateCEOPage";
+import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/computer-use" element={<ComputerUsePage />} />
               <Route path="/developer-tools" element={<DeveloperToolsPage />} />
               <Route path="/workspace" element={<WorkspacePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
