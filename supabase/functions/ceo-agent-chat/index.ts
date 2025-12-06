@@ -6,7 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CEO_SYSTEM_PROMPT = `You are the CEO Agent of ShelVey - an advanced AI business strategist, executor, and platform guide. You have COMPLETE knowledge of the ShelVey platform and can help users with ANYTHING.
+// Base system prompt - CEO name and persona will be injected dynamically
+const getCEOSystemPrompt = (ceoName: string, ceoPersna: string) => `You are ${ceoName}, the AI CEO of ShelVey - an advanced AI business strategist, executor, and platform guide. Your persona is: ${ceoPersna}. You have COMPLETE knowledge of the ShelVey platform and can help users with ANYTHING.
 
 ## YOUR CAPABILITIES:
 
@@ -120,7 +121,7 @@ Each phase is a FULL dedicated page showing:
 4. Report downloads with all data, screenshots, and citations
 
 ### Approve Deliverables:
-1. I (CEO) review work first and provide feedback
+1. I (${ceoName}) review work first and provide feedback
 2. If I approve, you'll see ✅ CEO Approved
 3. Then YOU review and click "Approve" or "Request Changes"
 4. When both approve → Deliverable is complete
@@ -138,7 +139,7 @@ Each phase is a FULL dedicated page showing:
 3. Enter your API key
 4. Click Save → Key is encrypted and stored
 
-## MY ROLE AS YOUR CEO:
+## MY ROLE AS YOUR CEO (${ceoName}):
 
 1. **Brainstorm & Refine Ideas**: Tell me your idea, I'll help shape it
 2. **Create Projects**: I can fill in all project details for you
@@ -165,10 +166,10 @@ Each phase is a FULL dedicated page showing:
 - Always offer to help with the next step
 - Be encouraging but maintain professional standards
 
-Remember: I'm available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
+Remember: I'm ${ceoName}, available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
 
 // Function to review a deliverable
-async function reviewDeliverable(supabase: any, deliverableId: string, lovableApiKey: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
+async function reviewDeliverable(supabase: any, deliverableId: string, lovableApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
   const { data: deliverable, error } = await supabase
     .from('phase_deliverables')
     .select('*, business_phases(*)')
@@ -207,7 +208,7 @@ JSON format:
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: "You are a discerning CEO reviewing business deliverables. Be constructive but maintain high standards." },
+        { role: "system", content: `You are ${ceoName}, a discerning CEO reviewing business deliverables. Be constructive but maintain high standards.` },
         { role: "user", content: reviewPrompt },
       ],
     }),
@@ -310,11 +311,24 @@ serve(async (req) => {
       });
     }
 
+    // Fetch the user's custom CEO
+    const { data: userCeo } = await supabase
+      .from('user_ceos')
+      .select('ceo_name, persona, communication_style, personality_traits')
+      .eq('user_id', user.id)
+      .single();
+
+    const ceoName = userCeo?.ceo_name || 'Ava';
+    const ceoPersona = userCeo?.persona || 'Professional';
+    const communicationStyle = userCeo?.communication_style || 'balanced';
+
+    console.log(`[ceo-agent-chat] Using custom CEO: ${ceoName} with persona: ${ceoPersona}`);
+
     const { messages, conversationId, projectId, action, deliverableId, currentPage } = await req.json();
 
     // Handle special actions
     if (action === 'review_deliverable' && deliverableId) {
-      const review = await reviewDeliverable(supabase, deliverableId, lovableApiKey);
+      const review = await reviewDeliverable(supabase, deliverableId, lovableApiKey, ceoName);
       
       await supabase
         .from('phase_deliverables')
@@ -341,8 +355,12 @@ serve(async (req) => {
       });
     }
 
-    // Add page context to system prompt
-    let contextualPrompt = CEO_SYSTEM_PROMPT;
+    // Build the dynamic system prompt with custom CEO data
+    let contextualPrompt = getCEOSystemPrompt(ceoName, ceoPersona);
+    
+    // Add communication style context
+    contextualPrompt += `\n\nCOMMUNICATION STYLE: Your communication style is ${communicationStyle}. Adjust your responses to match this style.`;
+    
     if (currentPage) {
       contextualPrompt += `\n\nCURRENT PAGE: The user is currently on ${currentPage}. Provide context-specific guidance if they ask for help.`;
     }
@@ -390,7 +408,7 @@ serve(async (req) => {
       user_id: user.id,
       project_id: projectId || null,
       agent_id: "ceo-agent",
-      agent_name: "CEO Agent",
+      agent_name: ceoName,
       action: "Processing request",
       status: "completed",
       metadata: { message_count: messages.length, currentPage },
