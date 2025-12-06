@@ -6,8 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// CEO Review function using AI
-async function performCEOReview(deliverable: any, lovableApiKey: string): Promise<{ approved: boolean; feedback: string }> {
+// CEO Review result with full details
+interface CEOReviewResult {
+  approved: boolean;
+  feedback: string;
+  quality_score: number;
+  strengths: string[];
+  improvements: string[];
+}
+
+// CEO Review function using AI - returns full review details
+async function performCEOReview(deliverable: any, lovableApiKey: string): Promise<CEOReviewResult> {
   const reviewPrompt = `You are the CEO Agent reviewing a ${deliverable.deliverable_type} deliverable for a business project.
 
 Deliverable Name: ${deliverable.name}
@@ -24,12 +33,12 @@ Respond in JSON format only:
 {
   "quality_score": <1-10>,
   "approved": <true/false>,
-  "feedback": "<constructive feedback>",
-  "strengths": ["<strength 1>", "<strength 2>"],
-  "improvements": ["<improvement 1>", "<improvement 2>"]
+  "feedback": "<constructive CEO comment explaining your decision>",
+  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+  "improvements": ["<specific improvement 1>", "<specific improvement 2>"]
 }
 
-Only approve if quality_score is 7 or higher.`;
+Only approve if quality_score is 7 or higher. Be specific in your feedback about what needs to change if not approved.`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -40,7 +49,7 @@ Only approve if quality_score is 7 or higher.`;
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: "You are a discerning CEO with high standards. Be constructive but thorough in your reviews." },
+        { role: "system", content: "You are a discerning CEO with high standards. Be constructive but thorough in your reviews. Always provide actionable feedback." },
         { role: "user", content: reviewPrompt },
       ],
     }),
@@ -60,6 +69,9 @@ Only approve if quality_score is 7 or higher.`;
       return {
         approved: review.approved === true && review.quality_score >= 7,
         feedback: review.feedback || 'Review completed',
+        quality_score: review.quality_score || 0,
+        strengths: review.strengths || [],
+        improvements: review.improvements || [],
       };
     }
   } catch (e) {
@@ -70,6 +82,9 @@ Only approve if quality_score is 7 or higher.`;
   return {
     approved: false,
     feedback: 'Unable to parse review. Please try again.',
+    quality_score: 0,
+    strengths: [],
+    improvements: [],
   };
 }
 
@@ -248,19 +263,28 @@ serve(async (req) => {
       if (action === 'ceo_review') {
         const review = await performCEOReview(deliverable, lovableApiKey);
         
-        const feedbackHistory = [...(deliverable.feedback_history || []), {
+        // Store FULL CEO review details in feedback_history
+        const ceoReviewEntry = {
           source: 'CEO Agent',
+          type: 'ceo_review',
           feedback: review.feedback,
-          timestamp: new Date().toISOString(),
+          quality_score: review.quality_score,
+          strengths: review.strengths,
+          improvements: review.improvements,
           approved: review.approved,
-        }];
+          timestamp: new Date().toISOString(),
+        };
+        
+        const feedbackHistory = [...(deliverable.feedback_history || []), ceoReviewEntry];
 
+        // Update deliverable with CEO review and set status based on approval
         await supabase
           .from('phase_deliverables')
           .update({
             ceo_approved: review.approved,
             reviewed_by: 'CEO Agent',
             feedback_history: feedbackHistory,
+            status: review.approved ? 'review' : 'revision_requested',
             updated_at: new Date().toISOString(),
           })
           .eq('id', deliverableId);
@@ -319,6 +343,10 @@ serve(async (req) => {
           success: true,
           ceoApproved: review.approved,
           feedback: review.feedback,
+          quality_score: review.quality_score,
+          strengths: review.strengths,
+          improvements: review.improvements,
+          requiresRegeneration: !review.approved,
           ...phaseStatus,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

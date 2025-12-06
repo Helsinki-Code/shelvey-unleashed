@@ -101,7 +101,7 @@ serve(async (req) => {
       });
     }
 
-    const { deliverableId, deliverableType, projectId, businessContext } = await req.json();
+    const { deliverableId, deliverableType, projectId, businessContext, previousFeedback } = await req.json();
 
     // Get project details for context
     const { data: project } = await supabase
@@ -112,13 +112,32 @@ serve(async (req) => {
 
     const systemPrompt = DELIVERABLE_PROMPTS[deliverableType] || DELIVERABLE_PROMPTS['market-analysis'];
 
-    const userPrompt = `Generate deliverable for:
+    // Build user prompt with optional CEO feedback for regeneration
+    let userPrompt = `Generate deliverable for:
 Business Name: ${project?.name || businessContext?.businessName || 'Untitled Business'}
 Industry: ${project?.industry || businessContext?.industry || 'General'}
 Target Market: ${project?.target_market || businessContext?.targetMarket || 'General consumers'}
 Description: ${project?.description || businessContext?.description || 'A new business venture'}
 
-Additional Context: ${JSON.stringify(businessContext || {})}
+Additional Context: ${JSON.stringify(businessContext || {})}`;
+
+    // Add CEO feedback for regeneration if provided
+    if (previousFeedback) {
+      userPrompt += `
+
+IMPORTANT - CEO FEEDBACK FOR REVISION:
+The CEO Agent previously reviewed this deliverable and requested the following changes:
+
+CEO Comment: ${previousFeedback.feedback || 'No specific comment'}
+Quality Score: ${previousFeedback.quality_score || 'N/A'}/10
+
+Improvements Required:
+${(previousFeedback.improvements || []).map((imp: string, i: number) => `${i + 1}. ${imp}`).join('\n')}
+
+Please regenerate this deliverable incorporating ALL the CEO's feedback. Make sure to address each improvement point specifically.`;
+    }
+
+    userPrompt += `
 
 Please generate comprehensive, professional content that would be used by a real business. Return ONLY valid JSON.`;
 
