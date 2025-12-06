@@ -29,6 +29,9 @@ interface GeneratedWebsite {
   deployed_url: string | null;
   domain_name: string | null;
   custom_domain: string | null;
+  hosting_type: string | null;
+  dns_records: any | null;
+  ssl_status: string | null;
 }
 
 const PHASE_3_AGENTS = [
@@ -446,12 +449,29 @@ const Phase3Page = () => {
 
             {/* Hosting Tab */}
             <TabsContent value="hosting">
-              <HostingSetup
-                website={generatedWebsite}
-                projectName={project?.name || ''}
-                isDeploying={isDeploying}
-                onDeploy={handleDeploy}
-              />
+              {generatedWebsite && (
+                <HostingSetup
+                  website={{
+                    id: generatedWebsite.id || '',
+                    name: generatedWebsite.name || project?.name || '',
+                    deployed_url: generatedWebsite.deployed_url,
+                    hosting_type: generatedWebsite.hosting_type,
+                    custom_domain: generatedWebsite.custom_domain,
+                    dns_records: generatedWebsite.dns_records,
+                    ssl_status: generatedWebsite.ssl_status,
+                    status: generatedWebsite.status || 'pending',
+                  }}
+                  onUpdate={fetchData}
+                />
+              )}
+              {!generatedWebsite && (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Globe className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Generate a website first before setting up hosting</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* AI Team Tab */}
@@ -512,9 +532,13 @@ const Phase3Page = () => {
         {/* Agent Chat Sheet */}
         {chatAgent && (
           <AgentChatSheet
-            agent={chatAgent}
             isOpen={!!chatAgent}
             onClose={() => setChatAgent(null)}
+            agentId={chatAgent.id}
+            agentName={chatAgent.name}
+            agentRole={chatAgent.role}
+            isManager={chatAgent.isManager}
+            projectId={projectId}
           />
         )}
       </main>

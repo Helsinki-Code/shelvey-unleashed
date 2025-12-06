@@ -54,6 +54,16 @@ const Phase2Page = () => {
   const [generatedLogos, setGeneratedLogos] = useState<string[]>([]);
   const [colorPalette, setColorPalette] = useState<string[]>([]);
   const [selectedFonts, setSelectedFonts] = useState<{ heading: string; body: string }>({ heading: '', body: '' });
+  const [selectedLogo, setSelectedLogo] = useState<any>(null);
+  const [brandColors, setBrandColors] = useState<{ primary?: string; secondary?: string; accent?: string }>({
+    primary: '#10B981',
+    secondary: '#059669',
+    accent: '#34D399'
+  });
+  const [typography, setTypography] = useState<{ heading?: string; body?: string }>({
+    heading: 'Inter',
+    body: 'Inter'
+  });
 
   useEffect(() => {
     if (projectId && user) {
@@ -253,12 +263,13 @@ const Phase2Page = () => {
             {/* Logo Generator Tab */}
             <TabsContent value="logo">
               <BrandLogoGenerator
-                projectName={project?.name || ''}
-                industry={project?.industry || ''}
-                generatedLogos={generatedLogos}
-                isGenerating={isGenerating}
-                onGenerate={handleGenerateLogo}
-                onApprove={(logo) => handleApproveAsset('logo', logo)}
+                projectId={projectId}
+                businessName={project?.name || 'Your Brand'}
+                brandColors={brandColors}
+                onLogoGenerated={(logo) => {
+                  setSelectedLogo(logo);
+                  toast.success('Logo selected!');
+                }}
               />
             </TabsContent>
 
@@ -399,9 +410,14 @@ const Phase2Page = () => {
             {/* All Assets Tab */}
             <TabsContent value="assets">
               <BrandAssetsPanel
-                projectId={projectId || ''}
-                deliverables={deliverables}
-                onRefresh={fetchData}
+                branding={{
+                  colorPalette: brandColors,
+                  typography: typography,
+                  logoDescription: selectedLogo?.description,
+                  designPrinciples: ['Maintain consistent brand identity', 'Use primary colors for key elements', 'Ensure adequate contrast'],
+                }}
+                businessName={project?.name || 'Your Brand'}
+                logo={selectedLogo}
               />
             </TabsContent>
 
@@ -463,9 +479,13 @@ const Phase2Page = () => {
         {/* Agent Chat Sheet */}
         {chatAgent && (
           <AgentChatSheet
-            agent={chatAgent}
             isOpen={!!chatAgent}
             onClose={() => setChatAgent(null)}
+            agentId={chatAgent.id}
+            agentName={chatAgent.name}
+            agentRole={chatAgent.role}
+            isManager={chatAgent.isManager}
+            projectId={projectId}
           />
         )}
       </main>
