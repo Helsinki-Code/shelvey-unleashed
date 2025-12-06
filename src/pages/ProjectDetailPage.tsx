@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Check, Loader2, Lock, Eye, MessageSquare,
-  ChevronRight, Settings, Globe, Sparkles
+  ChevronRight, Settings, Globe, Sparkles, FastForward
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -459,7 +459,22 @@ const ProjectDetailPage = () => {
                     )}
                   </ScrollArea>
 
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-4 pt-4 border-t space-y-2">
+                    {/* Manual Advance Phase Button */}
+                    {allDeliverablesApproved && selectedPhase?.status === 'active' && (
+                      <Button 
+                        className="w-full" 
+                        onClick={handleAdvancePhase}
+                        disabled={isAdvancingPhase}
+                      >
+                        {isAdvancingPhase ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <FastForward className="w-4 h-4 mr-2" />
+                        )}
+                        Advance to Next Phase
+                      </Button>
+                    )}
                     <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Need changes? Talk to CEO

@@ -63,13 +63,15 @@ serve(async (req) => {
           throw new Error('No active phase found');
         }
 
-        // Check completion
+        // Check completion - both ceo_approved and user_approved must be true
         const { data: deliverables } = await supabase
           .from('phase_deliverables')
-          .select('status')
+          .select('status, ceo_approved, user_approved')
           .eq('phase_id', activePhase.id);
 
-        const allApproved = deliverables?.every((d: any) => d.status === 'approved');
+        const allApproved = deliverables?.every((d: any) => 
+          d.status === 'approved' && d.ceo_approved === true && d.user_approved === true
+        );
 
         if (!allApproved) {
           throw new Error('All deliverables must be approved before advancing');
