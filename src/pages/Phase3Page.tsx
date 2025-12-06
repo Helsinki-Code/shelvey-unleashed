@@ -18,6 +18,7 @@ import { HostingSetup } from '@/components/HostingSetup';
 import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
+import { StartPhaseButton } from '@/components/StartPhaseButton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -450,6 +451,14 @@ const Phase3Page = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Start Phase Button */}
+          <StartPhaseButton
+            projectId={projectId!}
+            phaseNumber={3}
+            phaseStatus={phase?.status || 'pending'}
+            onStart={fetchData}
+          />
 
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
