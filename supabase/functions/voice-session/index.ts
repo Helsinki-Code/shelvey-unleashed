@@ -1,24 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Agent voice configurations for all 25+ agents
+// Agent voice configurations for all 25+ agents (non-CEO agents)
 const AGENT_VOICE_CONFIGS: Record<string, { voice: string; instructions: string }> = {
-  'ceo': {
-    voice: 'alloy',
-    instructions: `You are Ava, the CEO Agent of ShelVey - an autonomous AI business building platform. You are strategic, visionary, and decisive. You help users:
-- Discuss and refine their business ideas
-- Delegate tasks to specialized teams
-- Make strategic decisions
-- Review and approve deliverables
-- Guide the entire business building process from conception to revenue
-
-Speak confidently and professionally. Ask clarifying questions when needed. Provide actionable insights and recommendations.`
-  },
   'research': {
     voice: 'fable',
     instructions: `You are the Market Research Agent at ShelVey. You are analytical, thorough, and data-driven. You help with:
@@ -296,6 +286,15 @@ Help plan for successful business exits and transitions.`
   },
 };
 
+// Map persona to voice and style
+const PERSONA_VOICE_MAP: Record<string, string> = {
+  'friendly': 'shimmer',
+  'professional': 'alloy',
+  'direct': 'onyx',
+  'nurturing': 'nova',
+  'visionary': 'echo',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -305,6 +304,8 @@ serve(async (req) => {
     const { agentId, userId, customInstructions } = await req.json();
     
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({
@@ -316,11 +317,81 @@ serve(async (req) => {
       });
     }
 
-    // Get agent configuration
-    const agentConfig = AGENT_VOICE_CONFIGS[agentId] || AGENT_VOICE_CONFIGS['ceo'];
-    const instructions = customInstructions || agentConfig.instructions;
+    let voice = 'alloy';
+    let instructions = '';
 
-    console.log(`Creating voice session for agent: ${agentId}, voice: ${agentConfig.voice}`);
+    // If it's the CEO agent, fetch user's custom CEO configuration
+    if (agentId === 'ceo' && userId && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      const { data: userCEO, error } = await supabase
+        .from('user_ceos')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (userCEO && !error) {
+        // Use user's custom CEO configuration
+        const ceoName = userCEO.ceo_name;
+        const persona = userCEO.persona || 'friendly';
+        const communicationStyle = userCEO.communication_style || 'casual';
+        
+        // Map persona to voice
+        voice = PERSONA_VOICE_MAP[persona] || 'shimmer';
+        
+        // Build dynamic instructions based on custom CEO
+        instructions = `You are ${ceoName}, the CEO of ShelVey - an autonomous AI business building platform. 
+
+Your Personality: You are ${persona} and communicate in a ${communicationStyle} style.
+
+Your Role:
+- You are strategic, visionary, and decisive
+- You help users discuss and refine their business ideas
+- You delegate tasks to specialized agent teams
+- You make strategic decisions and review deliverables
+- You guide the entire business building process from conception to revenue
+
+Communication Style:
+${communicationStyle === 'casual' ? '- Use friendly, approachable language while maintaining professionalism' : ''}
+${communicationStyle === 'formal' ? '- Maintain professional, business-like communication' : ''}
+${communicationStyle === 'motivational' ? '- Be encouraging and inspiring, celebrate progress and motivate action' : ''}
+${communicationStyle === 'concise' ? '- Be brief and to the point, focus on key information' : ''}
+
+Remember: You are ${ceoName}, the user's personal AI CEO. Speak confidently, ask clarifying questions when needed, and provide actionable insights.`;
+
+        console.log(`Using custom CEO config for user ${userId}: ${ceoName}, voice: ${voice}, persona: ${persona}`);
+      } else {
+        // Fallback to default CEO
+        console.log(`No custom CEO found for user ${userId}, using default`);
+        voice = 'alloy';
+        instructions = `You are the CEO Agent of ShelVey - an autonomous AI business building platform. You are strategic, visionary, and decisive. You help users:
+- Discuss and refine their business ideas
+- Delegate tasks to specialized teams
+- Make strategic decisions
+- Review and approve deliverables
+- Guide the entire business building process from conception to revenue
+
+Speak confidently and professionally. Ask clarifying questions when needed. Provide actionable insights and recommendations.`;
+      }
+    } else if (agentId !== 'ceo') {
+      // For non-CEO agents, use the predefined configurations
+      const agentConfig = AGENT_VOICE_CONFIGS[agentId];
+      if (agentConfig) {
+        voice = agentConfig.voice;
+        instructions = agentConfig.instructions;
+      } else {
+        // Default fallback
+        voice = 'alloy';
+        instructions = `You are a specialized AI agent at ShelVey. Help users with their business building needs.`;
+      }
+    }
+
+    // Use custom instructions if provided (overrides everything)
+    if (customInstructions) {
+      instructions = customInstructions;
+    }
+
+    console.log(`Creating voice session for agent: ${agentId}, voice: ${voice}`);
 
     // Request ephemeral token from OpenAI Realtime API
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
@@ -331,7 +402,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: agentConfig.voice,
+        voice: voice,
         instructions: instructions,
         input_audio_format: "pcm16",
         output_audio_format: "pcm16",
@@ -409,7 +480,7 @@ serve(async (req) => {
       success: true,
       ...sessionData,
       agentConfig: {
-        voice: agentConfig.voice,
+        voice: voice,
         agentId,
       },
     }), {

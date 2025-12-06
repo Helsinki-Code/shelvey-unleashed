@@ -15,6 +15,8 @@ import ProjectDetailPage from "./pages/ProjectDetailPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectOverviewPage from "./pages/ProjectOverviewPage";
 import Phase1Page from "./pages/Phase1Page";
+import Phase2Page from "./pages/Phase2Page";
+import Phase3Page from "./pages/Phase3Page";
 import AdminDashboard from "./pages/AdminDashboard";
 import MCPServersPage from "./pages/MCPServersPage";
 import AuthPage from "./pages/AuthPage";
@@ -67,7 +69,9 @@ const App = () => (
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
               <Route path="/projects/:projectId/overview" element={<ProjectOverviewPage />} />
-              <Route path="/projects/:projectId/phase/:phaseNumber" element={<Phase1Page />} />
+              <Route path="/projects/:projectId/phase/1" element={<Phase1Page />} />
+              <Route path="/projects/:projectId/phase/2" element={<Phase2Page />} />
+              <Route path="/projects/:projectId/phase/3" element={<Phase3Page />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/mcp" element={<MCPServersPage />} />
               <Route path="/websites" element={<WebsitesPage />} />
