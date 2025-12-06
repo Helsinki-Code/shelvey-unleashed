@@ -58,6 +58,11 @@ const Phase3Page = () => {
   const [generatedWebsite, setGeneratedWebsite] = useState<GeneratedWebsite | null>(null);
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  
+  // Subdomain deployment state
+  const [subdomainInput, setSubdomainInput] = useState('');
+  const [deploymentStatus, setDeploymentStatus] = useState<'idle' | 'deploying' | 'success' | 'error'>('idle');
+  const [deploymentMessage, setDeploymentMessage] = useState('');
 
   useEffect(() => {
     if (projectId && user) {
@@ -194,6 +199,82 @@ const Phase3Page = () => {
     setGeneratedCode('');
     setGeneratedWebsite(null);
     await handleGenerateWebsite();
+  };
+
+  const handleDeployToSubdomain = async () => {
+    if (!generatedWebsite || !subdomainInput.trim()) {
+      toast.error('Please enter a subdomain');
+      return;
+    }
+
+    setDeploymentStatus('deploying');
+    setDeploymentMessage('Creating DNS record...');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      setDeploymentMessage('Uploading website to Cloudflare KV...');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-subdomain`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            websiteId: generatedWebsite.id,
+            subdomain: subdomainInput.trim(),
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Deployment failed');
+      }
+
+      setDeploymentStatus('success');
+      setDeploymentMessage(`Live at ${result.data.url}`);
+      setGeneratedWebsite(prev => prev ? {
+        ...prev,
+        deployed_url: result.data.url,
+        domain_name: result.data.domain,
+        status: 'deployed',
+      } : null);
+      
+      toast.success('Website deployed successfully!', {
+        description: `Your site is live at ${result.data.url}`,
+        action: {
+          label: 'Open',
+          onClick: () => window.open(result.data.url, '_blank'),
+        },
+      });
+    } catch (error) {
+      console.error('Deploy error:', error);
+      setDeploymentStatus('error');
+      setDeploymentMessage(error instanceof Error ? error.message : 'Deployment failed');
+      toast.error('Deployment failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
+
+  const generateSubdomainFromProject = () => {
+    if (project?.name) {
+      const subdomain = project.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 30);
+      setSubdomainInput(subdomain);
+    }
   };
 
   if (isLoading) {
@@ -449,22 +530,150 @@ const Phase3Page = () => {
 
             {/* Hosting Tab */}
             <TabsContent value="hosting">
-              {generatedWebsite && (
-                <HostingSetup
-                  website={{
-                    id: generatedWebsite.id || '',
-                    name: generatedWebsite.name || project?.name || '',
-                    deployed_url: generatedWebsite.deployed_url,
-                    hosting_type: generatedWebsite.hosting_type,
-                    custom_domain: generatedWebsite.custom_domain,
-                    dns_records: generatedWebsite.dns_records,
-                    ssl_status: generatedWebsite.ssl_status,
-                    status: generatedWebsite.status || 'pending',
-                  }}
-                  onUpdate={fetchData}
-                />
-              )}
-              {!generatedWebsite && (
+              {generatedWebsite ? (
+                <div className="space-y-6">
+                  {/* One-Click Subdomain Deployment */}
+                  <Card className="border-primary/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Rocket className="w-5 h-5 text-primary" />
+                        Quick Deploy to ShelVey Subdomain
+                      </CardTitle>
+                      <CardDescription>
+                        Deploy your website instantly to yoursite.shelvey.pro with SSL included
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Already deployed success state */}
+                      {generatedWebsite.deployed_url && deploymentStatus !== 'deploying' && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="p-4 rounded-lg bg-green-500/10 border border-green-500/30"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="w-6 h-6 text-green-500" />
+                              <div>
+                                <p className="font-medium text-green-700 dark:text-green-300">Website is Live!</p>
+                                <a 
+                                  href={generatedWebsite.deployed_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
+                                >
+                                  {generatedWebsite.deployed_url}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={generatedWebsite.deployed_url} target="_blank" rel="noopener noreferrer">
+                                Visit Site
+                              </a>
+                            </Button>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Deployment form */}
+                      {!generatedWebsite.deployed_url && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <Label htmlFor="subdomain" className="sr-only">Subdomain</Label>
+                              <div className="flex items-center">
+                                <Input
+                                  id="subdomain"
+                                  placeholder="your-business-name"
+                                  value={subdomainInput}
+                                  onChange={(e) => setSubdomainInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                  className="rounded-r-none"
+                                  disabled={deploymentStatus === 'deploying'}
+                                />
+                                <div className="px-3 py-2 bg-muted border border-l-0 border-input rounded-r-md text-sm text-muted-foreground">
+                                  .shelvey.pro
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={generateSubdomainFromProject}
+                              title="Auto-generate from project name"
+                              disabled={deploymentStatus === 'deploying'}
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <Button
+                            onClick={handleDeployToSubdomain}
+                            disabled={!subdomainInput.trim() || deploymentStatus === 'deploying'}
+                            className="w-full gap-2"
+                            size="lg"
+                          >
+                            {deploymentStatus === 'deploying' ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Deploying...
+                              </>
+                            ) : (
+                              <>
+                                <Rocket className="w-4 h-4" />
+                                Deploy to {subdomainInput || 'subdomain'}.shelvey.pro
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Deployment status feedback */}
+                      {deploymentStatus !== 'idle' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`p-3 rounded-lg flex items-center gap-3 ${
+                            deploymentStatus === 'deploying' ? 'bg-blue-500/10 border border-blue-500/30' :
+                            deploymentStatus === 'success' ? 'bg-green-500/10 border border-green-500/30' :
+                            'bg-destructive/10 border border-destructive/30'
+                          }`}
+                        >
+                          {deploymentStatus === 'deploying' && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                          {deploymentStatus === 'success' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                          {deploymentStatus === 'error' && <Shield className="w-4 h-4 text-destructive" />}
+                          <span className={`text-sm ${
+                            deploymentStatus === 'deploying' ? 'text-blue-700 dark:text-blue-300' :
+                            deploymentStatus === 'success' ? 'text-green-700 dark:text-green-300' :
+                            'text-destructive'
+                          }`}>
+                            {deploymentMessage}
+                          </span>
+                        </motion.div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        SSL certificate is automatically provisioned via Cloudflare. Your site will be live in seconds.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Custom domain setup (existing component) */}
+                  <HostingSetup
+                    website={{
+                      id: generatedWebsite.id || '',
+                      name: generatedWebsite.name || project?.name || '',
+                      deployed_url: generatedWebsite.deployed_url,
+                      hosting_type: generatedWebsite.hosting_type,
+                      custom_domain: generatedWebsite.custom_domain,
+                      dns_records: generatedWebsite.dns_records,
+                      ssl_status: generatedWebsite.ssl_status,
+                      status: generatedWebsite.status || 'pending',
+                    }}
+                    onUpdate={fetchData}
+                  />
+                </div>
+              ) : (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Globe className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
