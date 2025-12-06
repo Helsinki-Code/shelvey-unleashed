@@ -199,7 +199,7 @@ const ProjectDetailPage = () => {
   };
 
   const handleAdvancePhase = async () => {
-    if (!selectedPhase) return;
+    if (!selectedPhase || !user) return;
     
     setIsAdvancingPhase(true);
     try {
@@ -208,6 +208,7 @@ const ProjectDetailPage = () => {
           action: 'advance_phase',
           projectId: projectId,
           phaseId: selectedPhase.id,
+          userId: user.id,
         },
       });
 

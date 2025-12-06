@@ -89,29 +89,47 @@ async function sendNotification(supabaseUrl: string, supabaseKey: string, userId
   }
 }
 
-// Check phase completion and trigger next phase
-async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl: string, supabaseKey: string) {
-  // Check if all deliverables in this phase are approved
-  const { data: phaseDeliverables } = await supabase
+// Check phase completion and trigger next phase - FIXED: accepts phaseId and userId directly
+async function checkPhaseCompletion(supabase: any, phaseId: string, userId: string, supabaseUrl: string, supabaseKey: string) {
+  console.log(`[checkPhaseCompletion] Checking phase ${phaseId} for user ${userId}`);
+  
+  // Re-query ALL deliverables with FRESH data from the database
+  const { data: phaseDeliverables, error: delError } = await supabase
     .from('phase_deliverables')
-    .select('*')
-    .eq('phase_id', deliverable.phase_id);
+    .select('id, name, ceo_approved, user_approved, status')
+    .eq('phase_id', phaseId);
+
+  if (delError) {
+    console.error('[checkPhaseCompletion] Error fetching deliverables:', delError);
+    return { phaseCompleted: false };
+  }
+
+  console.log('[checkPhaseCompletion] Fresh deliverables data:', JSON.stringify(phaseDeliverables, null, 2));
 
   const allApproved = phaseDeliverables?.every((d: any) => 
     d.ceo_approved === true && d.user_approved === true
   );
 
+  console.log(`[checkPhaseCompletion] All approved: ${allApproved}, count: ${phaseDeliverables?.length}`);
+
   if (allApproved && phaseDeliverables?.length > 0) {
     // Get phase info
-    const { data: phase } = await supabase
+    const { data: phase, error: phaseError } = await supabase
       .from('business_phases')
       .select('*, business_projects(name)')
-      .eq('id', deliverable.phase_id)
+      .eq('id', phaseId)
       .single();
+
+    if (phaseError) {
+      console.error('[checkPhaseCompletion] Error fetching phase:', phaseError);
+      return { phaseCompleted: false };
+    }
+
+    console.log(`[checkPhaseCompletion] Phase ${phase.phase_number} (${phase.phase_name}) - completing...`);
 
     if (phase) {
       // Complete current phase
-      await supabase
+      const { error: updateError } = await supabase
         .from('business_phases')
         .update({ 
           status: 'completed', 
@@ -119,11 +137,17 @@ async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl
         })
         .eq('id', phase.id);
 
+      if (updateError) {
+        console.error('[checkPhaseCompletion] Error completing phase:', updateError);
+      } else {
+        console.log(`[checkPhaseCompletion] Phase ${phase.phase_number} marked as completed`);
+      }
+
       // Send phase completion notification
       await sendNotification(
         supabaseUrl,
         supabaseKey,
-        deliverable.user_id,
+        userId,
         'phase_completed',
         `Phase ${phase.phase_number} Complete!`,
         `${phase.phase_name} has been completed for ${phase.business_projects?.name || 'your project'}.`,
@@ -132,7 +156,9 @@ async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl
 
       // Activate next phase
       const nextPhaseNumber = phase.phase_number + 1;
-      const { data: nextPhase } = await supabase
+      console.log(`[checkPhaseCompletion] Activating phase ${nextPhaseNumber}...`);
+      
+      const { data: nextPhase, error: nextPhaseError } = await supabase
         .from('business_phases')
         .update({ 
           status: 'active', 
@@ -143,12 +169,16 @@ async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl
         .select()
         .single();
 
-      if (nextPhase) {
+      if (nextPhaseError) {
+        console.log(`[checkPhaseCompletion] No next phase or error: ${nextPhaseError.message}`);
+      } else if (nextPhase) {
+        console.log(`[checkPhaseCompletion] Phase ${nextPhaseNumber} (${nextPhase.phase_name}) activated!`);
+        
         // Send next phase started notification
         await sendNotification(
           supabaseUrl,
           supabaseKey,
-          deliverable.user_id,
+          userId,
           'phase_started',
           `Phase ${nextPhaseNumber} Started!`,
           `${nextPhase.phase_name} is now active. Your agents are ready to work.`,
@@ -156,12 +186,13 @@ async function checkPhaseCompletion(supabase: any, deliverable: any, supabaseUrl
         );
       }
 
-      console.log(`Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
+      console.log(`[checkPhaseCompletion] SUCCESS: Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
       
       return { phaseCompleted: true, nextPhase: nextPhaseNumber };
     }
   }
 
+  console.log('[checkPhaseCompletion] Phase not yet complete');
   return { phaseCompleted: false };
 }
 
@@ -277,10 +308,11 @@ serve(async (req) => {
           { deliverableId, deliverableName: deliverable.name, approved: review.approved }
         );
 
-        // Check phase completion if approved
+        // Check phase completion if approved - use phase_id and user.id directly
         let phaseStatus = { phaseCompleted: false };
         if (review.approved && deliverable.user_approved) {
-          phaseStatus = await checkPhaseCompletion(supabase, deliverable, supabaseUrl, supabaseKey);
+          console.log(`[ceo_review] Both CEO and user approved, checking phase completion...`);
+          phaseStatus = await checkPhaseCompletion(supabase, deliverable.phase_id, user.id, supabaseUrl, supabaseKey);
         }
 
         return new Response(JSON.stringify({
@@ -295,6 +327,8 @@ serve(async (req) => {
 
       // Handle user approval
       if (action === 'user_approve') {
+        console.log(`[user_approve] Processing user approval for deliverable ${deliverableId}`);
+        
         const feedbackHistory = [...(deliverable.feedback_history || [])];
         if (feedback) {
           feedbackHistory.push({
@@ -305,7 +339,8 @@ serve(async (req) => {
           });
         }
 
-        await supabase
+        // Update the deliverable with user approval
+        const { error: updateError } = await supabase
           .from('phase_deliverables')
           .update({
             user_approved: true,
@@ -317,16 +352,37 @@ serve(async (req) => {
           })
           .eq('id', deliverableId);
 
-        // Check phase completion
+        if (updateError) {
+          console.error('[user_approve] Error updating deliverable:', updateError);
+          throw updateError;
+        }
+
+        console.log(`[user_approve] Deliverable updated, ceo_approved was: ${deliverable.ceo_approved}`);
+
+        // RE-FETCH the deliverable to get confirmed fresh data after update
+        const { data: freshDeliverable, error: refetchError } = await supabase
+          .from('phase_deliverables')
+          .select('id, phase_id, ceo_approved, user_approved')
+          .eq('id', deliverableId)
+          .single();
+
+        if (refetchError) {
+          console.error('[user_approve] Error re-fetching deliverable:', refetchError);
+        }
+
+        console.log(`[user_approve] Fresh deliverable data: ceo_approved=${freshDeliverable?.ceo_approved}, user_approved=${freshDeliverable?.user_approved}`);
+
+        // Check phase completion with FRESH data
         let phaseStatus = { phaseCompleted: false };
-        if (deliverable.ceo_approved) {
-          phaseStatus = await checkPhaseCompletion(supabase, deliverable, supabaseUrl, supabaseKey);
+        if (freshDeliverable?.ceo_approved && freshDeliverable?.user_approved) {
+          console.log(`[user_approve] Both approvals confirmed, triggering phase completion check...`);
+          phaseStatus = await checkPhaseCompletion(supabase, freshDeliverable.phase_id, user.id, supabaseUrl, supabaseKey);
         }
 
         return new Response(JSON.stringify({
           success: true,
           userApproved: true,
-          fullyApproved: deliverable.ceo_approved,
+          fullyApproved: freshDeliverable?.ceo_approved && freshDeliverable?.user_approved,
           ...phaseStatus,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
