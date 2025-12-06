@@ -41,17 +41,17 @@ const AGENT_SPECIALIZATIONS: Record<string, { name: string; suggestedMCPs: strin
   },
   'brand-identity': {
     name: 'Brand Identity Agent',
-    suggestedMCPs: ['lovable-ai-image', 'mcp-perplexity'],
+    suggestedMCPs: ['mcp-falai', 'mcp-perplexity'],
     capabilities: ['logo_design', 'brand_guidelines', 'visual_identity'],
   },
   'visual-design': {
     name: 'Visual Design Agent',
-    suggestedMCPs: ['lovable-ai-image', 'mcp-perplexity'],
+    suggestedMCPs: ['mcp-falai', 'mcp-perplexity'],
     capabilities: ['image_generation', 'graphic_design', 'asset_creation'],
   },
   'content-creator': {
     name: 'Content Creator Agent',
-    suggestedMCPs: ['mcp-perplexity', 'lovable-ai-image'],
+    suggestedMCPs: ['mcp-perplexity', 'mcp-falai'],
     capabilities: ['content_writing', 'blog_posts', 'social_content', 'typography_selection'],
   },
   'social-media': {
@@ -512,10 +512,30 @@ async function executeMCPWork(
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
   const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-  // Handle Lovable AI Image Generation
+  // Route any lovable-ai-image requests to mcp-falai instead
   if (mcpServerId === 'lovable-ai-image') {
-    console.log('[executeMCPWork] Using Lovable AI for image generation:', taskType);
-    return await generateImageWithLovableAI(lovableApiKey!, taskType, inputData);
+    console.log('[executeMCPWork] Routing lovable-ai-image to mcp-falai:', taskType);
+    // Call mcp-falai directly for image generation
+    const response = await fetch(`${supabaseUrl}/functions/v1/mcp-falai`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        userId,
+        tool: 'generate_logo',
+        arguments: {
+          brandName: inputData?.projectName || 'Business',
+          industry: inputData?.industry || 'general',
+          style: 'modern minimalist',
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Fal AI call failed: ${await response.text()}`);
+    }
+    return await response.json();
   }
 
   const brandName = inputData?.projectName || inputData?.deliverableName || 'Business';
