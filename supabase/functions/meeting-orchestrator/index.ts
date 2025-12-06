@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, ...params } = await req.json();
@@ -28,13 +28,13 @@ serve(async (req) => {
         result = await scheduleStandup(supabase, params);
         break;
       case 'start_meeting':
-        result = await startMeeting(supabase, params, lovableApiKey);
+        result = await startMeeting(supabase, params, openaiApiKey);
         break;
       case 'conduct_standup':
-        result = await conductStandup(supabase, params, lovableApiKey);
+        result = await conductStandup(supabase, params, openaiApiKey);
         break;
       case 'end_meeting':
-        result = await endMeeting(supabase, params, lovableApiKey);
+        result = await endMeeting(supabase, params, openaiApiKey);
         break;
       case 'get_meetings':
         result = await getMeetings(supabase, params);
@@ -118,7 +118,7 @@ async function scheduleStandup(supabase: any, params: any) {
   return data;
 }
 
-async function startMeeting(supabase: any, params: any, lovableApiKey: string | undefined) {
+async function startMeeting(supabase: any, params: any, openaiApiKey: string | undefined) {
   const { meetingId } = params;
 
   const { data: meeting, error: meetingError } = await supabase
@@ -145,7 +145,7 @@ async function startMeeting(supabase: any, params: any, lovableApiKey: string | 
   return meeting;
 }
 
-async function conductStandup(supabase: any, params: any, lovableApiKey: string | undefined) {
+async function conductStandup(supabase: any, params: any, openaiApiKey: string | undefined) {
   const { meetingId, projectId, teamId, userId } = params;
 
   // Get meeting details
@@ -186,16 +186,16 @@ async function conductStandup(supabase: any, params: any, lovableApiKey: string 
   let actionItems: any[] = [];
   let decisions: any[] = [];
 
-  if (lovableApiKey) {
+  if (openaiApiKey) {
     try {
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
+          'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -279,7 +279,7 @@ Format the response as JSON:
   return updatedMeeting;
 }
 
-async function endMeeting(supabase: any, params: any, lovableApiKey: string | undefined) {
+async function endMeeting(supabase: any, params: any, openaiApiKey: string | undefined) {
   const { meetingId, minutes, actionItems, decisions } = params;
 
   const { data, error } = await supabase

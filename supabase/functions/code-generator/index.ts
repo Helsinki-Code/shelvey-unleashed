@@ -89,9 +89,9 @@ async function generateCode(body: CodeGenRequest, userId: string, supabase: any)
     throw new Error('Prompt is required for code generation');
   }
 
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY not configured');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (!OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY not configured');
   }
 
   const systemPrompt = `You are an expert code generator. Generate clean, well-documented, production-ready code based on the user's request.
@@ -108,14 +108,14 @@ Output format:
 - Return ONLY the code, no explanations
 - Use proper indentation and formatting`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
@@ -274,9 +274,9 @@ async function reviewCode(body: CodeGenRequest, userId: string) {
     throw new Error('original_content is required for review');
   }
 
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY not configured');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (!OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY not configured');
   }
 
   const systemPrompt = `You are an expert code reviewer. Analyze the provided code and give constructive feedback.
@@ -311,14 +311,14 @@ Rating out of 10 with brief justification`;
     ? `${prompt}\n\nCode to review:\n\`\`\`\n${original_content}\n\`\`\``
     : `Review this code:\n\`\`\`\n${original_content}\n\`\`\``;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }

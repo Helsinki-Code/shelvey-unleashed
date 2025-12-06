@@ -384,16 +384,16 @@ async function analyzeMarket(supabase: any, userId: string, exchange: string, sy
   }
 
   // Use AI to generate insights
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   
-  const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are a trading analyst. Provide brief market insights based on price data.' },
         { role: 'user', content: `Analyze these assets: ${JSON.stringify(analysis)}. Provide 2-3 brief insights.` },
