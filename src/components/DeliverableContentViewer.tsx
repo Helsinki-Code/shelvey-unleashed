@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FileText, ChevronDown, ChevronUp, Check, Clock, 
-  Eye, Download, ThumbsUp, ThumbsDown, Loader2 
+  Eye, ThumbsUp, ThumbsDown, Loader2, Code
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface GeneratedContent {
   executive_summary?: string;
@@ -26,6 +31,7 @@ interface GeneratedContent {
   trends?: string[];
   opportunities?: string[];
   risks?: string[];
+  detailed_analysis?: Record<string, any>;
   [key: string]: any;
 }
 
@@ -35,12 +41,131 @@ interface DeliverableContentViewerProps {
     name: string;
     status: string;
     deliverable_type: string;
-    generated_content?: GeneratedContent | null;
+    generated_content?: any;
     description?: string | null;
   };
   onApprove?: (id: string) => void;
   onReject?: (id: string, feedback: string) => void;
 }
+
+// Convert "Title Case Keys" to snake_case
+const normalizeKeys = (obj: any): GeneratedContent => {
+  if (!obj || typeof obj !== 'object') return {};
+  
+  const keyMap: Record<string, string> = {
+    'Executive Summary': 'executive_summary',
+    'Key Findings': 'key_findings',
+    'Recommendations': 'recommendations',
+    'Market Size': 'market_size',
+    'Growth Rate': 'growth_rate',
+    'Competitors': 'competitors',
+    'Trends': 'trends',
+    'Opportunities': 'opportunities',
+    'Risks': 'risks',
+    'Detailed Analysis': 'detailed_analysis',
+    'Target Demographics': 'target_demographics',
+    'Consumer Behavior': 'consumer_behavior',
+    'Marketing Channels': 'marketing_channels',
+    'Pricing Strategy': 'pricing_strategy',
+  };
+
+  const normalized: GeneratedContent = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    const normalizedKey = keyMap[key] || key.toLowerCase().replace(/\s+/g, '_');
+    normalized[normalizedKey] = value;
+  }
+  
+  return normalized;
+};
+
+// Parse generated_content handling various formats
+const parseGeneratedContent = (rawContent: any): GeneratedContent | null => {
+  if (!rawContent) return null;
+  
+  try {
+    // If content has a 'report' wrapper, extract it
+    let contentStr = rawContent.report || rawContent;
+    
+    // If it's already an object with expected keys, normalize and return
+    if (typeof contentStr === 'object' && !Array.isArray(contentStr)) {
+      return normalizeKeys(contentStr);
+    }
+    
+    // If it's a string, try to extract JSON from markdown code block
+    if (typeof contentStr === 'string') {
+      // Remove markdown code block wrapper: ```json ... ```
+      const jsonMatch = contentStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          return normalizeKeys(parsed);
+        } catch (e) {
+          console.error('Failed to parse JSON from code block:', e);
+        }
+      }
+      
+      // Try direct JSON parse
+      try {
+        const parsed = JSON.parse(contentStr);
+        return normalizeKeys(parsed);
+      } catch (e) {
+        // Not JSON, return as executive summary
+        return { executive_summary: contentStr };
+      }
+    }
+    
+    return null;
+  } catch (e) {
+    console.error('Error parsing generated content:', e);
+    return null;
+  }
+};
+
+// Render any array of strings as a list
+const renderStringList = (items: string[] | undefined, icon: string, color: string) => {
+  if (!items || items.length === 0) return null;
+  return (
+    <ul className="space-y-1">
+      {items.map((item, i) => (
+        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+          <span className={color}>{icon}</span>
+          <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+// Render detailed analysis sections
+const renderDetailedAnalysis = (analysis: Record<string, any> | undefined) => {
+  if (!analysis || typeof analysis !== 'object') return null;
+  
+  return (
+    <div className="space-y-3">
+      {Object.entries(analysis).map(([section, content]) => (
+        <div key={section} className="p-3 rounded-lg bg-muted/30 border">
+          <h5 className="font-medium text-sm capitalize mb-2">
+            {section.replace(/_/g, ' ')}
+          </h5>
+          {typeof content === 'string' ? (
+            <p className="text-sm text-muted-foreground">{content}</p>
+          ) : Array.isArray(content) ? (
+            <ul className="space-y-1">
+              {content.map((item, i) => (
+                <li key={i} className="text-sm text-muted-foreground">• {typeof item === 'string' ? item : JSON.stringify(item)}</li>
+              ))}
+            </ul>
+          ) : (
+            <pre className="text-xs text-muted-foreground overflow-auto">
+              {JSON.stringify(content, null, 2)}
+            </pre>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export const DeliverableContentViewer = ({ 
   deliverable, 
@@ -48,7 +173,10 @@ export const DeliverableContentViewer = ({
   onReject 
 }: DeliverableContentViewerProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const content = deliverable.generated_content;
+  const [showRawJson, setShowRawJson] = useState(false);
+  
+  // Parse the content
+  const content = parseGeneratedContent(deliverable.generated_content);
 
   const getStatusBadge = () => {
     switch (deliverable.status) {
@@ -134,14 +262,7 @@ export const DeliverableContentViewer = ({
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         🔍 Key Findings
                       </h4>
-                      <ul className="space-y-1">
-                        {content.key_findings.map((finding, i) => (
-                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-primary">•</span>
-                            {finding}
-                          </li>
-                        ))}
-                      </ul>
+                      {renderStringList(content.key_findings, '•', 'text-primary')}
                     </div>
                   )}
 
@@ -172,13 +293,13 @@ export const DeliverableContentViewer = ({
                       <div className="space-y-2">
                         {content.competitors.map((comp, i) => (
                           <div key={i} className="p-3 rounded-lg bg-muted/30 border">
-                            <p className="font-medium text-sm">{comp.name}</p>
-                            {comp.strengths && (
+                            <p className="font-medium text-sm">{typeof comp === 'string' ? comp : comp.name}</p>
+                            {typeof comp === 'object' && comp.strengths && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 <span className="text-green-500">Strengths:</span> {comp.strengths}
                               </p>
                             )}
-                            {comp.weaknesses && (
+                            {typeof comp === 'object' && comp.weaknesses && (
                               <p className="text-xs text-muted-foreground">
                                 <span className="text-red-500">Weaknesses:</span> {comp.weaknesses}
                               </p>
@@ -195,14 +316,7 @@ export const DeliverableContentViewer = ({
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         📈 Trends
                       </h4>
-                      <ul className="space-y-1">
-                        {content.trends.map((trend, i) => (
-                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-cyan-500">↗</span>
-                            {trend}
-                          </li>
-                        ))}
-                      </ul>
+                      {renderStringList(content.trends, '↗', 'text-cyan-500')}
                     </div>
                   )}
 
@@ -216,7 +330,7 @@ export const DeliverableContentViewer = ({
                         {content.recommendations.map((rec, i) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                             <span className="text-amber-500">{i + 1}.</span>
-                            {rec}
+                            <span>{typeof rec === 'string' ? rec : JSON.stringify(rec)}</span>
                           </li>
                         ))}
                       </ul>
@@ -229,14 +343,7 @@ export const DeliverableContentViewer = ({
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         🎯 Opportunities
                       </h4>
-                      <ul className="space-y-1">
-                        {content.opportunities.map((opp, i) => (
-                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-green-500">✓</span>
-                            {opp}
-                          </li>
-                        ))}
-                      </ul>
+                      {renderStringList(content.opportunities, '✓', 'text-green-500')}
                     </div>
                   )}
 
@@ -246,14 +353,17 @@ export const DeliverableContentViewer = ({
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         ⚠️ Risks
                       </h4>
-                      <ul className="space-y-1">
-                        {content.risks.map((risk, i) => (
-                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-red-500">!</span>
-                            {risk}
-                          </li>
-                        ))}
-                      </ul>
+                      {renderStringList(content.risks, '!', 'text-red-500')}
+                    </div>
+                  )}
+
+                  {/* Detailed Analysis */}
+                  {content.detailed_analysis && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        📊 Detailed Analysis
+                      </h4>
+                      {renderDetailedAnalysis(content.detailed_analysis)}
                     </div>
                   )}
                 </div>
@@ -294,10 +404,182 @@ export const DeliverableContentViewer = ({
                   <DialogHeader>
                     <DialogTitle>{deliverable.name}</DialogTitle>
                   </DialogHeader>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto">
-                      {JSON.stringify(content, null, 2)}
-                    </pre>
+                  
+                  <div className="space-y-6">
+                    {/* Executive Summary */}
+                    {content.executive_summary && (
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          📋 Executive Summary
+                        </h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          {content.executive_summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Market Metrics */}
+                    {(content.market_size || content.growth_rate) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {content.market_size && (
+                          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                            <p className="text-sm text-muted-foreground">Market Size</p>
+                            <p className="text-xl font-bold text-primary">{content.market_size}</p>
+                          </div>
+                        )}
+                        {content.growth_rate && (
+                          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                            <p className="text-sm text-muted-foreground">Growth Rate</p>
+                            <p className="text-xl font-bold text-green-500">{content.growth_rate}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Key Findings */}
+                    {content.key_findings && content.key_findings.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          🔍 Key Findings
+                        </h3>
+                        <ul className="space-y-2">
+                          {content.key_findings.map((finding, i) => (
+                            <li key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                              <span className="text-primary font-bold">{i + 1}.</span>
+                              <span className="text-muted-foreground">{typeof finding === 'string' ? finding : JSON.stringify(finding)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Competitors */}
+                    {content.competitors && content.competitors.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          🏢 Competitive Landscape
+                        </h3>
+                        <div className="grid gap-3">
+                          {content.competitors.map((comp, i) => (
+                            <div key={i} className="p-4 rounded-lg border bg-card">
+                              <p className="font-semibold">{typeof comp === 'string' ? comp : comp.name}</p>
+                              {typeof comp === 'object' && (
+                                <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                                  {comp.strengths && (
+                                    <div>
+                                      <p className="text-green-500 font-medium">Strengths</p>
+                                      <p className="text-muted-foreground">{comp.strengths}</p>
+                                    </div>
+                                  )}
+                                  {comp.weaknesses && (
+                                    <div>
+                                      <p className="text-red-500 font-medium">Weaknesses</p>
+                                      <p className="text-muted-foreground">{comp.weaknesses}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Trends */}
+                    {content.trends && content.trends.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          📈 Market Trends
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {content.trends.map((trend, i) => (
+                            <Badge key={i} variant="secondary" className="px-3 py-1">
+                              ↗ {typeof trend === 'string' ? trend : JSON.stringify(trend)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {content.recommendations && content.recommendations.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          💡 Recommendations
+                        </h3>
+                        <ol className="space-y-2">
+                          {content.recommendations.map((rec, i) => (
+                            <li key={i} className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-amber-950 flex items-center justify-center text-sm font-bold">
+                                {i + 1}
+                              </span>
+                              <span className="text-muted-foreground">{typeof rec === 'string' ? rec : JSON.stringify(rec)}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* Opportunities & Risks */}
+                    {(content.opportunities?.length || content.risks?.length) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {content.opportunities && content.opportunities.length > 0 && (
+                          <div className="space-y-2">
+                            <h3 className="font-semibold flex items-center gap-2 text-green-500">
+                              🎯 Opportunities
+                            </h3>
+                            <ul className="space-y-1">
+                              {content.opportunities.map((opp, i) => (
+                                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                  <span className="text-green-500">✓</span>
+                                  {typeof opp === 'string' ? opp : JSON.stringify(opp)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {content.risks && content.risks.length > 0 && (
+                          <div className="space-y-2">
+                            <h3 className="font-semibold flex items-center gap-2 text-red-500">
+                              ⚠️ Risks
+                            </h3>
+                            <ul className="space-y-1">
+                              {content.risks.map((risk, i) => (
+                                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                  <span className="text-red-500">!</span>
+                                  {typeof risk === 'string' ? risk : JSON.stringify(risk)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Detailed Analysis */}
+                    {content.detailed_analysis && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          📊 Detailed Analysis
+                        </h3>
+                        {renderDetailedAnalysis(content.detailed_analysis)}
+                      </div>
+                    )}
+
+                    {/* Raw JSON Toggle */}
+                    <Collapsible open={showRawJson} onOpenChange={setShowRawJson}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full">
+                          <Code className="w-4 h-4 mr-2" />
+                          {showRawJson ? 'Hide' : 'Show'} Raw Data
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto mt-2 max-h-[300px]">
+                          {JSON.stringify(deliverable.generated_content, null, 2)}
+                        </pre>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 </DialogContent>
               </Dialog>
