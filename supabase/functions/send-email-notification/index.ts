@@ -16,7 +16,7 @@ const logStep = (step: string, details?: any) => {
 
 interface EmailNotificationRequest {
   userId: string;
-  type: 'ceo_review' | 'phase_completion' | 'phase_started' | 'deliverable_approved' | 'deliverable_ready' | 'project_created' | 'subscription_update';
+  type: 'ceo_review' | 'phase_completion' | 'phase_started' | 'deliverable_approved' | 'deliverable_ready' | 'project_created' | 'subscription_update' | 'consolidated_report';
   data: {
     projectName?: string;
     deliverableName?: string;
@@ -25,6 +25,12 @@ interface EmailNotificationRequest {
     approved?: boolean;
     feedback?: string;
     nextPhaseName?: string;
+    ceoName?: string;
+    executiveSummary?: string;
+    deliverableCount?: number;
+    screenshotCount?: number;
+    citationCount?: number;
+    reportData?: any;
   };
 }
 
@@ -154,6 +160,62 @@ const getEmailTemplate = (type: string, data: any, email: string): { subject: st
               </div>
               <a href="https://shelvey.pro/organization" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review Now</a>
             </div>
+          </div>
+        `,
+      };
+
+    case 'consolidated_report':
+      return {
+        subject: `Phase ${data.phaseNumber} Complete: Consolidated Report from ${data.ceoName || 'Your CEO'}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 0 auto; background: linear-gradient(135deg, #0a3d2e 0%, #1a5c45 100%); padding: 40px; border-radius: 16px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #22c55e; font-size: 28px; margin: 0;">ShelVey</h1>
+              <p style="color: #9ca3af; margin-top: 5px;">AI Business Building Platform</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); display: flex; align-items: center; justify-content: center; font-size: 24px;">👔</div>
+                <div>
+                  <h2 style="color: #fff; margin: 0; font-size: 20px;">Message from ${data.ceoName || 'Your CEO'}</h2>
+                  <p style="color: #9ca3af; margin: 5px 0 0 0; font-size: 14px;">Your AI CEO</p>
+                </div>
+              </div>
+              
+              <div style="background: rgba(34, 197, 94, 0.1); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #22c55e;">
+                <h3 style="color: #22c55e; margin: 0 0 10px 0; font-size: 18px;">🎉 Phase ${data.phaseNumber}: ${data.phaseName} Complete!</h3>
+                <p style="color: #fff; margin: 0; font-size: 16px;">Project: <strong>${data.projectName}</strong></p>
+              </div>
+
+              <h3 style="color: #fff; margin-bottom: 15px;">Executive Summary</h3>
+              <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="color: #d1d5db; line-height: 1.8; margin: 0; white-space: pre-wrap;">${data.executiveSummary || 'Phase completed successfully.'}</p>
+              </div>
+
+              <h3 style="color: #fff; margin-bottom: 15px;">📊 Phase Metrics</h3>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+                <div style="background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                  <p style="color: #3b82f6; font-size: 28px; font-weight: bold; margin: 0;">${data.deliverableCount || 0}</p>
+                  <p style="color: #9ca3af; margin: 5px 0 0 0; font-size: 12px;">Deliverables</p>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                  <p style="color: #a855f7; font-size: 28px; font-weight: bold; margin: 0;">${data.screenshotCount || 0}</p>
+                  <p style="color: #9ca3af; margin: 5px 0 0 0; font-size: 12px;">Screenshots</p>
+                </div>
+                <div style="background: rgba(34, 197, 94, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                  <p style="color: #22c55e; font-size: 28px; font-weight: bold; margin: 0;">${data.citationCount || 0}</p>
+                  <p style="color: #9ca3af; margin: 5px 0 0 0; font-size: 12px;">Citations</p>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://shelvey.pro/projects/${data.reportData?.projectId}/phase/${data.phaseNumber}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">View Full Report</a>
+              </div>
+            </div>
+            
+            <p style="color: #6b7280; text-align: center; margin-top: 25px; font-size: 12px;">
+              This consolidated report was automatically generated by your Phase Manager and approved by ${data.ceoName || 'your CEO'}.
+            </p>
           </div>
         `,
       };

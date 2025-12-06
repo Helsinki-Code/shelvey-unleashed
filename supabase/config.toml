@@ -239,3 +239,9 @@ verify_jwt = false
 
 [functions.export-deliverable-report]
 verify_jwt = false
+
+[functions.agent-chat]
+verify_jwt = false
+
+[functions.phase-consolidated-report]
+verify_jwt = false

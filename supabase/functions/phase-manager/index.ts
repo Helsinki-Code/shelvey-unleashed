@@ -86,6 +86,27 @@ serve(async (req) => {
           })
           .eq('id', activePhase.id);
 
+        // BACKEND PROCESS: Trigger Phase Manager to compile consolidated report
+        // This happens automatically after phase approval - not visible to user
+        console.log('[PHASE-MANAGER] Triggering consolidated report generation...');
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/phase-consolidated-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              phaseId: activePhase.id,
+              projectId,
+              userId,
+            }),
+          });
+          console.log('[PHASE-MANAGER] Consolidated report generation triggered');
+        } catch (reportError) {
+          console.error('Failed to trigger consolidated report:', reportError);
+        }
+
         // Deactivate current team
         if (activePhase.team_id) {
           await supabase

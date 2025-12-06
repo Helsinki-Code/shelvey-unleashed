@@ -23,6 +23,7 @@ interface Message {
 
 interface CEOChatSheetProps {
   ceoName?: string;
+  currentPage?: string;
 }
 
 export const CEOChatSheet = ({ ceoName = 'Ava' }: CEOChatSheetProps) => {
