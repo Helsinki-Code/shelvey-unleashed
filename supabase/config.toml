@@ -266,3 +266,18 @@ verify_jwt = false
 
 [functions.complete-domain-purchase]
 verify_jwt = false
+
+[functions.domain-renewal-reminders]
+verify_jwt = false
+
+[functions.stripe-connect-onboarding]
+verify_jwt = false
+
+[functions.create-connected-checkout]
+verify_jwt = false
+
+[functions.stripe-connect-webhook]
+verify_jwt = false
+
+[functions.check-stripe-connect-status]
+verify_jwt = false
