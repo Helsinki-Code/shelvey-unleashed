@@ -27,6 +27,7 @@ import { AgentMessagesPanel } from '@/components/AgentMessagesPanel';
 import { EscalationTracker } from '@/components/EscalationTracker';
 import { ProgressReportsPanel } from '@/components/ProgressReportsPanel';
 import { HelpTooltip, HELP_CONTENT } from '@/components/HelpTooltip';
+import { GlobalAgentActivityPanel } from '@/components/GlobalAgentActivityPanel';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -134,9 +135,9 @@ const UserDashboard = () => {
             </motion.div>
 
             {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Quick Chat */}
-              <Card className="row-span-2" data-tour="ceo-chat">
+              <Card className="lg:col-span-2 row-span-2" data-tour="ceo-chat">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-primary" />
@@ -208,11 +209,16 @@ const UserDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Activity Feed */}
-              <div data-tour="activity">
-                <QuickActivityFeed onViewAll={() => setActiveSection('team')} />
+              {/* Global Agent Activity Panel */}
+              <div className="row-span-2" data-tour="activity">
+                <GlobalAgentActivityPanel />
               </div>
+
+              {/* Projects - Moved to span 2 cols */}
             </div>
+            
+            {/* Activity Feed - Full Width */}
+            <QuickActivityFeed onViewAll={() => setActiveSection('team')} />
           </div>
         )}
 
@@ -226,11 +232,16 @@ const UserDashboard = () => {
 
         {activeSection === 'team' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <TeamMeetingView />
-              <AgentMessagesPanel />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <TeamMeetingView />
+                  <AgentMessagesPanel />
+                </div>
+                <ProgressReportsPanel />
+              </div>
+              <GlobalAgentActivityPanel />
             </div>
-            <ProgressReportsPanel />
             <EscalationTracker />
           </div>
         )}
