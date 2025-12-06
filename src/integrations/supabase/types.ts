@@ -970,6 +970,8 @@ export type Database = {
           id: string
           onboarding_completed: boolean | null
           onboarding_goal: string | null
+          stripe_connect_account_id: string | null
+          stripe_connect_status: string | null
           subscription_expires_at: string | null
           subscription_status:
             | Database["public"]["Enums"]["subscription_status"]
@@ -986,6 +988,8 @@ export type Database = {
           id: string
           onboarding_completed?: boolean | null
           onboarding_goal?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_status?: string | null
           subscription_expires_at?: string | null
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
@@ -1002,6 +1006,8 @@ export type Database = {
           id?: string
           onboarding_completed?: boolean | null
           onboarding_goal?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_status?: string | null
           subscription_expires_at?: string | null
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
@@ -1446,6 +1452,8 @@ export type Database = {
           purchased_at: string | null
           registrar: string
           registrar_domain_id: string | null
+          reminder_sent_at: string | null
+          renewal_payment_intent_id: string | null
           renewal_price: number | null
           status: string | null
           updated_at: string | null
@@ -1467,6 +1475,8 @@ export type Database = {
           purchased_at?: string | null
           registrar?: string
           registrar_domain_id?: string | null
+          reminder_sent_at?: string | null
+          renewal_payment_intent_id?: string | null
           renewal_price?: number | null
           status?: string | null
           updated_at?: string | null
@@ -1488,6 +1498,8 @@ export type Database = {
           purchased_at?: string | null
           registrar?: string
           registrar_domain_id?: string | null
+          reminder_sent_at?: string | null
+          renewal_payment_intent_id?: string | null
           renewal_price?: number | null
           status?: string | null
           updated_at?: string | null

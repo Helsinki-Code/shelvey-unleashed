@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User, Shield, Bell, Key, Loader2, ArrowLeft, Camera, 
-  Mail, Lock, Check, Moon, Sun, Volume2, VolumeX
+  Mail, Lock, Check, Moon, Sun, Volume2, VolumeX, CreditCard
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,11 +17,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserAPIKeys } from '@/components/UserAPIKeys';
+import { StripeConnectSection } from '@/components/StripeConnectSection';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, profile, isLoading: authLoading, refreshProfile } = useAuth();
   const { toast } = useToast();
+  
+  // Determine default tab from URL params
+  const defaultTab = searchParams.get('tab') || 'profile';
   
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
@@ -137,8 +142,8 @@ const SettingsPage = () => {
           <p className="text-muted-foreground">Manage your account and preferences</p>
         </motion.div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue={defaultTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               Profile
@@ -150,6 +155,10 @@ const SettingsPage = () => {
             <TabsTrigger value="preferences" className="flex items-center gap-2">
               <Bell className="w-4 h-4" />
               Preferences
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payments
             </TabsTrigger>
             <TabsTrigger value="apikeys" className="flex items-center gap-2">
               <Key className="w-4 h-4" />
@@ -353,6 +362,11 @@ const SettingsPage = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Payments Tab - Stripe Connect */}
+          <TabsContent value="payments">
+            <StripeConnectSection />
           </TabsContent>
 
           {/* API Keys Tab */}

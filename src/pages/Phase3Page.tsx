@@ -15,6 +15,7 @@ import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { ReactCodePreview } from '@/components/ReactCodePreview';
 import { HostingSetup } from '@/components/HostingSetup';
+import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -757,6 +758,22 @@ const Phase3Page = () => {
                       <p className="text-xs text-muted-foreground">
                         SSL certificate is automatically provisioned via Cloudflare. Your site will be live in seconds.
                       </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Buy a Domain Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Globe className="w-5 h-5 text-primary" />
+                        Buy a Custom Domain
+                      </CardTitle>
+                      <CardDescription>
+                        Purchase a domain name directly through ShelVey with $8 markup on standard domains
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <DomainMarketplace />
                     </CardContent>
                   </Card>
 
