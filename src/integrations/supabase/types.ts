@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_creatives: {
+        Row: {
+          ab_variant: string | null
+          campaign_id: string | null
+          created_at: string | null
+          creative_type: string
+          cta: string | null
+          description: string | null
+          headline: string | null
+          id: string
+          image_urls: string[] | null
+          metadata: Json | null
+          performance_score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ab_variant?: string | null
+          campaign_id?: string | null
+          created_at?: string | null
+          creative_type: string
+          cta?: string | null
+          description?: string | null
+          headline?: string | null
+          id?: string
+          image_urls?: string[] | null
+          metadata?: Json | null
+          performance_score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ab_variant?: string | null
+          campaign_id?: string | null
+          created_at?: string | null
+          creative_type?: string
+          cta?: string | null
+          description?: string | null
+          headline?: string | null
+          id?: string
+          image_urls?: string[] | null
+          metadata?: Json | null
+          performance_score?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_creatives_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_api_keys: {
         Row: {
           category: string | null
@@ -741,6 +797,136 @@ export type Database = {
           },
         ]
       }
+      influencer_contacts: {
+        Row: {
+          contact_email: string | null
+          contract_value: number | null
+          created_at: string | null
+          engagement_rate: number | null
+          follower_count: number | null
+          handle: string | null
+          id: string
+          influencer_name: string
+          last_contacted_at: string | null
+          metadata: Json | null
+          niche: string | null
+          notes: string | null
+          platform: string
+          project_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contract_value?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle?: string | null
+          id?: string
+          influencer_name: string
+          last_contacted_at?: string | null
+          metadata?: Json | null
+          niche?: string | null
+          notes?: string | null
+          platform: string
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_email?: string | null
+          contract_value?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle?: string | null
+          id?: string
+          influencer_name?: string
+          last_contacted_at?: string | null
+          metadata?: Json | null
+          niche?: string | null
+          notes?: string | null
+          platform?: string
+          project_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaigns: {
+        Row: {
+          budget: number | null
+          campaign_type: string
+          created_at: string | null
+          end_date: string | null
+          id: string
+          metrics: Json | null
+          name: string
+          project_id: string | null
+          settings: Json | null
+          spent: number | null
+          start_date: string | null
+          status: string | null
+          target_platforms: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          campaign_type: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          metrics?: Json | null
+          name: string
+          project_id?: string | null
+          settings?: Json | null
+          spent?: number | null
+          start_date?: string | null
+          status?: string | null
+          target_platforms?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          campaign_type?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          metrics?: Json | null
+          name?: string
+          project_id?: string | null
+          settings?: Json | null
+          spent?: number | null
+          start_date?: string | null
+          status?: string | null
+          target_platforms?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcp_server_registry: {
         Row: {
           auth_type: string | null
@@ -1145,6 +1331,59 @@ export type Database = {
           working_directory?: string | null
         }
         Relationships: []
+      }
+      social_posts: {
+        Row: {
+          campaign_id: string | null
+          content: Json | null
+          created_at: string | null
+          id: string
+          media_urls: string[] | null
+          platforms: string[] | null
+          post_results: Json | null
+          posted_at: string | null
+          scheduled_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          content?: Json | null
+          created_at?: string | null
+          id?: string
+          media_urls?: string[] | null
+          platforms?: string[] | null
+          post_results?: Json | null
+          posted_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          content?: Json | null
+          created_at?: string | null
+          id?: string
+          media_urls?: string[] | null
+          platforms?: string[] | null
+          post_results?: Json | null
+          posted_at?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_meetings: {
         Row: {
