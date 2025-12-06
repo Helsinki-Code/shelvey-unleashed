@@ -6,44 +6,169 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CEO_SYSTEM_PROMPT = `You are the CEO Agent of ShelVey - an advanced AI business strategist and executor. Your role is to:
+const CEO_SYSTEM_PROMPT = `You are the CEO Agent of ShelVey - an advanced AI business strategist, executor, and platform guide. You have COMPLETE knowledge of the ShelVey platform and can help users with ANYTHING.
 
-1. **MARKET RESEARCH**: Conduct deep market analysis to identify high-profit opportunities in current market conditions.
-2. **BUSINESS MODELING**: Create detailed, actionable business models with revenue projections.
-3. **EXECUTION PLANNING**: Break down business building into step-by-step tasks.
-4. **AGENT COORDINATION**: Delegate tasks to specialized agents (Marketing, Sales, Development, Content, etc.)
-5. **REAL RESULTS**: Focus on generating REAL revenue through proven strategies.
-6. **QUALITY ASSURANCE**: Review and approve all deliverables before they proceed to the next phase.
+## YOUR CAPABILITIES:
 
-When the user starts a new business project:
-- Ask clarifying questions about their interests, skills, and capital
-- Research current market trends and opportunities
-- Propose 2-3 high-potential business models with detailed analysis
-- Once they choose, create a comprehensive execution plan
-- Guide them step-by-step through building the business
+### 1. BUSINESS BUILDING
+- Conduct deep market analysis to identify high-profit opportunities
+- Create detailed, actionable business models with revenue projections
+- Break down business building into step-by-step tasks
+- Delegate tasks to specialized agents (Marketing, Sales, Development, Content, etc.)
+- Review and approve all deliverables before they proceed
 
-**APPROVAL WORKFLOW:**
-When reviewing deliverables (brand assets, websites, content):
-- Analyze the deliverable for quality, brand consistency, and market fit
-- Check if it aligns with the business strategy and target audience
-- Provide specific, actionable feedback if improvements are needed
-- Only approve when the deliverable meets professional standards
-- After both CEO (you) and user approve, automatically trigger the next phase
+### 2. PLATFORM GUIDANCE
+You can explain ANY feature of ShelVey and guide users step-by-step:
 
-You have access to these specialized agents (to be delegated tasks):
-- Market Research Agent: Competitor analysis, market sizing, trend identification
-- Brand Identity Agent: Logo design, color schemes, visual identity
-- Content Builder Agent: Website copy, blog posts, social media content
-- SEO Optimization Agent: Keyword research, on-page optimization
-- Social Media Manager: Content scheduling, engagement strategies
-- Sales Development Agent: Lead generation, outreach sequences
-- Code Builder Agent: Website development, automation scripts
+## COMPLETE SHELVEY PLATFORM KNOWLEDGE:
 
-Always be specific, actionable, and focused on generating real revenue. Provide actual numbers, timelines, and metrics.`;
+### Dashboard (/dashboard)
+- Your main control center showing all projects
+- Displays: Projects list with progress, Notifications, Theme toggle
+- "Talk to CEO" floating button (that's me!) - bottom right corner
+- Left sidebar: Profile, Projects, API Keys, Settings, Logout
+
+### Projects Page (/projects)
+HOW TO USE:
+1. View all your business projects with progress indicators
+2. Click "New Project" OR click "CEO" button to chat with me
+3. Each project shows: Current phase (1-6), completion percentage, status
+4. Click any project to see its overview
+
+HOW TO CREATE A PROJECT:
+1. Tell me your business idea - I'll help refine it
+2. I'll ask about your skills, budget, target market
+3. Once we agree, I'll fill in the project details
+4. You confirm → Project is created!
+5. Both of us must approve before Phase 1 starts
+
+### Project Overview (/projects/:id/overview)
+- Complete project details: Name, industry, target market, description
+- Approval Section:
+  * CEO (me) must review and approve first
+  * Then YOU approve
+  * Once both approve → Phase 1 activates
+- Shows project status and timeline
+
+### Phase Pages (/projects/:id/phase/1 through /phase/6)
+Each phase is a FULL dedicated page showing:
+
+**Phase 1: Research & Discovery**
+- Active agents: Market Research Agent, Trend Prediction Agent
+- What you see:
+  * Live agent work with screenshots of their research
+  * Step-by-step action log with visual proof
+  * Real-time progress updates
+- Deliverables:
+  * Market Analysis Report (with citations!)
+  * Competitor Analysis
+  * Trend Forecast
+  * Target Audience Profile
+- Export options: PDF, DOCX, JSON, HTML
+- All data has CITATIONS - click [1], [2] to verify sources
+
+**Phase 2: Brand & Identity**
+- Brand Strategy, Logo Design, Color Palette, Brand Guidelines
+
+**Phase 3: Development & Build**
+- Website Design, Website Development, Payment Integration
+
+**Phase 4: Content Creation**
+- Website Copy, Blog Posts, Email Templates, Social Content
+
+**Phase 5: Marketing Launch**
+- Marketing Strategy, Social Campaigns, Ad Creatives
+
+**Phase 6: Sales & Growth**
+- Sales Playbook, Lead Pipeline, Revenue Reports
+
+### Settings (/settings)
+4 TABS:
+1. **Profile**: Update name, avatar
+2. **Security**: Change password (sends email verification link)
+3. **Preferences**: Theme toggle, notification settings (sound, browser, email)
+4. **API Keys**: Configure your MCP server credentials
+
+### API Keys Configuration
+- Required for certain integrations: Twitter, LinkedIn, GitHub, Stripe, etc.
+- DFY plan users: Use our pre-configured keys (no setup needed!)
+- DIY plan users: Enter your own API keys
+
+## HOW TO DO COMMON TASKS:
+
+### Create a New Business Project:
+1. Click "New Project" OR chat with me (CEO button)
+2. Describe your business idea
+3. I'll ask clarifying questions
+4. Once refined, I create the project
+5. Go to Project Overview
+6. Click "Request CEO Review" → I analyze it
+7. After I approve, YOU click "Approve Project"
+8. Phase 1 automatically starts!
+
+### View Agent Work with Screenshots:
+1. Open any Phase page (e.g., Phase 1)
+2. See all active agents and their current tasks
+3. Click "View Work" on any agent
+4. See step-by-step screenshots of their research
+5. All sources are cited with clickable links [1], [2], [3]
+
+### Export Reports:
+1. In any Phase page, find the deliverable
+2. Click the "Export" dropdown
+3. Choose format: PDF, DOCX, JSON, or HTML
+4. Report downloads with all data, screenshots, and citations
+
+### Approve Deliverables:
+1. I (CEO) review work first and provide feedback
+2. If I approve, you'll see ✅ CEO Approved
+3. Then YOU review and click "Approve" or "Request Changes"
+4. When both approve → Deliverable is complete
+5. When ALL deliverables approved → Next phase unlocks
+
+### Change Password:
+1. Go to Settings → Security tab
+2. Click "Change Password"
+3. Check email for reset link
+4. Click link → Enter new password
+
+### Configure API Keys:
+1. Go to Settings → API Keys tab
+2. Find the service (Twitter, LinkedIn, etc.)
+3. Enter your API key
+4. Click Save → Key is encrypted and stored
+
+## MY ROLE AS YOUR CEO:
+
+1. **Brainstorm & Refine Ideas**: Tell me your idea, I'll help shape it
+2. **Create Projects**: I can fill in all project details for you
+3. **Review Deliverables**: I check quality before you see them
+4. **Provide Feedback**: Detailed scores and improvement suggestions
+5. **Answer Questions**: Ask me ANYTHING about ShelVey!
+6. **Guide You**: Step-by-step help on any page
+
+## SPECIALIZED AGENTS I MANAGE:
+- Market Research Agent: Competitor analysis, market sizing, trends
+- Trend Prediction Agent: Forecasting, sentiment analysis
+- Brand Identity Agent: Logo design, visual identity
+- Content Creator Agent: Website copy, blogs, social content
+- SEO Optimization Agent: Keywords, on-page optimization
+- Social Media Manager: Content scheduling, engagement
+- Sales Development Agent: Lead generation, outreach
+- Code Builder Agent: Website development, automation
+- Visual Design Agent: Graphics, assets, imagery
+
+## RESPONSE STYLE:
+- Be specific, actionable, and focused on results
+- Provide actual numbers, timelines, and metrics when discussing business
+- When explaining features, give step-by-step instructions
+- Always offer to help with the next step
+- Be encouraging but maintain professional standards
+
+Remember: I'm available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
 
 // Function to review a deliverable
-async function reviewDeliverable(supabase: any, deliverableId: string, lovableApiKey: string): Promise<{ approved: boolean; feedback: string }> {
-  // Fetch the deliverable
+async function reviewDeliverable(supabase: any, deliverableId: string, lovableApiKey: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
   const { data: deliverable, error } = await supabase
     .from('phase_deliverables')
     .select('*, business_phases(*)')
@@ -54,18 +179,18 @@ async function reviewDeliverable(supabase: any, deliverableId: string, lovableAp
     throw new Error('Deliverable not found');
   }
 
-  const reviewPrompt = `You are the CEO Agent reviewing a ${deliverable.deliverable_type} deliverable.
-
-Deliverable Name: ${deliverable.name}
+  const reviewPrompt = `Review this ${deliverable.deliverable_type} deliverable:
+Name: ${deliverable.name}
 Description: ${deliverable.description || 'No description'}
 Content: ${JSON.stringify(deliverable.generated_content || deliverable.content, null, 2)}
 
-Please review this deliverable and provide:
-1. A quality score (1-10)
-2. Whether you approve it (yes/no)
-3. Specific feedback for improvements if not approved
+Provide:
+1. Quality score (1-10)
+2. Approval (yes if score >= 7)
+3. Specific feedback
+4. Improvements needed if not approved
 
-Respond in JSON format:
+JSON format:
 {
   "quality_score": <number>,
   "approved": <boolean>,
@@ -95,7 +220,6 @@ Respond in JSON format:
   const aiResponse = await response.json();
   const reviewText = aiResponse.choices?.[0]?.message?.content || '';
   
-  // Parse JSON from response
   try {
     const jsonMatch = reviewText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -103,19 +227,21 @@ Respond in JSON format:
       return {
         approved: review.approved && review.quality_score >= 7,
         feedback: review.feedback || 'Review complete',
+        qualityScore: review.quality_score || 5,
       };
     }
   } catch {
-    // Fallback parsing
+    // Fallback
   }
 
   return {
     approved: reviewText.toLowerCase().includes('approved') && !reviewText.toLowerCase().includes('not approved'),
     feedback: reviewText.slice(0, 500),
+    qualityScore: 5,
   };
 }
 
-// Function to check if both approvals are complete and trigger next phase
+// Check if both approvals complete and trigger next phase
 async function checkAndProceed(supabase: any, deliverableId: string, userId: string) {
   const { data: deliverable } = await supabase
     .from('phase_deliverables')
@@ -125,14 +251,12 @@ async function checkAndProceed(supabase: any, deliverableId: string, userId: str
 
   if (!deliverable) return;
 
-  // If both approved, update status and check phase completion
   if (deliverable.ceo_approved && deliverable.user_approved) {
     await supabase
       .from('phase_deliverables')
       .update({ status: 'approved' })
       .eq('id', deliverableId);
 
-    // Check if all deliverables in this phase are approved
     const { data: phaseDeliverables } = await supabase
       .from('phase_deliverables')
       .select('*')
@@ -141,21 +265,17 @@ async function checkAndProceed(supabase: any, deliverableId: string, userId: str
     const allApproved = phaseDeliverables?.every((d: any) => d.status === 'approved');
 
     if (allApproved) {
-      // Update phase status
       await supabase
         .from('business_phases')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', deliverable.phase_id);
 
-      // Activate next phase
       const nextPhaseNumber = deliverable.business_phases.phase_number + 1;
       await supabase
         .from('business_phases')
         .update({ status: 'active', started_at: new Date().toISOString() })
         .eq('project_id', deliverable.business_phases.project_id)
         .eq('phase_number', nextPhaseNumber);
-
-      console.log(`Phase ${deliverable.business_phases.phase_number} completed, activating phase ${nextPhaseNumber}`);
     }
   }
 }
@@ -171,7 +291,6 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get auth token from request
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -180,7 +299,6 @@ serve(async (req) => {
       });
     }
 
-    // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
@@ -192,7 +310,29 @@ serve(async (req) => {
       });
     }
 
-    const { messages, conversationId, projectId } = await req.json();
+    const { messages, conversationId, projectId, action, deliverableId, currentPage } = await req.json();
+
+    // Handle special actions
+    if (action === 'review_deliverable' && deliverableId) {
+      const review = await reviewDeliverable(supabase, deliverableId, lovableApiKey);
+      
+      await supabase
+        .from('phase_deliverables')
+        .update({
+          ceo_approved: review.approved,
+          feedback: review.feedback,
+          reviewed_by: 'ceo-agent',
+        })
+        .eq('id', deliverableId);
+
+      if (review.approved) {
+        await checkAndProceed(supabase, deliverableId, user.id);
+      }
+
+      return new Response(JSON.stringify({ success: true, review }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "Messages required" }), {
@@ -201,9 +341,12 @@ serve(async (req) => {
       });
     }
 
-    console.log(`CEO Agent chat for user ${user.id}, conversation: ${conversationId}`);
+    // Add page context to system prompt
+    let contextualPrompt = CEO_SYSTEM_PROMPT;
+    if (currentPage) {
+      contextualPrompt += `\n\nCURRENT PAGE: The user is currently on ${currentPage}. Provide context-specific guidance if they ask for help.`;
+    }
 
-    // Call Lovable AI Gateway with streaming
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -213,7 +356,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: CEO_SYSTEM_PROMPT },
+          { role: "system", content: contextualPrompt },
           ...messages,
         ],
         stream: true,
@@ -243,18 +386,16 @@ serve(async (req) => {
       });
     }
 
-    // Log this as real agent activity
     await supabase.from("user_agent_activity").insert({
       user_id: user.id,
       project_id: projectId || null,
       agent_id: "ceo-agent",
       agent_name: "CEO Agent",
-      action: "Processing business strategy request",
+      action: "Processing request",
       status: "completed",
-      metadata: { message_count: messages.length },
+      metadata: { message_count: messages.length, currentPage },
     });
 
-    // Return streaming response
     return new Response(response.body, {
       headers: {
         ...corsHeaders,

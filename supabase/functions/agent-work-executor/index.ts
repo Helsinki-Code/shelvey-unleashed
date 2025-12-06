@@ -6,16 +6,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Agent work step with visual documentation
+interface AgentWorkStep {
+  step: number;
+  action: string;
+  url?: string;
+  screenshot?: string;
+  timestamp: string;
+  reasoning: string;
+  dataExtracted?: any;
+  citations?: Citation[];
+}
+
+interface Citation {
+  id: number;
+  source: string;
+  url: string;
+  title: string;
+  accessedAt: string;
+  quote?: string;
+}
+
 // Agent specializations and suggested MCP servers (agents can use ANY server)
 const AGENT_SPECIALIZATIONS: Record<string, { name: string; suggestedMCPs: string[]; capabilities: string[] }> = {
   'market-research': {
     name: 'Market Research Agent',
-    suggestedMCPs: ['mcp-perplexity', 'mcp-twitter', 'mcp-linkedin'],
+    suggestedMCPs: ['mcp-perplexity', 'mcp-brightdata'],
     capabilities: ['market_analysis', 'competitor_research', 'trend_identification'],
   },
   'trend-prediction': {
     name: 'Trend Prediction Agent',
-    suggestedMCPs: ['mcp-perplexity', 'mcp-twitter'],
+    suggestedMCPs: ['mcp-perplexity', 'mcp-brightdata'],
     capabilities: ['trend_forecasting', 'sentiment_analysis', 'market_signals'],
   },
   'brand-identity': {
@@ -71,11 +92,11 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, projectId, deliverableId, agentId, taskType, inputData, requestedMCPs } = await req.json();
+    const { userId, projectId, deliverableId, agentId, taskType, inputData, requestedMCPs, useComputerUse } = await req.json();
 
     console.log(`[agent-work-executor] Starting work for agent ${agentId} on deliverable ${deliverableId}`);
 
-    // Get agent specialization (suggestions only, not restrictions)
+    // Get agent specialization
     const agentSpec = AGENT_SPECIALIZATIONS[agentId] || {
       name: agentId,
       suggestedMCPs: ['mcp-perplexity'],
@@ -83,13 +104,16 @@ serve(async (req) => {
     };
 
     // Determine which MCP servers to use
-    // Priority: 1. Explicitly requested, 2. Based on task type, 3. Agent suggestions
     let mcpServersToUse = requestedMCPs || [];
-    
     if (mcpServersToUse.length === 0) {
-      // Intelligently select MCPs based on task type
       mcpServersToUse = selectMCPsForTask(taskType, agentSpec.suggestedMCPs);
     }
+
+    // Initialize work tracking
+    const workSteps: AgentWorkStep[] = [];
+    const allCitations: Citation[] = [];
+    const screenshots: string[] = [];
+    let citationCounter = 1;
 
     // Update task status to processing
     if (deliverableId) {
@@ -103,10 +127,49 @@ serve(async (req) => {
     await supabase.from('agent_activity_logs').insert({
       agent_id: agentId,
       agent_name: agentSpec.name,
-      action: `Starting ${taskType} work`,
+      action: `Starting ${taskType} work with visual documentation`,
       status: 'in_progress',
-      metadata: { deliverableId, mcpServers: mcpServersToUse, taskType },
+      metadata: { deliverableId, mcpServers: mcpServersToUse, taskType, useComputerUse },
     });
+
+    // Step 1: Start Computer Use session for browser research if applicable
+    let computerUseSession: any = null;
+    if (useComputerUse !== false && ['market_research', 'market_analysis', 'competitor_analysis', 'trend_analysis'].includes(taskType)) {
+      try {
+        workSteps.push({
+          step: workSteps.length + 1,
+          action: 'Initializing browser session for research',
+          timestamp: new Date().toISOString(),
+          reasoning: 'Starting Computer Use session to capture visual proof of research',
+        });
+
+        const sessionResponse = await fetch(`${supabaseUrl}/functions/v1/computer-use-agent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            action: 'start_session',
+            task: {
+              taskId: deliverableId,
+              userId,
+              agentId,
+              objective: `Research: ${taskType} for ${inputData?.projectName || 'project'}`,
+              startUrl: 'https://www.google.com',
+              maxSteps: 10,
+            },
+          }),
+        });
+
+        if (sessionResponse.ok) {
+          computerUseSession = await sessionResponse.json();
+          console.log('[agent-work-executor] Computer Use session started:', computerUseSession.sessionId);
+        }
+      } catch (e) {
+        console.log('[agent-work-executor] Computer Use not available, continuing without:', e);
+      }
+    }
 
     // Execute real work using MCP servers
     const workResults: any[] = [];
@@ -115,6 +178,52 @@ serve(async (req) => {
 
     for (const mcpServer of mcpServersToUse) {
       try {
+        // Log step start
+        const stepNumber = workSteps.length + 1;
+        workSteps.push({
+          step: stepNumber,
+          action: `Executing ${taskType} via ${mcpServer}`,
+          timestamp: new Date().toISOString(),
+          reasoning: `Using ${mcpServer} to gather ${taskType} data`,
+        });
+
+        // Update activity in real-time
+        await supabase.from('agent_activity_logs').insert({
+          agent_id: agentId,
+          agent_name: agentSpec.name,
+          action: `Querying ${mcpServer} for ${taskType}`,
+          status: 'in_progress',
+          metadata: { step: stepNumber, mcpServer, deliverableId },
+        });
+
+        // Take screenshot if Computer Use is active
+        if (computerUseSession?.sessionId) {
+          try {
+            const screenshotResponse = await fetch(`${supabaseUrl}/functions/v1/computer-use-agent`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                action: 'execute_step',
+                sessionId: computerUseSession.sessionId,
+                step: { type: 'screenshot' },
+              }),
+            });
+
+            if (screenshotResponse.ok) {
+              const ssResult = await screenshotResponse.json();
+              if (ssResult.screenshot) {
+                screenshots.push(ssResult.screenshot);
+                workSteps[stepNumber - 1].screenshot = ssResult.screenshot;
+              }
+            }
+          } catch (e) {
+            console.log('[agent-work-executor] Screenshot failed:', e);
+          }
+        }
+
         const mcpResult = await executeMCPWork(supabase, supabaseUrl, supabaseServiceKey, {
           userId,
           projectId,
@@ -124,10 +233,18 @@ serve(async (req) => {
           inputData,
         });
 
+        // Extract citations from result
+        const resultCitations = extractCitations(mcpResult, citationCounter);
+        citationCounter += resultCitations.length;
+        allCitations.push(...resultCitations);
+        workSteps[workSteps.length - 1].citations = resultCitations;
+        workSteps[workSteps.length - 1].dataExtracted = summarizeData(mcpResult);
+
         workResults.push({
           mcpServer,
           success: true,
           data: mcpResult,
+          citations: resultCitations,
         });
 
         // Send progress update message
@@ -138,8 +255,8 @@ serve(async (req) => {
           from_agent_name: agentSpec.name,
           message_type: 'status_update',
           subject: `Progress: ${mcpServer} work completed`,
-          content: `Successfully completed ${taskType} work using ${mcpServer}`,
-          context: { mcpServer, taskType },
+          content: `Successfully completed ${taskType} work using ${mcpServer}. Found ${resultCitations.length} sources.`,
+          context: { mcpServer, taskType, citationsCount: resultCitations.length },
           priority: 'normal',
         });
 
@@ -165,7 +282,8 @@ serve(async (req) => {
           lovableApiKey,
           taskType,
           workResults,
-          inputData
+          inputData,
+          allCitations
         );
       } catch (reportError) {
         console.error('[agent-work-executor] Report generation error:', reportError);
@@ -175,12 +293,38 @@ serve(async (req) => {
       generatedContent = { rawResults: workResults };
     }
 
-    // Update deliverable with generated content
+    // Store screenshots in Supabase Storage
+    const storedScreenshots: string[] = [];
+    for (let i = 0; i < screenshots.length; i++) {
+      try {
+        const fileName = `${userId}/${deliverableId}/step-${i + 1}-${Date.now()}.png`;
+        const screenshotData = screenshots[i].replace(/^data:image\/\w+;base64,/, '');
+        const binaryData = Uint8Array.from(atob(screenshotData), c => c.charCodeAt(0));
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('agent-work-media')
+          .upload(fileName, binaryData, { contentType: 'image/png' });
+
+        if (!uploadError && uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('agent-work-media')
+            .getPublicUrl(fileName);
+          storedScreenshots.push(publicUrl);
+        }
+      } catch (e) {
+        console.error('[agent-work-executor] Screenshot upload failed:', e);
+      }
+    }
+
+    // Update deliverable with generated content, screenshots, citations
     if (deliverableId) {
       await supabase
         .from('phase_deliverables')
         .update({
           generated_content: generatedContent,
+          screenshots: storedScreenshots,
+          agent_work_steps: workSteps,
+          citations: allCitations,
           status: hasError ? 'pending' : 'review',
           updated_at: new Date().toISOString(),
         })
@@ -191,13 +335,16 @@ serve(async (req) => {
     await supabase.from('agent_activity_logs').insert({
       agent_id: agentId,
       agent_name: agentSpec.name,
-      action: `Completed ${taskType} work`,
+      action: `Completed ${taskType} work with ${workSteps.length} steps and ${allCitations.length} citations`,
       status: hasError ? 'partial' : 'completed',
       metadata: { 
         deliverableId, 
         mcpServersUsed: mcpServersToUse,
         successCount: workResults.filter(r => r.success).length,
         totalCount: workResults.length,
+        stepsCount: workSteps.length,
+        citationsCount: allCitations.length,
+        screenshotsCount: storedScreenshots.length,
       },
     });
 
@@ -228,6 +375,9 @@ serve(async (req) => {
           mcpServersUsed: mcpServersToUse,
           results: workResults,
           generatedContent,
+          workSteps,
+          citations: allCitations,
+          screenshots: storedScreenshots,
           hasError,
         },
       }),
@@ -243,22 +393,80 @@ serve(async (req) => {
   }
 });
 
+function extractCitations(mcpResult: any, startId: number): Citation[] {
+  const citations: Citation[] = [];
+  let id = startId;
+
+  // Extract sources from various MCP response formats
+  if (mcpResult?.sources) {
+    for (const source of mcpResult.sources) {
+      citations.push({
+        id: id++,
+        source: source.name || source.source || 'Unknown',
+        url: source.url || source.link || '#',
+        title: source.title || source.name || 'Source',
+        accessedAt: new Date().toISOString(),
+        quote: source.snippet || source.quote,
+      });
+    }
+  }
+
+  if (mcpResult?.citations) {
+    for (const cite of mcpResult.citations) {
+      citations.push({
+        id: id++,
+        source: cite.source || 'Unknown',
+        url: cite.url || '#',
+        title: cite.title || 'Source',
+        accessedAt: new Date().toISOString(),
+        quote: cite.quote,
+      });
+    }
+  }
+
+  // Extract from Perplexity-style results
+  if (mcpResult?.webPages) {
+    for (const page of mcpResult.webPages) {
+      citations.push({
+        id: id++,
+        source: new URL(page.url).hostname.replace('www.', ''),
+        url: page.url,
+        title: page.title || page.name,
+        accessedAt: new Date().toISOString(),
+        quote: page.snippet,
+      });
+    }
+  }
+
+  return citations;
+}
+
+function summarizeData(mcpResult: any): any {
+  if (!mcpResult) return null;
+  
+  // Create a summary of the data extracted
+  const summary: any = {};
+  
+  if (mcpResult.marketSize) summary.marketSize = mcpResult.marketSize;
+  if (mcpResult.competitors) summary.competitorCount = mcpResult.competitors.length;
+  if (mcpResult.trends) summary.trendCount = mcpResult.trends.length;
+  if (mcpResult.insights) summary.insightCount = mcpResult.insights.length;
+  if (mcpResult.keyFindings) summary.keyFindings = mcpResult.keyFindings;
+  
+  return Object.keys(summary).length > 0 ? summary : { dataReceived: true };
+}
+
 function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] {
-  // Updated mapping: Use Perplexity for sentiment/social analysis (more reliable than Twitter)
-  // Use 21st.dev Magic + shadcn for modern React website generation
-  // Use Artifacts MMO for reports/dashboards/presentations
-  // Use 'lovable-ai-image' for logo generation (no external API key needed!)
   const taskMCPMapping: Record<string, string[]> = {
-    'market_research': ['mcp-perplexity'],
-    'market_analysis': ['mcp-perplexity'],
-    'competitor_analysis': ['mcp-perplexity'],
+    'market_research': ['mcp-perplexity', 'mcp-brightdata'],
+    'market_analysis': ['mcp-perplexity', 'mcp-brightdata'],
+    'competitor_analysis': ['mcp-perplexity', 'mcp-brightdata'],
     'trend_analysis': ['mcp-perplexity'],
     'trend_forecast': ['mcp-perplexity'],
     'target_customer': ['mcp-perplexity'],
     'sentiment_analysis': ['mcp-perplexity'],
     'social_sentiment': ['mcp-perplexity'],
     'community_research': ['mcp-perplexity'],
-    // Branding Phase - use Lovable AI image generation (no FAL_KEY needed!)
     'brand_strategy': ['mcp-perplexity'],
     'brand_identity': ['lovable-ai-image'],
     'logo_design': ['lovable-ai-image'],
@@ -270,27 +478,22 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'lead_generation': ['mcp-linkedin'],
     'sales_outreach': ['mcp-vapi', 'mcp-linkedin'],
     'code_development': ['mcp-github'],
-    // Modern React website generation with 21st.dev Magic + shadcn
     'website_generation': ['mcp-21st-magic', 'mcp-shadcn'],
     'website': ['mcp-21st-magic', 'mcp-shadcn'],
     'landing_page': ['mcp-21st-magic', 'mcp-shadcn'],
     'ui_component': ['mcp-21st-magic', 'mcp-shadcn'],
     'react_component': ['mcp-21st-magic', 'mcp-shadcn'],
-    // Artifacts MMO for reports/dashboards
     'report_generation': ['mcp-artifacts'],
     'dashboard_generation': ['mcp-artifacts'],
     'chart_generation': ['mcp-artifacts'],
     'document_generation': ['mcp-artifacts'],
     'presentation_generation': ['mcp-artifacts'],
-    // Content phase
     'content_strategy': ['mcp-perplexity'],
     'blog_content': ['mcp-perplexity'],
     'social_content': ['mcp-perplexity'],
-    // Marketing phase
     'marketing_strategy': ['mcp-perplexity'],
     'ad_campaigns': ['mcp-perplexity'],
     'email_sequences': ['mcp-perplexity'],
-    // Sales phase
     'sales_strategy': ['mcp-perplexity'],
     'sales_scripts': ['mcp-perplexity'],
     'crm_setup': ['mcp-perplexity'],
@@ -308,14 +511,12 @@ async function executeMCPWork(
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
   const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-  // Handle Lovable AI Image Generation (no external API key needed!)
+  // Handle Lovable AI Image Generation
   if (mcpServerId === 'lovable-ai-image') {
     console.log('[executeMCPWork] Using Lovable AI for image generation:', taskType);
     return await generateImageWithLovableAI(lovableApiKey!, taskType, inputData);
   }
 
-  // Determine the tool to use based on task type and MCP server
-  // Perplexity is now the primary source for social sentiment (includes Reddit/Twitter/forum data)
   const toolMapping: Record<string, Record<string, { tool: string; args: any }>> = {
     'mcp-perplexity': {
       'market_research': { tool: 'market_research', args: inputData },
@@ -324,79 +525,29 @@ async function executeMCPWork(
       'trend_analysis': { tool: 'trend_analysis', args: inputData },
       'trend_forecast': { tool: 'trend_analysis', args: inputData },
       'target_customer': { tool: 'market_research', args: { ...inputData, focus: 'customer personas' } },
-      'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
-      'color_palette': { tool: 'research', args: { query: `brand color palette recommendations for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
-      'brand_guidelines': { tool: 'research', args: { query: `brand guidelines template and best practices for ${inputData?.industry || 'business'}` } },
-      'content_strategy': { tool: 'research', args: { query: `content strategy for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
-      'blog_content': { tool: 'research', args: { query: `blog topics for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
-      'social_content': { tool: 'research', args: { query: `social media content ideas for ${inputData?.industry || 'business'}` } },
-      'marketing_strategy': { tool: 'research', args: { query: `marketing strategy for ${inputData?.industry || 'business'} startup` } },
-      'ad_campaigns': { tool: 'research', args: { query: `ad campaign ideas for ${inputData?.industry || 'business'}` } },
-      'email_sequences': { tool: 'research', args: { query: `email marketing sequences for ${inputData?.industry || 'business'}` } },
-      'sales_strategy': { tool: 'research', args: { query: `sales strategy for ${inputData?.industry || 'business'} startup` } },
-      'sales_scripts': { tool: 'research', args: { query: `sales scripts for ${inputData?.industry || 'business'}` } },
-      'crm_setup': { tool: 'research', args: { query: `CRM setup best practices for ${inputData?.industry || 'business'}` } },
-      // Social sentiment tools
-      'sentiment_analysis': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
-      'social_sentiment': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
-      'community_research': { tool: 'community_research', args: { topic: inputData?.topic || inputData?.query, industry: inputData?.industry } },
-      'social_trends': { tool: 'social_trends', args: { industry: inputData?.industry, category: inputData?.category } },
+      'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${inputData?.industry || 'business'}` } },
+      'color_palette': { tool: 'research', args: { query: `brand color palette for ${inputData?.industry || 'business'}` } },
       'default': { tool: 'research', args: { query: inputData?.query || inputData?.description || inputData?.projectName } },
     },
-    'mcp-twitter': {
-      // Twitter still available but gateway will auto-fallback to Perplexity if rate limited
-      'trend_analysis': { tool: 'get_trends', args: {} },
-      'social_media': { tool: 'search_tweets', args: { query: inputData?.query } },
-      'default': { tool: 'analyze_sentiment', args: { query: inputData?.query || inputData?.industry } },
+    'mcp-brightdata': {
+      'market_research': { tool: 'scrape_search', args: { query: `${inputData?.industry} market size trends 2024` } },
+      'competitor_analysis': { tool: 'scrape_search', args: { query: `${inputData?.industry} competitors top companies` } },
+      'default': { tool: 'scrape_search', args: { query: inputData?.query || inputData?.industry } },
     },
     'mcp-linkedin': {
       'lead_generation': { tool: 'search_people', args: inputData },
       'company_research': { tool: 'search_companies', args: inputData },
       'default': { tool: 'get_profile', args: {} },
     },
-    'mcp-falai': {
-      'logo_design': { tool: 'generate_logo', args: inputData },
-      'brand_identity': { tool: 'generate_logo', args: inputData },
-      'default': { tool: 'generate_image', args: { prompt: inputData?.prompt || inputData?.description } },
-    },
     'mcp-github': {
       'code_development': { tool: 'search_repos', args: { query: inputData?.query } },
       'default': { tool: 'get_user', args: {} },
-    },
-    'mcp-vapi': {
-      'sales_outreach': { tool: 'get_assistants', args: {} },
-      'default': { tool: 'get_assistants', args: {} },
-    },
-    'mcp-artifacts': {
-      'report_generation': { tool: 'generate_report', args: { title: inputData?.title, data: inputData?.data, reportType: inputData?.reportType, sections: inputData?.sections } },
-      'dashboard_generation': { tool: 'generate_dashboard', args: { title: inputData?.title, widgets: inputData?.widgets, data: inputData?.data, theme: inputData?.theme } },
-      'chart_generation': { tool: 'generate_chart', args: { chartType: inputData?.chartType, data: inputData?.data, title: inputData?.title } },
-      'document_generation': { tool: 'generate_document', args: { title: inputData?.title, content: inputData?.content, template: inputData?.template } },
-      'presentation_generation': { tool: 'generate_presentation', args: { title: inputData?.title, slides: inputData?.slides, theme: inputData?.theme } },
-      'default': { tool: 'generate_report', args: inputData },
-    },
-    // Modern React website generation with 21st.dev Magic
-    'mcp-21st-magic': {
-      'website_generation': { tool: 'generate_landing_page', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, sections: ['hero', 'features', 'pricing', 'testimonials', 'cta', 'footer'] } },
-      'landing_page': { tool: 'generate_landing_page', args: { businessName: inputData?.businessName, industry: inputData?.industry, brandColors: inputData?.brandColors, description: inputData?.description, sections: inputData?.sections || ['hero', 'features', 'cta'] } },
-      'ui_component': { tool: 'generate_component', args: { description: inputData?.description, framework: 'react', styling: 'tailwind' } },
-      'react_component': { tool: 'generate_component', args: { description: inputData?.description, framework: 'react', styling: 'tailwind' } },
-      'default': { tool: 'generate_component', args: { description: inputData?.description || 'Create a modern React component' } },
-    },
-    // shadcn/ui components
-    'mcp-shadcn': {
-      'website_generation': { tool: 'get_block', args: { name: 'dashboard-01' } },
-      'landing_page': { tool: 'list_components', args: { category: 'layout' } },
-      'ui_component': { tool: 'get_component', args: { name: inputData?.componentName || 'button' } },
-      'react_component': { tool: 'get_component', args: { name: inputData?.componentName || 'card' } },
-      'default': { tool: 'list_components', args: {} },
     },
   };
 
   const serverTools = toolMapping[mcpServerId] || {};
   const toolConfig = serverTools[taskType] || serverTools['default'] || { tool: 'default', args: {} };
 
-  // Call the MCP gateway
   const response = await fetch(`${supabaseUrl}/functions/v1/mcp-gateway`, {
     method: 'POST',
     headers: {
@@ -421,23 +572,11 @@ async function executeMCPWork(
   return await response.json();
 }
 
-// Generate images using Lovable AI (no external API key needed!)
 async function generateImageWithLovableAI(lovableApiKey: string, taskType: string, inputData: any): Promise<any> {
-  console.log('[generateImageWithLovableAI] Generating image for:', taskType, inputData);
-  
   let imagePrompt = '';
   
   if (taskType === 'logo_design') {
-    imagePrompt = `Create a modern, professional logo for a business called "${inputData?.projectName || 'Business'}". 
-Industry: ${inputData?.industry || 'general'}. 
-Description: ${inputData?.description || 'A professional business'}. 
-Style: Clean, minimalist, memorable, suitable for web and print. 
-The logo should be iconic and work well at small sizes.`;
-  } else if (taskType === 'brand_identity' || taskType === 'visual_assets') {
-    imagePrompt = `Create a brand visual asset for "${inputData?.projectName || 'Business'}". 
-Industry: ${inputData?.industry || 'general'}. 
-Description: ${inputData?.description || 'A professional business'}.
-Style: Modern, cohesive brand imagery.`;
+    imagePrompt = `Create a modern, professional logo for "${inputData?.projectName || 'Business'}". Industry: ${inputData?.industry || 'general'}. Style: Clean, minimalist, memorable.`;
   } else {
     imagePrompt = `Create a professional image for ${inputData?.projectName || 'a business'}. ${inputData?.description || ''}`;
   }
@@ -450,40 +589,27 @@ Style: Modern, cohesive brand imagery.`;
     },
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash-image-preview',
-      messages: [
-        { role: 'user', content: imagePrompt }
-      ],
+      messages: [{ role: 'user', content: imagePrompt }],
       modalities: ['image', 'text'],
     }),
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[generateImageWithLovableAI] Error:', errorText);
-    throw new Error(`Lovable AI image generation failed: ${errorText}`);
+    throw new Error(`Lovable AI image generation failed`);
   }
 
   const result = await response.json();
   const message = result.choices?.[0]?.message;
-  const images = message?.images || [];
-  const textContent = message?.content || '';
-
-  console.log('[generateImageWithLovableAI] Generated', images.length, 'images');
 
   return {
     success: true,
     taskType,
-    generatedImages: images.map((img: any, idx: number) => ({
+    generatedImages: (message?.images || []).map((img: any, idx: number) => ({
       id: `logo-${idx + 1}`,
       url: img.image_url?.url || img.url,
       type: taskType,
     })),
-    description: textContent,
-    metadata: {
-      prompt: imagePrompt,
-      model: 'google/gemini-2.5-flash-image-preview',
-      generatedAt: new Date().toISOString(),
-    },
+    description: message?.content || '',
   };
 }
 
@@ -491,7 +617,8 @@ async function generateComprehensiveReport(
   lovableApiKey: string,
   taskType: string,
   workResults: any[],
-  inputData: any
+  inputData: any,
+  citations: Citation[]
 ): Promise<any> {
   const successfulResults = workResults.filter(r => r.success);
 
@@ -506,17 +633,9 @@ async function generateComprehensiveReport(
       messages: [
         {
           role: 'system',
-          content: `You are a senior business analyst creating comprehensive deliverable reports. 
-Generate a detailed, professional report based on the research data provided.
-The report should include:
-1. Executive Summary
-2. Key Findings
-3. Detailed Analysis
-4. Data and Statistics
-5. Recommendations
-6. Next Steps
-
-Format as JSON with these sections as keys.`,
+          content: `You are a senior business analyst creating comprehensive deliverable reports with proper citations.
+Generate a detailed, professional report. Include citation numbers [1], [2], etc. matching the provided sources.
+Format as JSON with: executive_summary, key_findings (array), detailed_analysis, data_statistics, recommendations (array), next_steps (array), cited_sources (array of source IDs used).`,
         },
         {
           role: 'user',
@@ -524,6 +643,7 @@ Format as JSON with these sections as keys.`,
             taskType,
             inputContext: inputData,
             researchResults: successfulResults.map(r => r.data),
+            availableCitations: citations.map(c => ({ id: c.id, source: c.source, title: c.title })),
           }),
         },
       ],
@@ -538,6 +658,10 @@ Format as JSON with these sections as keys.`,
   const content = result.choices[0]?.message?.content || '';
 
   try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
     return JSON.parse(content);
   } catch {
     return { report: content };
