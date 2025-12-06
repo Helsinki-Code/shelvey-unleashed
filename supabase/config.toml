@@ -248,3 +248,6 @@ verify_jwt = false
 
 [functions.generate-website-realtime]
 verify_jwt = false
+
+[functions.deploy-to-subdomain]
+verify_jwt = false
