@@ -12,6 +12,11 @@ interface GeneratedAsset {
   imageUrl: string;
   prompt: string;
   generatedAt: string;
+  colors?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+  };
 }
 
 // Generate brand assets using Lovable AI image generation
@@ -27,25 +32,76 @@ async function generateBrandAssets(
 ): Promise<GeneratedAsset[]> {
   const assets: GeneratedAsset[] = [];
   
-  // Extract brand info from approved reports
+  // Extract brand info from approved reports - with better color extraction
   const brandName = brandContext.projectName || 'Brand';
   const industry = brandContext.industry || 'business';
-  const colors = brandContext.colorPalette?.primary_colors || brandContext.colorPalette?.recommended_colors || ['green', 'gold'];
   const style = brandContext.brandStrategy?.brand_personality || brandContext.brandStrategy?.visual_style || 'modern and professional';
   
-  console.log('[brand-assets-generator] Generating assets for:', { brandName, industry, colors, style });
+  // Better color extraction - look for HEX codes in color palette
+  let primaryColor = '#10B981'; // emerald default
+  let secondaryColor = '#059669';
+  let accentColor = '#34D399';
+  
+  const colorPalette = brandContext.colorPalette;
+  if (colorPalette) {
+    // Try to extract HEX colors from various possible locations
+    if (colorPalette.primary && colorPalette.primary.startsWith('#')) {
+      primaryColor = colorPalette.primary;
+    } else if (colorPalette.primary_color && colorPalette.primary_color.startsWith('#')) {
+      primaryColor = colorPalette.primary_color;
+    } else if (colorPalette.colors?.primary) {
+      primaryColor = colorPalette.colors.primary;
+    } else if (colorPalette.palette?.primary) {
+      primaryColor = colorPalette.palette.primary;
+    } else if (Array.isArray(colorPalette.primary_colors) && colorPalette.primary_colors[0]) {
+      const firstColor = colorPalette.primary_colors[0];
+      if (typeof firstColor === 'string' && firstColor.startsWith('#')) {
+        primaryColor = firstColor;
+      } else if (firstColor?.hex) {
+        primaryColor = firstColor.hex;
+      }
+    }
+    
+    if (colorPalette.secondary && colorPalette.secondary.startsWith('#')) {
+      secondaryColor = colorPalette.secondary;
+    } else if (colorPalette.secondary_color) {
+      secondaryColor = colorPalette.secondary_color;
+    }
+    
+    if (colorPalette.accent && colorPalette.accent.startsWith('#')) {
+      accentColor = colorPalette.accent;
+    } else if (colorPalette.accent_color) {
+      accentColor = colorPalette.accent_color;
+    }
+  }
+  
+  console.log('[brand-assets-generator] Generating assets for:', { 
+    brandName, industry, style, 
+    colors: { primaryColor, secondaryColor, accentColor } 
+  });
 
-  // Generate Logo
-  const logoPrompt = `Create a professional, modern logo for "${brandName}" - a ${industry} company. 
+  // Generate Logo with EXPLICIT color hex codes
+  const logoPrompt = `Create a professional, bold logo icon for "${brandName}" - a ${industry} company.
+
+CRITICAL COLOR REQUIREMENTS - USE THESE EXACT COLORS:
+- Primary color: ${primaryColor} (this MUST be the dominant color)
+- Secondary color: ${secondaryColor} (use for accents/contrast)
+- Accent color: ${accentColor} (use sparingly for highlights)
+
 Style: ${style}
-Colors: Use ${Array.isArray(colors) ? colors.join(', ') : colors}
-Requirements:
-- Clean, minimalist design
+
+Design Requirements:
+- Bold, vibrant design using the PRIMARY COLOR ${primaryColor} prominently
+- Clean, minimalist but COLORFUL - NOT white or gray
 - Suitable for both light and dark backgrounds
 - Scalable vector-style illustration
 - No text in the logo (icon/symbol only)
 - Premium, trustworthy appearance
-Format: Square 1024x1024 logo design`;
+- The logo should be PRIMARILY ${primaryColor} colored
+
+DO NOT generate a white, gray, or monochrome logo. The logo MUST feature ${primaryColor} as the main color.
+
+Format: Square 1024x1024 logo design with rich color.`;
 
   console.log('[brand-assets-generator] Logo prompt:', logoPrompt);
 
@@ -75,6 +131,7 @@ Format: Square 1024x1024 logo design`;
           imageUrl: images[0].image_url?.url || images[0].url || '',
           prompt: logoPrompt,
           generatedAt: new Date().toISOString(),
+          colors: { primaryColor, secondaryColor, accentColor },
         });
       }
     } else {
@@ -84,16 +141,22 @@ Format: Square 1024x1024 logo design`;
     console.error('[brand-assets-generator] Logo generation error:', error);
   }
 
-  // Generate App Icon
+  // Generate App Icon with explicit colors
   const iconPrompt = `Create a mobile app icon for "${brandName}" - a ${industry} app.
+
+CRITICAL COLOR REQUIREMENTS:
+- Primary color: ${primaryColor} (MUST be the main background or dominant color)
+- Secondary color: ${secondaryColor}
+
 Style: ${style}
-Colors: ${Array.isArray(colors) ? colors.join(', ') : colors}
 Requirements:
 - Rounded corners ready for iOS/Android
 - Simple, recognizable at small sizes
-- Bold and eye-catching
+- Bold, vibrant, and eye-catching - USE ${primaryColor} as the main color
 - Premium quality
-Format: Square 512x512 app icon`;
+- NOT white or gray - must be COLORFUL with ${primaryColor}
+
+Format: Square 512x512 app icon with ${primaryColor} as the dominant color.`;
 
   try {
     const iconResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -120,6 +183,7 @@ Format: Square 512x512 app icon`;
           imageUrl: images[0].image_url?.url || images[0].url || '',
           prompt: iconPrompt,
           generatedAt: new Date().toISOString(),
+          colors: { primaryColor, secondaryColor },
         });
       }
     }
@@ -127,16 +191,24 @@ Format: Square 512x512 app icon`;
     console.error('[brand-assets-generator] Icon generation error:', error);
   }
 
-  // Generate Social Media Banner
+  // Generate Social Media Banner with explicit colors
   const bannerPrompt = `Create a social media banner/cover image for "${brandName}" - a ${industry} company.
+
+CRITICAL COLOR REQUIREMENTS:
+- Primary color: ${primaryColor} (use as main gradient or background color)
+- Secondary color: ${secondaryColor} (use for gradient or accents)
+- Accent color: ${accentColor} (use sparingly for highlights)
+
 Style: ${style}
-Colors: ${Array.isArray(colors) ? colors.join(', ') : colors}
 Requirements:
 - Wide format (1200x600 aspect ratio)
-- Professional and engaging
+- Professional and engaging with VIBRANT colors
 - Suitable for LinkedIn/Twitter/Facebook cover
+- Beautiful gradient using ${primaryColor} and ${secondaryColor}
 - Abstract or minimalist design matching the brand
-Format: Wide banner 1200x600`;
+- NOT white or plain - must feature brand colors prominently
+
+Format: Wide banner 1200x600 with a beautiful ${primaryColor} to ${secondaryColor} gradient.`;
 
   try {
     const bannerResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -163,6 +235,7 @@ Format: Wide banner 1200x600`;
           imageUrl: images[0].image_url?.url || images[0].url || '',
           prompt: bannerPrompt,
           generatedAt: new Date().toISOString(),
+          colors: { primaryColor, secondaryColor, accentColor },
         });
       }
     }
