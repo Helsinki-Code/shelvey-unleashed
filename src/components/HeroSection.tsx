@@ -249,7 +249,7 @@ export const HeroSection = () => {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
               </span>
               <span className="text-sm font-mono text-primary tracking-wide">
-                25 AGENTS • 52 MCP SERVERS • AMROGEN
+                25 AGENTS • 52 MCP SERVERS • 5-PHASE MACHINE
               </span>
             </motion.div>
             
@@ -261,7 +261,7 @@ export const HeroSection = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                Autonomous
+                Your Personal
               </motion.span>
               <motion.span 
                 className="block text-gradient mt-2"
@@ -269,7 +269,7 @@ export const HeroSection = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                AI Workforce
+                AI CEO
               </motion.span>
               <motion.span 
                 className="block text-foreground/60 text-2xl sm:text-3xl lg:text-4xl mt-4 font-normal"
@@ -277,7 +277,7 @@ export const HeroSection = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                for Business Creation
+                Builds Your Business 24/7
               </motion.span>
             </h1>
             
@@ -287,8 +287,8 @@ export const HeroSection = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              ShelVey deploys 25 specialized AI agents connected to 52 real-time MCP servers. 
-              They identify opportunities, build products, and generate revenue 24/7.
+              Create your custom AI CEO, watch 25 agents execute the 5-phase business process, 
+              approve each step, and launch profitable businesses while you sleep.
             </motion.p>
             
             {/* CTA Buttons */}
@@ -327,8 +327,8 @@ export const HeroSection = () => {
               transition={{ delay: 0.6 }}
             >
               {[
-                { value: 14847, label: 'Tasks Today', suffix: '' },
-                { value: 98.7, label: 'Success Rate', suffix: '%' },
+                { value: 847, label: 'Businesses Built', suffix: '' },
+                { value: 25, label: 'AI Agents', suffix: '' },
                 { value: 127450, label: 'Revenue MTD', suffix: '' },
               ].map((stat, i) => (
                 <div key={stat.label} className="text-center lg:text-left">
@@ -358,34 +358,34 @@ export const HeroSection = () => {
             {/* Floating status cards */}
             <StatusCard className="top-[5%] right-[5%]" delay={0.8}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-emerald-400">Playwright</span>
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-xs font-mono text-amber-400">CEO Active</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">45ms • 892 req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">Voice Ready</div>
             </StatusCard>
             
             <StatusCard className="bottom-[15%] left-[0%]" delay={1}>
               <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">$12,450</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono text-emerald-400">Phase 2</span>
               </div>
-              <div className="text-[10px] text-muted-foreground">Revenue Today</div>
+              <div className="text-[10px] text-muted-foreground">Branding Approved</div>
             </StatusCard>
             
             <StatusCard className="top-[25%] left-[-5%]" delay={1.2}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                <span className="text-xs font-mono text-cyan-400">Perplexity AI</span>
+                <Globe className="w-4 h-4 text-primary" />
+                <span className="text-xs font-mono text-primary">ecoglow.shelvey.pro</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">89ms • 2.3k req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">Website Live</div>
             </StatusCard>
             
             <StatusCard className="bottom-[5%] right-[10%]" delay={1.4}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                <span className="text-xs font-mono text-indigo-400">Vapi Voice</span>
+                <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
+                <span className="text-xs font-mono text-pink-400">Alpaca</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">123ms • 678 req</div>
+              <div className="text-[10px] text-muted-foreground mt-1">+$2,450 profit</div>
             </StatusCard>
           </motion.div>
         </div>
