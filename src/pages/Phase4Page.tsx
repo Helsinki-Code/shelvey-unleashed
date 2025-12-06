@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
+import { PageHeader } from "@/components/PageHeader";
 import ContentStrategyBuilder from "@/components/ContentStrategyBuilder";
 import WebsiteCopyGenerator from "@/components/WebsiteCopyGenerator";
 import BlogArticleGenerator from "@/components/BlogArticleGenerator";
@@ -114,12 +115,15 @@ export default function Phase4Page() {
                 {project?.name} - Create compelling content for your business
               </p>
             </div>
-            <Badge 
-              variant={phase?.status === 'completed' ? 'default' : phase?.status === 'active' ? 'secondary' : 'outline'}
-              className="text-sm"
-            >
-              {phase?.status || 'pending'}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge 
+                variant={phase?.status === 'completed' ? 'default' : phase?.status === 'active' ? 'secondary' : 'outline'}
+                className="text-sm"
+              >
+                {phase?.status || 'pending'}
+              </Badge>
+              <PageHeader showNotifications={true} showLogout={true} />
+            </div>
           </div>
 
           {/* Progress Bar */}

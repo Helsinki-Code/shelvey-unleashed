@@ -13,6 +13,7 @@ import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { BrandLogoGenerator } from '@/components/BrandLogoGenerator';
 import { BrandAssetsPanel } from '@/components/BrandAssetsPanel';
+import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -298,9 +299,12 @@ const Phase2Page = () => {
                 <p className="text-muted-foreground">{project?.name}</p>
               </div>
             </div>
-            <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
-              {phase?.status || 'pending'}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
+                {phase?.status || 'pending'}
+              </Badge>
+              <PageHeader showNotifications={true} showLogout={true} />
+            </div>
           </div>
 
           {/* Progress Bar */}

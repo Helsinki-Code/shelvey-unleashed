@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { ProjectCreationCEOChat } from '@/components/ProjectCreationCEOChat';
+import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -111,20 +112,23 @@ const ProjectsPage = () => {
                 Create and manage your business projects
               </p>
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowCEOCreation(true)}
-                className="gap-2"
-              >
-                <Bot className="w-4 h-4" />
-                Create with CEO
-              </Button>
-              <Button onClick={() => navigate('/projects/new')} className="gap-2">
-                <Plus className="w-4 h-4" />
-                New Project
-              </Button>
-            </div>
+            <PageHeader showNotifications={true} showLogout={true} />
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-3 mb-8">
+            <Button
+              variant="outline"
+              onClick={() => setShowCEOCreation(true)}
+              className="gap-2"
+            >
+              <Bot className="w-4 h-4" />
+              Create with CEO
+            </Button>
+            <Button onClick={() => navigate('/projects/new')} className="gap-2">
+              <Plus className="w-4 h-4" />
+              New Project
+            </Button>
           </div>
 
           {/* Projects Grid */}
