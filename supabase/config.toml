@@ -245,3 +245,6 @@ verify_jwt = false
 
 [functions.phase-consolidated-report]
 verify_jwt = false
+
+[functions.generate-website-realtime]
+verify_jwt = false
