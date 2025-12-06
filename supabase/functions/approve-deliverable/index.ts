@@ -369,6 +369,38 @@ serve(async (req) => {
           phaseStatus = await checkPhaseCompletion(supabase, deliverable.phase_id, user.id, supabaseUrl, supabaseKey);
         }
 
+        // If this is a brand report (brand_strategy, color_palette, brand_guidelines) and approved,
+        // check if we should trigger brand assets generation
+        if (review.approved && ['brand_strategy', 'color_palette', 'brand_guidelines'].includes(deliverable.deliverable_type)) {
+          console.log(`[ceo_review] Brand report approved, checking if logo generation needed...`);
+          try {
+            // Get phase info for project context
+            const { data: phase } = await supabase
+              .from('business_phases')
+              .select('project_id')
+              .eq('id', deliverable.phase_id)
+              .single();
+            
+            if (phase) {
+              await fetch(`${supabaseUrl}/functions/v1/brand-assets-generator`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  action: 'check_and_generate',
+                  userId: user.id,
+                  projectId: phase.project_id,
+                  phaseId: deliverable.phase_id,
+                }),
+              });
+            }
+          } catch (brandError) {
+            console.error('[ceo_review] Brand assets generator check failed:', brandError);
+          }
+        }
+
         return new Response(JSON.stringify({
           success: true,
           ceoApproved: review.approved,
@@ -435,6 +467,37 @@ serve(async (req) => {
         if (freshDeliverable?.ceo_approved && freshDeliverable?.user_approved) {
           console.log(`[user_approve] Both approvals confirmed, triggering phase completion check...`);
           phaseStatus = await checkPhaseCompletion(supabase, freshDeliverable.phase_id, user.id, supabaseUrl, supabaseKey);
+        }
+
+        // If this is a brand report and approved, check if we should trigger brand assets generation
+        if (freshDeliverable?.ceo_approved && freshDeliverable?.user_approved && 
+            ['brand_strategy', 'color_palette', 'brand_guidelines'].includes(deliverable.deliverable_type)) {
+          console.log(`[user_approve] Brand report fully approved, checking if logo generation needed...`);
+          try {
+            const { data: phase } = await supabase
+              .from('business_phases')
+              .select('project_id')
+              .eq('id', freshDeliverable.phase_id)
+              .single();
+            
+            if (phase) {
+              await fetch(`${supabaseUrl}/functions/v1/brand-assets-generator`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  action: 'check_and_generate',
+                  userId: user.id,
+                  projectId: phase.project_id,
+                  phaseId: freshDeliverable.phase_id,
+                }),
+              });
+            }
+          } catch (brandError) {
+            console.error('[user_approve] Brand assets generator check failed:', brandError);
+          }
         }
 
         return new Response(JSON.stringify({
