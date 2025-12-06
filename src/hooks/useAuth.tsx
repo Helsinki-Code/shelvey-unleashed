@@ -131,28 +131,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
-    // If signup successful, send custom welcome email via edge function
-    if (!error && data.user) {
-      console.log('[Auth] Signup successful, sending welcome email...');
-      try {
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('auth-email-handler', {
-          body: { 
-            type: 'welcome', 
-            email, 
-            name: fullName || email.split('@')[0]
-          }
-        });
-        
-        if (emailError) {
-          console.error('[Auth] Failed to send welcome email:', emailError);
-        } else {
-          console.log('[Auth] Welcome email sent successfully:', emailData);
-        }
-      } catch (emailErr) {
-        console.error('[Auth] Error invoking email handler:', emailErr);
-      }
-    } else if (error) {
+    // NOTE: Welcome email is NOT sent here - it's sent by generate-ceo-welcome 
+    // edge function AFTER payment completion and CEO creation
+    if (error) {
       console.error('[Auth] Signup failed:', error.message);
+    } else {
+      console.log('[Auth] Signup successful - verification email will be sent by Supabase Auth');
     }
 
     return { error };
