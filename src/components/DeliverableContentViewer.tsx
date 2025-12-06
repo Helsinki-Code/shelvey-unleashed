@@ -580,6 +580,74 @@ export const DeliverableContentViewer = ({
             ) : (
               <ScrollArea className="max-h-[400px]">
                 <div className="space-y-4 py-4">
+                  {/* Brand Assets - Logo, Icon, Banner */}
+                  {(content.assets || content.primaryLogo || content.generatedImages) && (
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        🎨 Brand Assets
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {/* Primary Logo */}
+                        {(content.primaryLogo?.imageUrl || content.assets?.find((a: any) => a.type === 'logo')?.imageUrl) && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">Logo</p>
+                            <div className="aspect-square rounded-lg border bg-muted/30 overflow-hidden">
+                              <img 
+                                src={content.primaryLogo?.imageUrl || content.assets?.find((a: any) => a.type === 'logo')?.imageUrl}
+                                alt="Brand Logo"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {/* App Icon */}
+                        {(content.appIcon?.imageUrl || content.assets?.find((a: any) => a.type === 'icon')?.imageUrl) && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground">App Icon</p>
+                            <div className="aspect-square rounded-lg border bg-muted/30 overflow-hidden">
+                              <img 
+                                src={content.appIcon?.imageUrl || content.assets?.find((a: any) => a.type === 'icon')?.imageUrl}
+                                alt="App Icon"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {/* Social Banner */}
+                        {(content.socialBanner?.imageUrl || content.assets?.find((a: any) => a.type === 'banner')?.imageUrl) && (
+                          <div className="space-y-2 col-span-2 md:col-span-1">
+                            <p className="text-xs font-medium text-muted-foreground">Social Banner</p>
+                            <div className="aspect-video rounded-lg border bg-muted/30 overflow-hidden">
+                              <img 
+                                src={content.socialBanner?.imageUrl || content.assets?.find((a: any) => a.type === 'banner')?.imageUrl}
+                                alt="Social Banner"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {/* Generated Images from Lovable AI */}
+                        {content.generatedImages?.map((img: any, idx: number) => (
+                          <div key={img.id || idx} className="space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground capitalize">{img.type || 'Asset'}</p>
+                            <div className="aspect-square rounded-lg border bg-muted/30 overflow-hidden">
+                              <img 
+                                src={img.url || img.imageUrl}
+                                alt={img.type || 'Brand Asset'}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {content.assetCount && (
+                        <p className="text-xs text-muted-foreground">
+                          Generated {content.assetCount} assets based on approved brand strategy
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Executive Summary */}
                   {content.executive_summary && (
                     <div className="space-y-2">
