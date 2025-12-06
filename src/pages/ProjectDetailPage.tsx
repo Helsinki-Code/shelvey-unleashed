@@ -32,6 +32,10 @@ interface Deliverable {
   status: string;
   description: string | null;
   generated_content?: any;
+  feedback_history?: any;
+  ceo_approved?: boolean;
+  user_approved?: boolean;
+  phase_id?: string;
 }
 
 const PHASE_INFO = [
@@ -93,11 +97,11 @@ const ProjectDetailPage = () => {
       const activePhase = phasesData?.find(p => p.status === 'active');
       setSelectedPhase(activePhase || phasesData?.[0] || null);
 
-      // Fetch deliverables for selected phase with generated_content
+      // Fetch deliverables for selected phase with generated_content and feedback_history
       if (activePhase) {
         const { data: deliverablesData } = await supabase
           .from('phase_deliverables')
-          .select('id, name, deliverable_type, status, description, generated_content')
+          .select('id, name, deliverable_type, status, description, generated_content, feedback_history, ceo_approved, user_approved, phase_id')
           .eq('phase_id', activePhase.id);
         
         setDeliverables(deliverablesData || []);
@@ -117,10 +121,10 @@ const ProjectDetailPage = () => {
   const handlePhaseSelect = async (phase: Phase) => {
     setSelectedPhase(phase);
     
-    // Fetch deliverables for this phase with generated_content
+    // Fetch deliverables for this phase with generated_content and feedback_history
     const { data } = await supabase
       .from('phase_deliverables')
-      .select('id, name, deliverable_type, status, description, generated_content')
+      .select('id, name, deliverable_type, status, description, generated_content, feedback_history, ceo_approved, user_approved, phase_id')
       .eq('phase_id', phase.id);
     
     setDeliverables(data || []);
@@ -448,7 +452,9 @@ const ProjectDetailPage = () => {
                           <DeliverableContentViewer
                             key={deliverable.id}
                             deliverable={deliverable}
+                            projectId={projectId}
                             onApprove={handleApproveDeliverable}
+                            onRefresh={() => selectedPhase && handlePhaseSelect(selectedPhase)}
                           />
                         ))}
                       </div>

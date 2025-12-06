@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ChevronDown, ChevronUp, Check, Clock, 
-  Eye, ThumbsUp, ThumbsDown, Loader2, Code, Bot, Zap
+  Eye, ThumbsUp, ThumbsDown, Loader2, Code, Bot, Zap,
+  Star, AlertTriangle, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { useToast } from '@/hooks/use-toast';
+
+interface CEOReview {
+  source: string;
+  type?: string;
+  feedback: string;
+  quality_score?: number;
+  strengths?: string[];
+  improvements?: string[];
+  approved: boolean;
+  timestamp: string;
+}
 
 interface GeneratedContent {
   executive_summary?: string;
@@ -52,9 +66,15 @@ interface DeliverableContentViewerProps {
     generated_content?: any;
     description?: string | null;
     assigned_agent_id?: string | null;
+    feedback_history?: CEOReview[];
+    ceo_approved?: boolean;
+    user_approved?: boolean;
+    phase_id?: string;
   };
+  projectId?: string;
   onApprove?: (id: string) => void;
   onReject?: (id: string, feedback: string) => void;
+  onRefresh?: () => void;
 }
 
 // Convert "Title Case Keys" to snake_case
@@ -178,16 +198,72 @@ const renderDetailedAnalysis = (analysis: Record<string, any> | undefined) => {
 
 export const DeliverableContentViewer = ({ 
   deliverable, 
+  projectId,
   onApprove, 
-  onReject 
+  onReject,
+  onRefresh,
 }: DeliverableContentViewerProps) => {
+  const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [agentActivity, setAgentActivity] = useState<AgentActivity | null>(null);
   const [isAgentWorking, setIsAgentWorking] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [userFeedback, setUserFeedback] = useState('');
   
   // Parse the content
   const content = parseGeneratedContent(deliverable.generated_content);
+  
+  // Get latest CEO review from feedback_history
+  const ceoReview = deliverable.feedback_history?.find(
+    (f) => f.source === 'CEO Agent' && f.type === 'ceo_review'
+  ) || deliverable.feedback_history?.find(f => f.source === 'CEO Agent');
+
+  // Handle regeneration with CEO feedback
+  const handleRegenerate = async () => {
+    if (!projectId) {
+      toast({
+        title: 'Error',
+        description: 'Project ID not available for regeneration',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-deliverable', {
+        body: {
+          deliverableId: deliverable.id,
+          deliverableType: deliverable.deliverable_type,
+          projectId,
+          previousFeedback: ceoReview ? {
+            feedback: ceoReview.feedback,
+            quality_score: ceoReview.quality_score,
+            improvements: ceoReview.improvements,
+          } : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Regeneration Started',
+        description: 'The agent is re-working this deliverable with CEO feedback.',
+      });
+
+      onRefresh?.();
+    } catch (error) {
+      console.error('Regeneration error:', error);
+      toast({
+        title: 'Regeneration Failed',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   // Subscribe to real-time agent activity for this deliverable
   useEffect(() => {
@@ -258,11 +334,116 @@ export const DeliverableContentViewer = ({
         return <Badge className="bg-green-500/20 text-green-500">Approved</Badge>;
       case 'review':
         return <Badge className="bg-amber-500/20 text-amber-500">Ready for Review</Badge>;
+      case 'revision_requested':
+        return <Badge className="bg-red-500/20 text-red-500">Revision Requested</Badge>;
       case 'in_progress':
         return <Badge className="bg-primary/20 text-primary">In Progress</Badge>;
       default:
         return <Badge variant="secondary">Pending</Badge>;
     }
+  };
+
+  // Render CEO Review Panel
+  const renderCEOReviewPanel = () => {
+    if (!ceoReview) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`p-4 rounded-lg border mb-4 ${
+          ceoReview.approved 
+            ? 'bg-green-500/10 border-green-500/30' 
+            : 'bg-amber-500/10 border-amber-500/30'
+        }`}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm">CEO Agent Review</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {ceoReview.quality_score !== undefined && (
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-medium">{ceoReview.quality_score}/10</span>
+              </div>
+            )}
+            {ceoReview.approved ? (
+              <Badge className="bg-green-500/20 text-green-500">
+                <Check className="w-3 h-3 mr-1" />
+                Approved
+              </Badge>
+            ) : (
+              <Badge className="bg-amber-500/20 text-amber-500">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Needs Revision
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* CEO Comment */}
+        <div className="mb-3">
+          <p className="text-sm text-muted-foreground italic">"{ceoReview.feedback}"</p>
+        </div>
+
+        {/* Strengths */}
+        {ceoReview.strengths && ceoReview.strengths.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-medium text-green-500 mb-1">Strengths</p>
+            <ul className="space-y-1">
+              {ceoReview.strengths.map((strength, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                  <span className="text-green-500">✓</span>
+                  {strength}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Improvements */}
+        {ceoReview.improvements && ceoReview.improvements.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs font-medium text-amber-500 mb-1">Improvements Needed</p>
+            <ul className="space-y-1">
+              {ceoReview.improvements.map((improvement, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                  <span className="text-amber-500">→</span>
+                  {improvement}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Regenerate Button when CEO rejected */}
+        {!ceoReview.approved && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRegenerate();
+            }}
+            disabled={isRegenerating}
+            size="sm"
+            className="w-full mt-2"
+            variant="outline"
+          >
+            {isRegenerating ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Regenerate with CEO Feedback
+          </Button>
+        )}
+
+        <p className="text-xs text-muted-foreground mt-2">
+          Reviewed {new Date(ceoReview.timestamp).toLocaleString()}
+        </p>
+      </motion.div>
+    );
   };
 
   const hasContent = content && Object.keys(content).length > 0;
@@ -357,6 +538,9 @@ export const DeliverableContentViewer = ({
           exit={{ height: 0, opacity: 0 }}
         >
           <CardContent className="pt-0 border-t">
+            {/* CEO Review Panel - Always show if there's a CEO review */}
+            {renderCEOReviewPanel()}
+            
             {!hasContent ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
