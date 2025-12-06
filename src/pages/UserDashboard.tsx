@@ -114,7 +114,7 @@ const UserDashboard = () => {
       </main>
 
       {/* Floating CEO Chat Button + Sheet */}
-      <CEOChatSheet ceoName={ceoName} />
+      <CEOChatSheet />
     </div>
   );
 };

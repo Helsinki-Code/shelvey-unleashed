@@ -21,20 +21,54 @@ interface Message {
   timestamp: Date;
 }
 
+interface UserCEO {
+  ceo_name: string;
+  ceo_image_url: string | null;
+  persona: string;
+  voice_id: string;
+  communication_style: string;
+}
+
 interface CEOChatSheetProps {
-  ceoName?: string;
   currentPage?: string;
 }
 
-export const CEOChatSheet = ({ ceoName = 'Ava' }: CEOChatSheetProps) => {
-  const { session } = useAuth();
+export const CEOChatSheet = ({ currentPage }: CEOChatSheetProps) => {
+  const { session, user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [userCEO, setUserCEO] = useState<UserCEO | null>(null);
+  const [isLoadingCEO, setIsLoadingCEO] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user's custom CEO
+  useEffect(() => {
+    const fetchUserCEO = async () => {
+      if (!user) {
+        setIsLoadingCEO(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_ceos')
+        .select('ceo_name, ceo_image_url, persona, voice_id, communication_style')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data && !error) {
+        setUserCEO(data);
+      }
+      setIsLoadingCEO(false);
+    };
+
+    fetchUserCEO();
+  }, [user]);
+
+  const ceoName = userCEO?.ceo_name || 'Your CEO';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,7 +79,7 @@ export const CEOChatSheet = ({ ceoName = 'Ava' }: CEOChatSheetProps) => {
   }, [messages]);
 
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && !isLoadingCEO) {
       setMessages([{
         role: 'assistant',
         content: `Hello! I'm ${ceoName}, your AI CEO.
@@ -54,7 +88,7 @@ I'm here to help you build a profitable business. What would you like to work on
         timestamp: new Date(),
       }]);
     }
-  }, [isOpen, ceoName]);
+  }, [isOpen, ceoName, isLoadingCEO]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !session) return;
@@ -174,7 +208,16 @@ I'm here to help you build a profitable business. What would you like to work on
   return (
     <>
       <AnimatePresence>
-        {showVoiceCall && (
+        {showVoiceCall && userCEO && (
+          <CEOVoiceCall 
+            onClose={() => setShowVoiceCall(false)} 
+            ceoName={userCEO.ceo_name}
+            ceoImageUrl={userCEO.ceo_image_url}
+            voiceId={userCEO.voice_id}
+            persona={userCEO.persona}
+          />
+        )}
+        {showVoiceCall && !userCEO && (
           <CEOVoiceCall onClose={() => setShowVoiceCall(false)} />
         )}
       </AnimatePresence>
@@ -192,9 +235,17 @@ I'm here to help you build a profitable business. What would you like to work on
           <SheetHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-primary-foreground" />
-                </div>
+                {userCEO?.ceo_image_url ? (
+                  <img 
+                    src={userCEO.ceo_image_url} 
+                    alt={ceoName}
+                    className="w-10 h-10 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                )}
                 <div>
                   <SheetTitle>Talk to {ceoName}</SheetTitle>
                   <p className="text-xs text-muted-foreground">Your AI CEO</p>
