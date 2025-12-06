@@ -95,6 +95,10 @@ serve(async (req) => {
       case 'activate_phase':
         result = await activatePhase(supabase, supabaseUrl, supabaseServiceKey, params);
         break;
+      case 'start_phase':
+        // Unified action to start a phase - activates and begins work
+        result = await startPhase(supabase, supabaseUrl, supabaseServiceKey, params);
+        break;
       case 'start_phase_work':
         result = await startPhaseWork(supabase, supabaseUrl, supabaseServiceKey, params);
         break;
@@ -127,6 +131,163 @@ serve(async (req) => {
     );
   }
 });
+
+// Unified start_phase action - gets phase, activates it if needed, and starts agent work
+async function startPhase(supabase: any, supabaseUrl: string, serviceKey: string, params: any) {
+  const { projectId, phaseNumber } = params;
+
+  console.log('[phase-auto-worker] startPhase called:', { projectId, phaseNumber });
+
+  // Get the phase
+  const { data: phase, error: phaseError } = await supabase
+    .from('business_phases')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('phase_number', phaseNumber)
+    .maybeSingle();
+
+  if (phaseError) {
+    throw new Error(`Failed to fetch phase: ${phaseError.message}`);
+  }
+
+  if (!phase) {
+    throw new Error(`Phase ${phaseNumber} not found for project ${projectId}`);
+  }
+
+  // Get user ID from phase
+  const userId = phase.user_id;
+
+  // If phase is not active, activate it first
+  if (phase.status !== 'active') {
+    await supabase
+      .from('business_phases')
+      .update({
+        status: 'active',
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', phase.id);
+  }
+
+  // Get existing deliverables for this phase
+  const { data: existingDeliverables } = await supabase
+    .from('phase_deliverables')
+    .select('*')
+    .eq('phase_id', phase.id);
+
+  // Get project details
+  const { data: project } = await supabase
+    .from('business_projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  const phaseTeam = PHASE_TEAMS[phaseNumber];
+  if (!phaseTeam) {
+    throw new Error('No team configured for this phase');
+  }
+
+  // Get pending deliverables to work on
+  const pendingDeliverables = (existingDeliverables || []).filter(
+    (d: any) => d.status === 'pending' || d.status === 'in_progress'
+  );
+
+  console.log('[phase-auto-worker] Starting work on', pendingDeliverables.length, 'deliverables');
+
+  // Start work on each pending deliverable
+  const workStarted: any[] = [];
+
+  for (let i = 0; i < pendingDeliverables.length; i++) {
+    const deliverable = pendingDeliverables[i];
+    const assignedAgent = phaseTeam.agents[i % phaseTeam.agents.length];
+
+    // Update deliverable status to in_progress
+    await supabase
+      .from('phase_deliverables')
+      .update({
+        status: 'in_progress',
+        assigned_agent_id: assignedAgent,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', deliverable.id);
+
+    // Log agent activity
+    await supabase.from('agent_activity_logs').insert({
+      agent_id: assignedAgent,
+      agent_name: assignedAgent.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+      action: `Started working on: ${deliverable.name}`,
+      status: 'in_progress',
+      metadata: {
+        deliverableId: deliverable.id,
+        phaseNumber,
+        projectId,
+      },
+    });
+
+    // Call agent-work-executor to actually do the work
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/agent-work-executor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({
+          userId,
+          projectId,
+          deliverableId: deliverable.id,
+          agentId: assignedAgent,
+          taskType: deliverable.deliverable_type,
+          inputData: {
+            projectName: project?.name,
+            industry: project?.industry,
+            targetMarket: project?.target_market,
+            description: project?.description,
+            deliverableName: deliverable.name,
+            deliverableDescription: deliverable.description,
+          },
+        }),
+      });
+
+      const result = await response.json();
+      workStarted.push({
+        deliverableId: deliverable.id,
+        deliverableName: deliverable.name,
+        assignedAgent,
+        success: result.success,
+      });
+
+      console.log(`[phase-auto-worker] Agent work result for ${deliverable.name}:`, result.success);
+    } catch (error) {
+      console.error(`[phase-auto-worker] Error starting work on ${deliverable.name}:`, error);
+      workStarted.push({
+        deliverableId: deliverable.id,
+        deliverableName: deliverable.name,
+        assignedAgent,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Send notification
+  await supabase.from('notifications').insert({
+    user_id: userId,
+    type: 'phase_work_started',
+    title: `Phase ${phaseNumber} Agents Activated`,
+    message: `${workStarted.length} agents are now working on your deliverables.`,
+    metadata: { phaseId: phase.id, phaseNumber, workStarted: workStarted.length },
+  });
+
+  return {
+    phaseId: phase.id,
+    phaseName: phase.phase_name,
+    phaseNumber,
+    status: 'active',
+    deliverablesInProgress: workStarted.length,
+    workStarted,
+  };
+}
 
 async function activatePhase(supabase: any, supabaseUrl: string, serviceKey: string, params: any) {
   const { userId, projectId, phaseId, phaseNumber } = params;
