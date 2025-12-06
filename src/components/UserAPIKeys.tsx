@@ -87,7 +87,8 @@ const API_KEY_DEFINITIONS = [
   
   // Other
   { key_name: 'GOOGLE_MAPS_API_KEY', display_name: 'Google Maps API Key', category: 'location' },
-  { key_name: 'CANVA_API_KEY', display_name: 'Canva API Key', category: 'design' },
+  { key_name: 'CANVA_CLIENT_ID', display_name: 'Canva Client ID', category: 'design' },
+  { key_name: 'CANVA_CLIENT_SECRET', display_name: 'Canva Client Secret', category: 'design' },
 ];
 
 export const UserAPIKeys = () => {
@@ -191,7 +192,8 @@ export const UserAPIKeys = () => {
       'GOOGLE_MAPS_API_KEY': 'mcp-google-maps',
       'LINEAR_API_KEY': 'mcp-linear',
       'PERPLEXITY_API_KEY': 'mcp-perplexity',
-      'CANVA_API_KEY': 'mcp-canva',
+      'CANVA_CLIENT_ID': 'mcp-canva',
+      'CANVA_CLIENT_SECRET': 'mcp-canva',
       'TWITTER_API_KEY': 'mcp-twitter',
       'YOUTUBE_API_KEY': 'mcp-youtube',
       'FAL_KEY': 'mcp-fal-ai',
