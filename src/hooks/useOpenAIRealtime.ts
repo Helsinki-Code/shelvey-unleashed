@@ -12,6 +12,8 @@ interface Message {
 
 interface UseOpenAIRealtimeOptions {
   agentId: string;
+  agentName?: string;
+  agentPersona?: string;
   onMessage?: (message: Message) => void;
   onSpeakingChange?: (isSpeaking: boolean) => void;
   onError?: (error: Error) => void;
@@ -19,6 +21,8 @@ interface UseOpenAIRealtimeOptions {
 
 export const useOpenAIRealtime = ({
   agentId,
+  agentName,
+  agentPersona,
   onMessage,
   onSpeakingChange,
   onError,

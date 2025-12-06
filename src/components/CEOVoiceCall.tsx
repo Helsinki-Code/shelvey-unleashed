@@ -1,16 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, PhoneOff, Mic, MicOff, Volume2, X, Waves } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Volume2, X, Waves, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useOpenAIRealtime } from '@/hooks/useOpenAIRealtime';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CEOVoiceCallProps {
   onClose: () => void;
+  ceoName?: string;
+  ceoImageUrl?: string | null;
+  voiceId?: string;
+  persona?: string;
 }
 
-export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
+interface UserCEO {
+  ceo_name: string;
+  ceo_image_url: string | null;
+  persona: string;
+  voice_id: string;
+  communication_style: string;
+}
+
+export const CEOVoiceCall = ({ 
+  onClose, 
+  ceoName: propCeoName, 
+  ceoImageUrl: propCeoImageUrl,
+  voiceId: propVoiceId,
+  persona: propPersona 
+}: CEOVoiceCallProps) => {
+  const { user } = useAuth();
   const [isMuted, setIsMuted] = useState(false);
+  const [userCEO, setUserCEO] = useState<UserCEO | null>(null);
+  const [isLoadingCEO, setIsLoadingCEO] = useState(!propCeoName);
+
+  // Fetch user's custom CEO if not provided via props
+  useEffect(() => {
+    const fetchUserCEO = async () => {
+      if (propCeoName || !user) {
+        setIsLoadingCEO(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_ceos')
+        .select('ceo_name, ceo_image_url, persona, voice_id, communication_style')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data && !error) {
+        setUserCEO(data);
+      }
+      setIsLoadingCEO(false);
+    };
+
+    fetchUserCEO();
+  }, [user, propCeoName]);
+
+  // Use props if provided, otherwise use fetched data
+  const ceoName = propCeoName || userCEO?.ceo_name || 'Your CEO';
+  const ceoImageUrl = propCeoImageUrl || userCEO?.ceo_image_url;
+  const persona = propPersona || userCEO?.persona || 'professional';
 
   const {
     isConnected,
@@ -23,8 +74,10 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
     disconnect,
   } = useOpenAIRealtime({
     agentId: 'ceo',
+    agentName: ceoName,
+    agentPersona: persona,
     onSpeakingChange: (speaking) => {
-      console.log('CEO speaking:', speaking);
+      console.log(`${ceoName} speaking:`, speaking);
     },
   });
 
@@ -34,6 +87,22 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
     }
     onClose();
   };
+
+  if (isLoadingCEO) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+      >
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-muted-foreground">Loading your CEO...</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -60,17 +129,25 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
         {/* Header */}
         <div className="text-center mb-6">
           <motion.div
-            className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${
-              isConnected ? 'cyber-box-glow' : ''
+            className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center overflow-hidden ${
+              isConnected ? 'ring-4 ring-primary/50' : ''
             }`}
             style={{ backgroundColor: 'hsl(var(--primary) / 0.2)' }}
             animate={isSpeaking ? { scale: [1, 1.1, 1] } : {}}
             transition={{ repeat: Infinity, duration: 0.5 }}
           >
-            👔
+            {ceoImageUrl ? (
+              <img 
+                src={ceoImageUrl} 
+                alt={ceoName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-4xl">👔</span>
+            )}
           </motion.div>
-          <h3 className="text-xl font-bold text-foreground">CEO Agent - Ava</h3>
-          <p className="text-muted-foreground text-sm">Voice Call</p>
+          <h3 className="text-xl font-bold text-foreground">{ceoName}</h3>
+          <p className="text-muted-foreground text-sm">Your AI CEO • Voice Call</p>
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className={`w-2 h-2 rounded-full ${
               isConnected ? 'bg-primary animate-pulse' : 
@@ -110,7 +187,7 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
               <div className="text-center">
                 <Waves className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  {isConnecting ? 'Connecting...' : 'Click to start voice call'}
+                  {isConnecting ? 'Connecting...' : `Click to call ${ceoName}`}
                 </p>
               </div>
             </div>
@@ -159,7 +236,7 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
                 style={{ height: `${outputLevel * 100}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground">CEO</span>
+            <span className="text-xs text-muted-foreground">{ceoName.split(' ')[0]}</span>
           </div>
         </div>
 
@@ -210,7 +287,7 @@ export const CEOVoiceCall = ({ onClose }: CEOVoiceCallProps) => {
         {isSpeaking && (
           <div className="text-center mt-4">
             <Badge variant="secondary" className="animate-pulse">
-              CEO is speaking...
+              {ceoName} is speaking...
             </Badge>
           </div>
         )}
