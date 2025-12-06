@@ -270,16 +270,16 @@ async function generateMarketing(supabase: any, userId: string, storeType: strin
   }
 
   // Generate marketing content using AI
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   
-  const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are a marketing expert. Generate compelling social media posts and email subject lines for e-commerce products.' },
         { role: 'user', content: `Generate marketing content for this product: ${topProduct.title}. Description: ${topProduct.body_html || topProduct.description || 'N/A'}. Price: $${topProduct.price || topProduct.variants?.[0]?.price || 'N/A'}` },
