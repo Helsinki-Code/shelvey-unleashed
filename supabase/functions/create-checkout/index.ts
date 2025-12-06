@@ -87,14 +87,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://isoafhjneixsoygrpgtt.lovableproject.com";
 
-    // Create checkout session
+    // Create checkout session - redirect to create-ceo after success
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: lineItems,
       mode: "subscription",
-      success_url: `${origin}/dashboard?checkout=success`,
-      cancel_url: `${origin}/dashboard?checkout=canceled`,
+      success_url: `${origin}/create-ceo?checkout=success`,
+      cancel_url: `${origin}/pricing?checkout=canceled`,
       subscription_data: {
         metadata: {
           user_id: user.id,
