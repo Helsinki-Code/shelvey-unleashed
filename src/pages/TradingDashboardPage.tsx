@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw, AlertCircle, Bot, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { PageHeader } from '@/components/PageHeader';
@@ -17,6 +17,8 @@ import { PositionsTable } from '@/components/trading/PositionsTable';
 import { OrdersTable } from '@/components/trading/OrdersTable';
 import { MarketDataTicker } from '@/components/trading/MarketDataTicker';
 import { QuickTradePanel } from '@/components/trading/QuickTradePanel';
+import { TradingStrategyBuilder } from '@/components/trading/TradingStrategyBuilder';
+import { StrategyList } from '@/components/trading/StrategyList';
 
 interface ExchangeConfig {
   id: string;
@@ -200,7 +202,7 @@ const TradingDashboardPage = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Trading AI Agents</h1>
-            <p className="text-muted-foreground">Manage stocks and crypto trading from one dashboard</p>
+            <p className="text-muted-foreground">Autonomous trading with AI-powered strategies</p>
           </div>
           <PageHeader />
         </div>
@@ -261,9 +263,17 @@ const TradingDashboardPage = () => {
                   </CardHeader>
                   <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="positions">Positions</TabsTrigger>
                         <TabsTrigger value="orders">Orders</TabsTrigger>
+                        <TabsTrigger value="strategies" className="flex items-center gap-1">
+                          <Bot className="h-3 w-3" />
+                          AI Strategies
+                        </TabsTrigger>
+                        <TabsTrigger value="create" className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          New Strategy
+                        </TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="positions" className="mt-4">
@@ -281,6 +291,17 @@ const TradingDashboardPage = () => {
                           mcpId={selectedExchangeConfig?.mcpId || ''}
                           onOrderCancelled={handleRefresh}
                           isLoading={refreshing}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="strategies" className="mt-4">
+                        <StrategyList exchange={selectedExchange} />
+                      </TabsContent>
+
+                      <TabsContent value="create" className="mt-4">
+                        <TradingStrategyBuilder 
+                          exchange={selectedExchange}
+                          exchangeType={selectedExchangeConfig?.type || 'stocks'}
                         />
                       </TabsContent>
                     </Tabs>
@@ -303,7 +324,7 @@ const TradingDashboardPage = () => {
               <TrendingUp className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Exchange Selected</h3>
               <p className="text-muted-foreground text-center max-w-md mb-4">
-                Connect your trading accounts to manage positions, place orders, and track your portfolio.
+                Connect your trading accounts to enable AI-powered autonomous trading strategies.
               </p>
               <Button onClick={() => navigate('/settings?tab=apikeys')}>
                 Configure API Keys

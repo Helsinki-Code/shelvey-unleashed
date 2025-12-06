@@ -23,10 +23,11 @@ interface Strategy {
 }
 
 interface StrategyListProps {
-  refreshTrigger: number;
+  exchange?: string;
+  refreshTrigger?: number;
 }
 
-export function StrategyList({ refreshTrigger }: StrategyListProps) {
+export function StrategyList({ exchange, refreshTrigger = 0 }: StrategyListProps) {
   const { user } = useAuth();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);

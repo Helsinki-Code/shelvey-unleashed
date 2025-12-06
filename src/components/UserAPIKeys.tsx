@@ -38,6 +38,26 @@ const API_KEY_DEFINITIONS = [
   { key_name: 'AMAZON_CLIENT_SECRET', display_name: 'Amazon Client Secret', category: 'ecommerce' },
   { key_name: 'AMAZON_REFRESH_TOKEN', display_name: 'Amazon Refresh Token', category: 'ecommerce' },
   { key_name: 'AMAZON_MARKETPLACE_ID', display_name: 'Amazon Marketplace ID', category: 'ecommerce' },
+  { key_name: 'SHOPIFY_ACCESS_TOKEN', display_name: 'Shopify Access Token', category: 'ecommerce' },
+  { key_name: 'SHOPIFY_STORE_URL', display_name: 'Shopify Store URL', category: 'ecommerce' },
+  { key_name: 'ETSY_API_KEY', display_name: 'Etsy API Key', category: 'ecommerce' },
+  { key_name: 'ETSY_ACCESS_TOKEN', display_name: 'Etsy Access Token', category: 'ecommerce' },
+  { key_name: 'WOOCOMMERCE_URL', display_name: 'WooCommerce URL', category: 'ecommerce' },
+  { key_name: 'WOOCOMMERCE_CONSUMER_KEY', display_name: 'WooCommerce Consumer Key', category: 'ecommerce' },
+  { key_name: 'WOOCOMMERCE_CONSUMER_SECRET', display_name: 'WooCommerce Consumer Secret', category: 'ecommerce' },
+  
+  // Print-on-Demand
+  { key_name: 'PRINTFUL_API_KEY', display_name: 'Printful API Key', category: 'pod' },
+  { key_name: 'PRINTIFY_API_KEY', display_name: 'Printify API Key', category: 'pod' },
+  { key_name: 'PRINTIFY_SHOP_ID', display_name: 'Printify Shop ID', category: 'pod' },
+  
+  // Trading
+  { key_name: 'ALPACA_API_KEY', display_name: 'Alpaca API Key', category: 'trading' },
+  { key_name: 'ALPACA_SECRET_KEY', display_name: 'Alpaca Secret Key', category: 'trading' },
+  { key_name: 'COINBASE_API_KEY', display_name: 'Coinbase API Key', category: 'trading' },
+  { key_name: 'COINBASE_PRIVATE_KEY', display_name: 'Coinbase Private Key', category: 'trading' },
+  { key_name: 'BINANCE_API_KEY', display_name: 'Binance API Key', category: 'trading' },
+  { key_name: 'BINANCE_SECRET_KEY', display_name: 'Binance Secret Key', category: 'trading' },
   
   // Analytics & SEO
   { key_name: 'GA_PROPERTY_ID', display_name: 'Google Analytics Property ID', category: 'analytics' },
@@ -237,6 +257,8 @@ export const UserAPIKeys = () => {
     design: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
     social: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
     ecommerce: 'bg-lime-500/10 text-lime-500 border-lime-500/20',
+    pod: 'bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/20',
+    trading: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
     analytics: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     crm: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
     infrastructure: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
