@@ -126,18 +126,120 @@ const ProjectDetailPage = () => {
     setDeliverables(data || []);
   };
 
+  const [isApproving, setIsApproving] = useState(false);
+  const [isAdvancingPhase, setIsAdvancingPhase] = useState(false);
+
   const handleApproveDeliverable = async (deliverableId: string) => {
-    await supabase
-      .from('phase_deliverables')
-      .update({ status: 'approved', user_approved: true })
-      .eq('id', deliverableId);
-    
-    // Refresh deliverables
-    if (selectedPhase) {
-      handlePhaseSelect(selectedPhase);
+    setIsApproving(true);
+    try {
+      // First check if CEO has already approved
+      const { data: deliverable } = await supabase
+        .from('phase_deliverables')
+        .select('ceo_approved, user_approved')
+        .eq('id', deliverableId)
+        .single();
+
+      // If CEO hasn't approved yet, trigger CEO review first
+      if (!deliverable?.ceo_approved) {
+        const { data: ceoReviewData, error: ceoError } = await supabase.functions.invoke('approve-deliverable', {
+          body: {
+            deliverableId,
+            action: 'ceo_review',
+          },
+        });
+
+        if (ceoError) throw ceoError;
+
+        if (!ceoReviewData?.ceoApproved) {
+          toast({
+            title: 'CEO Review',
+            description: ceoReviewData?.feedback || 'CEO Agent has requested revisions.',
+            variant: 'destructive',
+          });
+          if (selectedPhase) handlePhaseSelect(selectedPhase);
+          return;
+        }
+      }
+
+      // Now trigger user approval
+      const { data: approvalData, error: approvalError } = await supabase.functions.invoke('approve-deliverable', {
+        body: {
+          deliverableId,
+          action: 'user_approve',
+        },
+      });
+
+      if (approvalError) throw approvalError;
+
+      // Check if phase was completed
+      if (approvalData?.phaseCompleted) {
+        toast({
+          title: '🎉 Phase Complete!',
+          description: `All deliverables approved! Moving to Phase ${approvalData.nextPhase}`,
+        });
+        // Refresh entire project data to show new phase
+        await fetchProjectData();
+      } else {
+        toast({ title: 'Deliverable approved!' });
+        // Refresh deliverables
+        if (selectedPhase) {
+          handlePhaseSelect(selectedPhase);
+        }
+      }
+    } catch (error) {
+      console.error('Approval error:', error);
+      toast({
+        title: 'Approval failed',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApproving(false);
     }
-    toast({ title: 'Deliverable approved!' });
   };
+
+  const handleAdvancePhase = async () => {
+    if (!selectedPhase) return;
+    
+    setIsAdvancingPhase(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('phase-manager', {
+        body: {
+          action: 'advance_phase',
+          projectId: projectId,
+          phaseId: selectedPhase.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: '🎉 Phase Advanced!',
+          description: data.message || 'Moving to next phase',
+        });
+        await fetchProjectData();
+      } else {
+        toast({
+          title: 'Cannot advance',
+          description: data?.message || 'Not all deliverables are approved',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Advance phase error:', error);
+      toast({
+        title: 'Failed to advance phase',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAdvancingPhase(false);
+    }
+  };
+
+  const allDeliverablesApproved = deliverables.length > 0 && 
+    deliverables.every(d => d.status === 'approved');
 
   const getPhaseStatus = (phaseNumber: number) => {
     const phase = phases.find(p => p.phase_number === phaseNumber);
