@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare, Camera, Link2, Sparkles, Play, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,15 +46,15 @@ interface AgentActivity {
 }
 
 const PHASE_1_AGENTS = [
-  { id: 'head-of-research', name: 'Head of Research', icon: Bot, color: 'text-primary', role: 'Research Division Manager', isManager: true },
-  { id: 'market-research', name: 'Market Research Agent', icon: Search, color: 'text-blue-500', role: 'Market Analyst' },
-  { id: 'trend-prediction', name: 'Trend Prediction Agent', icon: TrendingUp, color: 'text-purple-500', role: 'Trend Analyst' },
-  { id: 'customer-profiler', name: 'Customer Profiler Agent', icon: Users, color: 'text-green-500', role: 'Customer Insights Specialist' },
-  { id: 'competitor-analyst', name: 'Competitor Analyst Agent', icon: Target, color: 'text-orange-500', role: 'Competitive Intelligence Analyst' },
+  { id: 'head-of-research', name: 'Head of Research', icon: Bot, color: 'text-primary', bgColor: 'bg-primary/10', role: 'Research Division Manager', isManager: true, description: 'Oversees all research activities and coordinates team efforts' },
+  { id: 'market-research', name: 'Market Research Agent', icon: Search, color: 'text-blue-500', bgColor: 'bg-blue-500/10', role: 'Market Analyst', description: 'Analyzes market size, growth, and opportunities' },
+  { id: 'trend-prediction', name: 'Trend Prediction Agent', icon: TrendingUp, color: 'text-purple-500', bgColor: 'bg-purple-500/10', role: 'Trend Analyst', description: 'Identifies emerging trends and future market directions' },
+  { id: 'customer-profiler', name: 'Customer Profiler Agent', icon: Users, color: 'text-green-500', bgColor: 'bg-green-500/10', role: 'Customer Insights Specialist', description: 'Creates detailed customer personas and segments' },
+  { id: 'competitor-analyst', name: 'Competitor Analyst Agent', icon: Target, color: 'text-orange-500', bgColor: 'bg-orange-500/10', role: 'Competitive Intelligence Analyst', description: 'Maps competitive landscape and identifies gaps' },
 ];
 
 const Phase1Page = () => {
-  const { projectId } = useParams();
+  const { projectId, phaseNumber } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [project, setProject] = useState<any>(null);
@@ -63,13 +63,14 @@ const Phase1Page = () => {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
-  const [activeTab, setActiveTab] = useState('deliverables');
+  const [activeTab, setActiveTab] = useState('agents');
   const [chatAgent, setChatAgent] = useState<typeof PHASE_1_AGENTS[0] | null>(null);
 
   useEffect(() => {
     if (projectId && user) {
       fetchData();
-      subscribeToUpdates();
+      const unsubscribe = subscribeToUpdates();
+      return unsubscribe;
     }
   }, [projectId, user]);
 
@@ -83,12 +84,13 @@ const Phase1Page = () => {
 
     if (projectData) setProject(projectData);
 
-    // Fetch phase
+    // Fetch phase (use phaseNumber from URL or default to 1)
+    const phaseNum = parseInt(phaseNumber || '1');
     const { data: phaseData } = await supabase
       .from('business_phases')
       .select('*')
       .eq('project_id', projectId)
-      .eq('phase_number', 1)
+      .eq('phase_number', phaseNum)
       .single();
 
     if (phaseData) setPhase(phaseData);
@@ -109,7 +111,7 @@ const Phase1Page = () => {
       .from('agent_activity_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (activityData) setActivities(activityData);
 
@@ -124,7 +126,7 @@ const Phase1Page = () => {
         { event: '*', schema: 'public', table: 'agent_activity_logs' },
         (payload) => {
           if (payload.new) {
-            setActivities(prev => [payload.new as AgentActivity, ...prev.slice(0, 19)]);
+            setActivities(prev => [payload.new as AgentActivity, ...prev.slice(0, 49)]);
           }
         }
       )
@@ -157,6 +159,25 @@ const Phase1Page = () => {
     return recentActivity?.status || 'idle';
   };
 
+  const getAgentCurrentTask = (agentId: string) => {
+    const recentActivity = activities.find(a => a.agent_id === agentId && a.status === 'in_progress');
+    return recentActivity?.action || null;
+  };
+
+  const getAgentDeliverables = (agentId: string) => {
+    return deliverables.filter(d => d.assigned_agent_id === agentId);
+  };
+
+  const getAgentLatestScreenshot = (agentId: string) => {
+    const agentDeliverables = getAgentDeliverables(agentId);
+    for (const d of agentDeliverables) {
+      if (d.screenshots && Array.isArray(d.screenshots) && d.screenshots.length > 0) {
+        return d.screenshots[d.screenshots.length - 1];
+      }
+    }
+    return null;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -180,119 +201,238 @@ const Phase1Page = () => {
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => navigate(`/projects/${projectId}/overview`)}
+                onClick={() => navigate(`/projects/${projectId}`)}
                 className="gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back
+                Back to Project
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">Phase 1: Research & Discovery</h1>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-primary" />
+                  Phase 1: Research & Discovery
+                </h1>
                 <p className="text-muted-foreground">{project?.name}</p>
               </div>
             </div>
-            <Badge className={phase?.status === 'active' ? 'bg-green-500' : 'bg-muted'}>
-              {phase?.status || 'pending'}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
+                {phase?.status || 'pending'}
+              </Badge>
+            </div>
           </div>
 
           {/* Progress Bar */}
           <Card className="mb-6">
             <CardContent className="py-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Phase Progress</span>
-                <span className="font-semibold">{calculateProgress()}%</span>
+                <span className="text-sm font-medium">Phase Progress</span>
+                <span className="font-bold text-lg">{calculateProgress()}%</span>
               </div>
               <Progress value={calculateProgress()} className="h-3" />
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{deliverables.filter(d => d.ceo_approved && d.user_approved).length} of {deliverables.length} deliverables approved</span>
+                <span>{phase?.status === 'completed' ? 'Phase Complete!' : 'In Progress'}</span>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Active Agents Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <h2 className="text-lg font-semibold mb-4">Active Agents</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {PHASE_1_AGENTS.map((agent) => {
-                const status = getAgentStatus(agent.id);
-                const Icon = agent.icon;
-                return (
-                  <Card key={agent.id} className={`relative overflow-hidden ${agent.isManager ? 'border-primary/50 bg-primary/5' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${agent.isManager ? 'bg-primary/20' : 'bg-muted'} ${agent.color}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm truncate">{agent.name}</p>
-                            {agent.isManager && <Badge variant="secondary" className="text-[10px] px-1">Manager</Badge>}
-                          </div>
-                          <p className="text-xs text-muted-foreground">{agent.role}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className={`w-2 h-2 rounded-full ${
-                              status === 'in_progress' ? 'bg-green-500 animate-pulse' :
-                              status === 'completed' ? 'bg-blue-500' : 'bg-muted-foreground'
-                            }`} />
-                            <span className="text-xs text-muted-foreground capitalize">
-                              {status === 'in_progress' ? 'Working' : status}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setChatAgent(agent)}
-                          className="shrink-0"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </motion.div>
-
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-              <TabsTrigger value="activity">Live Activity</TabsTrigger>
-              <TabsTrigger value="agent-work">Agent Work</TabsTrigger>
+            <TabsList className="mb-6">
+              <TabsTrigger value="agents" className="gap-2">
+                <Bot className="w-4 h-4" />
+                AI Team ({PHASE_1_AGENTS.length})
+              </TabsTrigger>
+              <TabsTrigger value="deliverables" className="gap-2">
+                <Eye className="w-4 h-4" />
+                Deliverables ({deliverables.length})
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2">
+                <Play className="w-4 h-4" />
+                Live Activity
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="deliverables">
-              <div className="grid gap-4">
-                {deliverables.map((deliverable, index) => (
-                  <motion.div
-                    key={deliverable.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <DeliverableCard
-                      deliverable={deliverable}
-                      onViewWork={() => {
-                        setSelectedDeliverable(deliverable);
-                        setActiveTab('agent-work');
-                      }}
-                      onRefresh={fetchData}
-                    />
-                  </motion.div>
-                ))}
+            {/* AI Team Tab - Agent Cards with Live Previews */}
+            <TabsContent value="agents">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {PHASE_1_AGENTS.map((agent, index) => {
+                  const status = getAgentStatus(agent.id);
+                  const currentTask = getAgentCurrentTask(agent.id);
+                  const agentDeliverables = getAgentDeliverables(agent.id);
+                  const latestScreenshot = getAgentLatestScreenshot(agent.id);
+                  const Icon = agent.icon;
+                  const completedCount = agentDeliverables.filter(d => d.status === 'approved').length;
+
+                  return (
+                    <motion.div
+                      key={agent.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Card className={`overflow-hidden ${agent.isManager ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
+                        {/* Agent Header */}
+                        <CardHeader className={`pb-3 ${agent.bgColor}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-3 rounded-xl bg-background/80 ${agent.color}`}>
+                                <Icon className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                  {agent.name}
+                                  {agent.isManager && (
+                                    <Badge variant="secondary" className="text-xs">Manager</Badge>
+                                  )}
+                                </CardTitle>
+                                <CardDescription>{agent.role}</CardDescription>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`w-3 h-3 rounded-full ${
+                                status === 'in_progress' ? 'bg-green-500 animate-pulse' :
+                                status === 'completed' ? 'bg-blue-500' : 'bg-muted-foreground'
+                              }`} />
+                              <span className="text-xs font-medium capitalize">
+                                {status === 'in_progress' ? 'Working' : status}
+                              </span>
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="p-4 space-y-4">
+                          {/* Description */}
+                          <p className="text-sm text-muted-foreground">{agent.description}</p>
+
+                          {/* Current Task */}
+                          {currentTask && (
+                            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                              <p className="text-xs font-medium text-primary mb-1">Currently Working On:</p>
+                              <p className="text-sm">{currentTask}</p>
+                            </div>
+                          )}
+
+                          {/* Live Work Preview */}
+                          <div className="rounded-lg border overflow-hidden">
+                            <div className="bg-muted px-3 py-2 flex items-center justify-between border-b">
+                              <span className="text-xs font-medium flex items-center gap-1">
+                                <Image className="w-3 h-3" />
+                                Live Work Preview
+                              </span>
+                              {status === 'in_progress' && (
+                                <span className="text-xs text-green-500 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                  Live
+                                </span>
+                              )}
+                            </div>
+                            <div className="aspect-video bg-muted/50 flex items-center justify-center relative">
+                              {latestScreenshot ? (
+                                <img
+                                  src={latestScreenshot}
+                                  alt="Latest work screenshot"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="text-center text-muted-foreground p-4">
+                                  <Camera className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-xs">Screenshots will appear here as agent works</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Stats Row */}
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-4">
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <Eye className="w-4 h-4" />
+                                {agentDeliverables.length} deliverables
+                              </span>
+                              <span className="flex items-center gap-1 text-green-500">
+                                <CheckCircle2 className="w-4 h-4" />
+                                {completedCount} approved
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              variant="default"
+                              onClick={() => setChatAgent(agent)}
+                              className="flex-1 gap-2"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                              Chat with {agent.isManager ? 'Manager' : 'Agent'}
+                            </Button>
+                            {agentDeliverables.length > 0 && (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedDeliverable(agentDeliverables[0]);
+                                  setActiveTab('agent-work');
+                                }}
+                                className="gap-2"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Work
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
               </div>
             </TabsContent>
 
+            {/* Deliverables Tab */}
+            <TabsContent value="deliverables">
+              <div className="grid gap-4">
+                {deliverables.length > 0 ? (
+                  deliverables.map((deliverable, index) => (
+                    <motion.div
+                      key={deliverable.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <DeliverableCard
+                        deliverable={deliverable}
+                        onViewWork={() => {
+                          setSelectedDeliverable(deliverable);
+                          setActiveTab('agent-work');
+                        }}
+                        onRefresh={fetchData}
+                      />
+                    </motion.div>
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="py-16 text-center">
+                      <Loader2 className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                      <h3 className="text-lg font-semibold mb-2">Generating Deliverables...</h3>
+                      <p className="text-muted-foreground">
+                        Agents are being assigned to create research deliverables
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Live Activity Tab */}
             <TabsContent value="activity">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-primary" />
+                    <Play className="w-5 h-5 text-green-500" />
                     Real-Time Activity Feed
+                    <span className="ml-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </CardTitle>
                   <CardDescription>
                     Live updates from all agents working on Phase 1
@@ -301,60 +441,76 @@ const Phase1Page = () => {
                 <CardContent>
                   <ScrollArea className="h-[500px]">
                     <div className="space-y-3">
-                      {activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                          <div className={`p-2 rounded-full ${
-                            activity.status === 'completed' ? 'bg-green-500/20 text-green-500' :
-                            activity.status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            {activity.status === 'completed' ? (
-                              <CheckCircle2 className="w-4 h-4" />
-                            ) : activity.status === 'in_progress' ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Clock className="w-4 h-4" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{activity.agent_name}</p>
-                            <p className="text-sm text-muted-foreground">{activity.action}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(activity.created_at).toLocaleTimeString()}
-                            </p>
-                          </div>
+                      {activities.length > 0 ? (
+                        activities.map((activity) => {
+                          const agent = PHASE_1_AGENTS.find(a => a.id === activity.agent_id);
+                          const Icon = agent?.icon || Bot;
+                          
+                          return (
+                            <motion.div
+                              key={activity.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                            >
+                              <div className={`p-2 rounded-full ${
+                                activity.status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                                activity.status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
+                                'bg-muted text-muted-foreground'
+                              }`}>
+                                {activity.status === 'completed' ? (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                ) : activity.status === 'in_progress' ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Clock className="w-4 h-4" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Icon className={`w-4 h-4 ${agent?.color || 'text-muted-foreground'}`} />
+                                  <p className="font-medium text-sm">{activity.agent_name}</p>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{activity.action}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {new Date(activity.created_at).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const matchingAgent = PHASE_1_AGENTS.find(a => a.id === activity.agent_id);
+                                  if (matchingAgent) setChatAgent(matchingAgent);
+                                }}
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </Button>
+                            </motion.div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No activity yet - agents will start working soon</p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="agent-work">
-              {selectedDeliverable ? (
-                <AgentWorkViewer
-                  deliverable={selectedDeliverable}
-                  onBack={() => setSelectedDeliverable(null)}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-16 text-center">
-                    <Eye className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Select a Deliverable</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Go to the Deliverables tab and click "View Work" on any deliverable to see the agent's work with screenshots and citations.
-                    </p>
-                    <Button onClick={() => setActiveTab('deliverables')}>
-                      View Deliverables
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
+            {/* Agent Work Viewer (hidden tab for viewing deliverable details) */}
+            {activeTab === 'agent-work' && selectedDeliverable && (
+              <AgentWorkViewer
+                deliverable={selectedDeliverable}
+                onBack={() => {
+                  setSelectedDeliverable(null);
+                  setActiveTab('deliverables');
+                }}
+              />
+            )}
           </Tabs>
         </div>
       </main>
