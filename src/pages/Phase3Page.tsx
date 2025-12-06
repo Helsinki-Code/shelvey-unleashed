@@ -277,6 +277,77 @@ const Phase3Page = () => {
     }
   };
 
+  // Redeploy to update live website content
+  const handleRedeployToSubdomain = async () => {
+    if (!generatedWebsite?.deployed_url) return;
+
+    // Extract subdomain from deployed URL
+    const urlMatch = generatedWebsite.deployed_url.match(/https?:\/\/([^.]+)\.shelvey\.pro/);
+    const existingSubdomain = urlMatch ? urlMatch[1] : null;
+
+    if (!existingSubdomain) {
+      toast.error('Could not determine subdomain for redeploy');
+      return;
+    }
+
+    setDeploymentStatus('deploying');
+    setDeploymentMessage('Updating website content...');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      setDeploymentMessage('Pushing changes to Cloudflare KV...');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deploy-to-subdomain`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            websiteId: generatedWebsite.id,
+            subdomain: existingSubdomain,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Redeploy failed');
+      }
+
+      setDeploymentStatus('success');
+      setDeploymentMessage('Website updated successfully!');
+      
+      toast.success('Website redeployed!', {
+        description: 'Your changes are now live.',
+        action: {
+          label: 'View',
+          onClick: () => window.open(generatedWebsite.deployed_url!, '_blank'),
+        },
+      });
+
+      // Reset status after 3 seconds
+      setTimeout(() => {
+        setDeploymentStatus('idle');
+        setDeploymentMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Redeploy error:', error);
+      setDeploymentStatus('error');
+      setDeploymentMessage(error instanceof Error ? error.message : 'Redeploy failed');
+      toast.error('Redeploy failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -544,8 +615,8 @@ const Phase3Page = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Already deployed success state */}
-                      {generatedWebsite.deployed_url && deploymentStatus !== 'deploying' && (
+                      {/* Already deployed success state with REDEPLOY option */}
+                      {generatedWebsite.deployed_url && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
@@ -567,16 +638,47 @@ const Phase3Page = () => {
                                 </a>
                               </div>
                             </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={generatedWebsite.deployed_url} target="_blank" rel="noopener noreferrer">
-                                Visit Site
-                              </a>
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={generatedWebsite.deployed_url} target="_blank" rel="noopener noreferrer">
+                                  Visit Site
+                                </a>
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Redeploy Section */}
+                          <div className="mt-4 pt-4 border-t border-green-500/20">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">Update Deployment</p>
+                                <p className="text-xs text-muted-foreground">Push latest changes to your live website</p>
+                              </div>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleRedeployToSubdomain}
+                                disabled={deploymentStatus === 'deploying'}
+                                className="gap-2"
+                              >
+                                {deploymentStatus === 'deploying' ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Updating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="w-3 h-3" />
+                                    Redeploy
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </motion.div>
                       )}
 
-                      {/* Deployment form */}
+                      {/* Deployment form - only show if not deployed */}
                       {!generatedWebsite.deployed_url && (
                         <>
                           <div className="flex items-center gap-2">
