@@ -108,27 +108,42 @@ const Phase2Page = () => {
     return Math.round((approved / deliverables.length) * 100);
   };
 
-  const handleGenerateLogo = async (prompt: string) => {
+  const handleGenerateBrandAssets = async () => {
+    if (!phase) return;
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('brand-assets-generator', {
-        body: {
-          type: 'logo',
-          prompt,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brand-assets-generator`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'generate',
+          userId: session.user.id,
           projectId,
-          businessName: project?.name,
-        }
+          phaseId: phase.id,
+        }),
       });
 
-      if (error) throw error;
-      
-      if (data?.imageUrl) {
-        setGeneratedLogos(prev => [...prev, data.imageUrl]);
-        toast.success('Logo generated successfully!');
+      const result = await response.json();
+      if (result.success && result.assets) {
+        const logos = result.assets.filter((a: any) => a.type === 'logo');
+        setGeneratedLogos(logos.map((l: any) => l.imageUrl));
+        toast.success(`Generated ${result.assets.length} brand assets!`);
+        fetchData();
+      } else if (result.error) {
+        throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Logo generation error:', error);
-      toast.error('Failed to generate logo');
+      console.error('Brand asset generation error:', error);
+      toast.error('Failed to generate brand assets');
     } finally {
       setIsGenerating(false);
     }
@@ -137,24 +152,88 @@ const Phase2Page = () => {
   const handleGenerateColorPalette = async () => {
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('brand-assets-generator', {
-        body: {
-          type: 'color-palette',
-          projectId,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brand-assets-generator`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'generate-color-palette',
           businessName: project?.name,
           industry: project?.industry,
-        }
+          projectId,
+        }),
       });
 
-      if (error) throw error;
-      
-      if (data?.colors) {
-        setColorPalette(data.colors);
+      const result = await response.json();
+      if (result.success && result.data?.palette) {
+        const palette = result.data.palette;
+        setBrandColors({
+          primary: palette.primary,
+          secondary: palette.secondary,
+          accent: palette.accent,
+        });
+        setColorPalette([palette.primary, palette.secondary, palette.accent]);
         toast.success('Color palette generated!');
+      } else if (result.error) {
+        throw new Error(result.error);
       }
     } catch (error) {
       console.error('Color generation error:', error);
       toast.error('Failed to generate colors');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateTypography = async () => {
+    setIsGenerating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brand-assets-generator`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'generate-typography',
+          businessName: project?.name,
+          industry: project?.industry,
+          projectId,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success && result.data?.typography) {
+        const typo = result.data.typography;
+        setTypography({
+          heading: typo.heading?.name || 'Inter',
+          body: typo.body?.name || 'Inter',
+        });
+        setSelectedFonts({
+          heading: typo.heading?.name || 'Inter',
+          body: typo.body?.name || 'Inter',
+        });
+        toast.success('Typography generated!');
+      } else if (result.error) {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Typography generation error:', error);
+      toast.error('Failed to generate typography');
     } finally {
       setIsGenerating(false);
     }
