@@ -183,8 +183,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Only 'active' status counts as subscribed - NO FREE TRIAL
   const isSubscribed = profile 
-    ? (profile.subscription_status === 'active' || profile.subscription_status === 'trial') &&
+    ? profile.subscription_status === 'active' &&
       (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date())
     : false;
 

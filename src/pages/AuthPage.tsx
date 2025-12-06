@@ -148,7 +148,7 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user, isLoading: authLoading, signIn, signUp } = useAuth();
+  const { user, isLoading: authLoading, isSubscribed, isSuperAdmin, signIn, signUp } = useAuth();
   
   const [mode, setMode] = useState<'signin' | 'signup'>(
     searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
@@ -164,9 +164,15 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/dashboard');
+      // Check subscription status and redirect accordingly
+      if (isSubscribed || isSuperAdmin) {
+        navigate('/dashboard');
+      } else {
+        // Unpaid users go to pricing
+        navigate('/pricing');
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, isSubscribed, isSuperAdmin, navigate]);
 
   const validateForm = (isSignUp: boolean) => {
     try {
@@ -196,7 +202,7 @@ const AuthPage = () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/auth`, // Come back to auth which will check subscription
       },
     });
     
@@ -231,7 +237,24 @@ const AuthPage = () => {
         title: 'Welcome back!',
         description: 'You have successfully signed in.',
       });
-      navigate('/dashboard');
+      // Check subscription status and redirect accordingly
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('subscription_status')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (profileData?.subscription_status === 'active') {
+          navigate('/dashboard');
+        } else {
+          // Unpaid users go to pricing page
+          navigate('/pricing');
+        }
+      } else {
+        navigate('/pricing');
+      }
     }
   };
 
