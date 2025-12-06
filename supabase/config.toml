@@ -293,3 +293,15 @@ verify_jwt = false
 
 [functions.ad-creative-generator]
 verify_jwt = false
+
+[functions.content-strategy-generator]
+verify_jwt = false
+
+[functions.blog-generator]
+verify_jwt = false
+
+[functions.seo-analyzer]
+verify_jwt = false
+
+[functions.social-content-generator]
+verify_jwt = false
