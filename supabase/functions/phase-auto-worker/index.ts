@@ -40,7 +40,7 @@ const PHASE_TEAMS: Record<number, { teamId: string; division: string; agents: st
   },
 };
 
-// Deliverable types for each phase
+// Deliverable types for each phase - FIXED: Specific types for branding phase
 const PHASE_DELIVERABLES: Record<number, { type: string; name: string; description: string }[]> = {
   1: [
     { type: 'market_analysis', name: 'Market Analysis Report', description: 'Comprehensive market size, trends, and opportunity analysis' },
@@ -49,9 +49,10 @@ const PHASE_DELIVERABLES: Record<number, { type: string; name: string; descripti
     { type: 'trend_forecast', name: 'Trend Forecast Report', description: 'Industry trends and future predictions' },
   ],
   2: [
-    { type: 'brand_identity', name: 'Brand Identity Package', description: 'Logo, colors, typography, and brand guidelines' },
-    { type: 'brand_voice', name: 'Brand Voice Document', description: 'Tone, messaging, and communication guidelines' },
-    { type: 'visual_assets', name: 'Visual Asset Library', description: 'Marketing images, icons, and graphics' },
+    { type: 'brand_strategy', name: 'Brand Strategy', description: 'Brand positioning, values, and voice guidelines' },
+    { type: 'logo_design', name: 'Logo Design', description: 'Primary logo and variations using AI image generation' },
+    { type: 'color_palette', name: 'Color Palette', description: 'Brand colors and usage guidelines' },
+    { type: 'brand_guidelines', name: 'Brand Guidelines', description: 'Complete brand style guide' },
   ],
   3: [
     { type: 'website', name: 'Business Website', description: 'Fully functional landing page with branding' },

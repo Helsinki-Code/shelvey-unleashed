@@ -247,22 +247,32 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
   // Updated mapping: Use Perplexity for sentiment/social analysis (more reliable than Twitter)
   // Use 21st.dev Magic + shadcn for modern React website generation
   // Use Artifacts MMO for reports/dashboards/presentations
+  // Use 'lovable-ai-image' for logo generation (no external API key needed!)
   const taskMCPMapping: Record<string, string[]> = {
     'market_research': ['mcp-perplexity'],
+    'market_analysis': ['mcp-perplexity'],
     'competitor_analysis': ['mcp-perplexity'],
-    'trend_analysis': ['mcp-perplexity'], // Perplexity for trends (includes Reddit/Twitter data)
-    'sentiment_analysis': ['mcp-perplexity'], // Social sentiment via Perplexity
-    'social_sentiment': ['mcp-perplexity'], // Reddit-equivalent sentiment
-    'community_research': ['mcp-perplexity'], // Deep community/forum research
-    'brand_identity': ['mcp-falai'],
-    'logo_design': ['mcp-falai'],
+    'trend_analysis': ['mcp-perplexity'],
+    'trend_forecast': ['mcp-perplexity'],
+    'target_customer': ['mcp-perplexity'],
+    'sentiment_analysis': ['mcp-perplexity'],
+    'social_sentiment': ['mcp-perplexity'],
+    'community_research': ['mcp-perplexity'],
+    // Branding Phase - use Lovable AI image generation (no FAL_KEY needed!)
+    'brand_strategy': ['mcp-perplexity'],
+    'brand_identity': ['lovable-ai-image'],
+    'logo_design': ['lovable-ai-image'],
+    'color_palette': ['mcp-perplexity'],
+    'brand_guidelines': ['mcp-perplexity'],
+    'visual_assets': ['lovable-ai-image'],
     'content_creation': ['mcp-perplexity'],
-    'social_media': ['mcp-perplexity', 'mcp-linkedin'], // Perplexity for research, LinkedIn for posting
+    'social_media': ['mcp-perplexity', 'mcp-linkedin'],
     'lead_generation': ['mcp-linkedin'],
     'sales_outreach': ['mcp-vapi', 'mcp-linkedin'],
     'code_development': ['mcp-github'],
     // Modern React website generation with 21st.dev Magic + shadcn
     'website_generation': ['mcp-21st-magic', 'mcp-shadcn'],
+    'website': ['mcp-21st-magic', 'mcp-shadcn'],
     'landing_page': ['mcp-21st-magic', 'mcp-shadcn'],
     'ui_component': ['mcp-21st-magic', 'mcp-shadcn'],
     'react_component': ['mcp-21st-magic', 'mcp-shadcn'],
@@ -272,6 +282,18 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'chart_generation': ['mcp-artifacts'],
     'document_generation': ['mcp-artifacts'],
     'presentation_generation': ['mcp-artifacts'],
+    // Content phase
+    'content_strategy': ['mcp-perplexity'],
+    'blog_content': ['mcp-perplexity'],
+    'social_content': ['mcp-perplexity'],
+    // Marketing phase
+    'marketing_strategy': ['mcp-perplexity'],
+    'ad_campaigns': ['mcp-perplexity'],
+    'email_sequences': ['mcp-perplexity'],
+    // Sales phase
+    'sales_strategy': ['mcp-perplexity'],
+    'sales_scripts': ['mcp-perplexity'],
+    'crm_setup': ['mcp-perplexity'],
   };
 
   return taskMCPMapping[taskType] || suggestedMCPs.slice(0, 2);
@@ -284,20 +306,42 @@ async function executeMCPWork(
   params: any
 ): Promise<any> {
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
+  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+
+  // Handle Lovable AI Image Generation (no external API key needed!)
+  if (mcpServerId === 'lovable-ai-image') {
+    console.log('[executeMCPWork] Using Lovable AI for image generation:', taskType);
+    return await generateImageWithLovableAI(lovableApiKey!, taskType, inputData);
+  }
 
   // Determine the tool to use based on task type and MCP server
   // Perplexity is now the primary source for social sentiment (includes Reddit/Twitter/forum data)
   const toolMapping: Record<string, Record<string, { tool: string; args: any }>> = {
     'mcp-perplexity': {
       'market_research': { tool: 'market_research', args: inputData },
+      'market_analysis': { tool: 'market_research', args: inputData },
       'competitor_analysis': { tool: 'competitor_analysis', args: inputData },
       'trend_analysis': { tool: 'trend_analysis', args: inputData },
-      // New social sentiment tools (Reddit-equivalent)
+      'trend_forecast': { tool: 'trend_analysis', args: inputData },
+      'target_customer': { tool: 'market_research', args: { ...inputData, focus: 'customer personas' } },
+      'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
+      'color_palette': { tool: 'research', args: { query: `brand color palette recommendations for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
+      'brand_guidelines': { tool: 'research', args: { query: `brand guidelines template and best practices for ${inputData?.industry || 'business'}` } },
+      'content_strategy': { tool: 'research', args: { query: `content strategy for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
+      'blog_content': { tool: 'research', args: { query: `blog topics for ${inputData?.industry || 'business'} ${inputData?.projectName || ''}` } },
+      'social_content': { tool: 'research', args: { query: `social media content ideas for ${inputData?.industry || 'business'}` } },
+      'marketing_strategy': { tool: 'research', args: { query: `marketing strategy for ${inputData?.industry || 'business'} startup` } },
+      'ad_campaigns': { tool: 'research', args: { query: `ad campaign ideas for ${inputData?.industry || 'business'}` } },
+      'email_sequences': { tool: 'research', args: { query: `email marketing sequences for ${inputData?.industry || 'business'}` } },
+      'sales_strategy': { tool: 'research', args: { query: `sales strategy for ${inputData?.industry || 'business'} startup` } },
+      'sales_scripts': { tool: 'research', args: { query: `sales scripts for ${inputData?.industry || 'business'}` } },
+      'crm_setup': { tool: 'research', args: { query: `CRM setup best practices for ${inputData?.industry || 'business'}` } },
+      // Social sentiment tools
       'sentiment_analysis': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
       'social_sentiment': { tool: 'social_sentiment', args: { query: inputData?.query, industry: inputData?.industry, brand: inputData?.brand } },
       'community_research': { tool: 'community_research', args: { topic: inputData?.topic || inputData?.query, industry: inputData?.industry } },
       'social_trends': { tool: 'social_trends', args: { industry: inputData?.industry, category: inputData?.category } },
-      'default': { tool: 'research', args: { query: inputData?.query || inputData?.description } },
+      'default': { tool: 'research', args: { query: inputData?.query || inputData?.description || inputData?.projectName } },
     },
     'mcp-twitter': {
       // Twitter still available but gateway will auto-fallback to Perplexity if rate limited
@@ -375,6 +419,72 @@ async function executeMCPWork(
   }
 
   return await response.json();
+}
+
+// Generate images using Lovable AI (no external API key needed!)
+async function generateImageWithLovableAI(lovableApiKey: string, taskType: string, inputData: any): Promise<any> {
+  console.log('[generateImageWithLovableAI] Generating image for:', taskType, inputData);
+  
+  let imagePrompt = '';
+  
+  if (taskType === 'logo_design') {
+    imagePrompt = `Create a modern, professional logo for a business called "${inputData?.projectName || 'Business'}". 
+Industry: ${inputData?.industry || 'general'}. 
+Description: ${inputData?.description || 'A professional business'}. 
+Style: Clean, minimalist, memorable, suitable for web and print. 
+The logo should be iconic and work well at small sizes.`;
+  } else if (taskType === 'brand_identity' || taskType === 'visual_assets') {
+    imagePrompt = `Create a brand visual asset for "${inputData?.projectName || 'Business'}". 
+Industry: ${inputData?.industry || 'general'}. 
+Description: ${inputData?.description || 'A professional business'}.
+Style: Modern, cohesive brand imagery.`;
+  } else {
+    imagePrompt = `Create a professional image for ${inputData?.projectName || 'a business'}. ${inputData?.description || ''}`;
+  }
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${lovableApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash-image-preview',
+      messages: [
+        { role: 'user', content: imagePrompt }
+      ],
+      modalities: ['image', 'text'],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[generateImageWithLovableAI] Error:', errorText);
+    throw new Error(`Lovable AI image generation failed: ${errorText}`);
+  }
+
+  const result = await response.json();
+  const message = result.choices?.[0]?.message;
+  const images = message?.images || [];
+  const textContent = message?.content || '';
+
+  console.log('[generateImageWithLovableAI] Generated', images.length, 'images');
+
+  return {
+    success: true,
+    taskType,
+    generatedImages: images.map((img: any, idx: number) => ({
+      id: `logo-${idx + 1}`,
+      url: img.image_url?.url || img.url,
+      type: taskType,
+    })),
+    description: textContent,
+    metadata: {
+      prompt: imagePrompt,
+      model: 'google/gemini-2.5-flash-image-preview',
+      generatedAt: new Date().toISOString(),
+    },
+  };
 }
 
 async function generateComprehensiveReport(
