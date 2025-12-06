@@ -48,8 +48,15 @@ export function ProjectInitializer({ onProjectCreated }: ProjectInitializerProps
   });
 
   const handleCreateProject = async () => {
-    if (!user || !formData.name.trim()) {
+    if (!formData.name.trim()) {
       toast.error('Please provide a project name');
+      return;
+    }
+
+    // Verify user session before proceeding
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.user) {
+      toast.error('Please sign in to create a project');
       return;
     }
 
@@ -59,7 +66,7 @@ export function ProjectInitializer({ onProjectCreated }: ProjectInitializerProps
       const { data: project, error: projectError } = await supabase
         .from('business_projects')
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           name: formData.name,
           description: formData.description || null,
           industry: formData.industry || null,
@@ -70,7 +77,10 @@ export function ProjectInitializer({ onProjectCreated }: ProjectInitializerProps
         .select()
         .single();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error('Project creation failed:', projectError);
+        throw projectError;
+      }
 
       // Step 2: Initialize the project phases via COO Coordinator
       const { error: initError } = await supabase.functions.invoke('coo-coordinator', {
