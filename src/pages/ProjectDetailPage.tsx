@@ -132,6 +132,63 @@ const ProjectDetailPage = () => {
 
   const [isApproving, setIsApproving] = useState(false);
   const [isAdvancingPhase, setIsAdvancingPhase] = useState(false);
+  const [isStartingWork, setIsStartingWork] = useState(false);
+
+  // Auto-detect stuck phases: active phase with all deliverables pending
+  useEffect(() => {
+    if (selectedPhase?.status === 'active' && deliverables.length > 0) {
+      const allPending = deliverables.every(d => d.status === 'pending');
+      if (allPending) {
+        console.log('[ProjectDetailPage] Detected stuck phase - all deliverables pending. Auto-triggering work...');
+        // Wait 2 seconds before auto-triggering to avoid race conditions
+        const timer = setTimeout(() => {
+          handleStartPhaseWork();
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selectedPhase, deliverables]);
+
+  const handleStartPhaseWork = async () => {
+    if (!selectedPhase || !user || isStartingWork) return;
+    
+    setIsStartingWork(true);
+    console.log('[handleStartPhaseWork] Starting work for phase:', selectedPhase.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('phase-auto-worker', {
+        body: {
+          action: 'start_phase_work',
+          userId: user.id,
+          projectId: projectId,
+          phaseId: selectedPhase.id,
+        },
+      });
+
+      console.log('[handleStartPhaseWork] Response:', data, error);
+
+      if (error) throw error;
+
+      toast({
+        title: '🚀 Work Started!',
+        description: `${data?.successfullyStarted || 0} deliverables assigned to agents`,
+      });
+      
+      // Refresh deliverables after a short delay
+      setTimeout(() => {
+        handlePhaseSelect(selectedPhase);
+      }, 2000);
+    } catch (error) {
+      console.error('[handleStartPhaseWork] Error:', error);
+      toast({
+        title: 'Failed to start work',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsStartingWork(false);
+    }
+  };
 
   const handleApproveDeliverable = async (deliverableId: string) => {
     setIsApproving(true);
@@ -485,6 +542,25 @@ const ProjectDetailPage = () => {
                   </ScrollArea>
 
                   <div className="mt-4 pt-4 border-t space-y-2">
+                    {/* Manual Start Phase Work Button - Show when phase is active but all deliverables pending */}
+                    {selectedPhase?.status === 'active' && 
+                     deliverables.length > 0 && 
+                     deliverables.every(d => d.status === 'pending') && (
+                      <Button 
+                        className="w-full" 
+                        variant="default"
+                        onClick={handleStartPhaseWork}
+                        disabled={isStartingWork}
+                      >
+                        {isStartingWork ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 mr-2" />
+                        )}
+                        Start AI Agent Work
+                      </Button>
+                    )}
+                    
                     {/* Manual Advance Phase Button */}
                     {allDeliverablesApproved && selectedPhase?.status === 'active' && (
                       <Button 
