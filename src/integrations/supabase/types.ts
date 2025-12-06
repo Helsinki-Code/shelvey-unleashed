@@ -1202,6 +1202,54 @@ export type Database = {
           },
         ]
       }
+      pod_products: {
+        Row: {
+          cost: number | null
+          created_at: string | null
+          design_url: string | null
+          id: string
+          name: string
+          printful_product_id: string | null
+          printify_product_id: string | null
+          revenue: number | null
+          sales_count: number | null
+          status: string | null
+          synced_stores: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string | null
+          design_url?: string | null
+          id?: string
+          name: string
+          printful_product_id?: string | null
+          printify_product_id?: string | null
+          revenue?: number | null
+          sales_count?: number | null
+          status?: string | null
+          synced_stores?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string | null
+          design_url?: string | null
+          id?: string
+          name?: string
+          printful_product_id?: string | null
+          printify_product_id?: string | null
+          revenue?: number | null
+          sales_count?: number | null
+          status?: string | null
+          synced_stores?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1544,6 +1592,84 @@ export type Database = {
           },
         ]
       }
+      store_automation_jobs: {
+        Row: {
+          created_at: string | null
+          executed_at: string | null
+          id: string
+          job_type: string
+          result: Json | null
+          scheduled_at: string | null
+          status: string | null
+          store_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          executed_at?: string | null
+          id?: string
+          job_type: string
+          result?: Json | null
+          scheduled_at?: string | null
+          status?: string | null
+          store_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          executed_at?: string | null
+          id?: string
+          job_type?: string
+          result?: Json | null
+          scheduled_at?: string | null
+          status?: string | null
+          store_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      store_automation_settings: {
+        Row: {
+          auto_fulfill_orders: boolean | null
+          auto_marketing: boolean | null
+          auto_optimize_prices: boolean | null
+          auto_restock_alerts: boolean | null
+          created_at: string | null
+          id: string
+          low_stock_threshold: number | null
+          price_optimization_margin: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_fulfill_orders?: boolean | null
+          auto_marketing?: boolean | null
+          auto_optimize_prices?: boolean | null
+          auto_restock_alerts?: boolean | null
+          created_at?: string | null
+          id?: string
+          low_stock_threshold?: number | null
+          price_optimization_margin?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_fulfill_orders?: boolean | null
+          auto_marketing?: boolean | null
+          auto_optimize_prices?: boolean | null
+          auto_restock_alerts?: boolean | null
+          created_at?: string | null
+          id?: string
+          low_stock_threshold?: number | null
+          price_optimization_margin?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       team_meetings: {
         Row: {
           action_items: Json | null
@@ -1696,6 +1822,101 @@ export type Database = {
           name?: string
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trading_executions: {
+        Row: {
+          action: string
+          executed_at: string | null
+          fees: number | null
+          id: string
+          price: number
+          profit_loss: number | null
+          quantity: number
+          strategy_id: string | null
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          executed_at?: string | null
+          fees?: number | null
+          id?: string
+          price: number
+          profit_loss?: number | null
+          quantity: number
+          strategy_id?: string | null
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          executed_at?: string | null
+          fees?: number | null
+          id?: string
+          price?: number
+          profit_loss?: number | null
+          quantity?: number
+          strategy_id?: string | null
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_executions_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "trading_strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_strategies: {
+        Row: {
+          created_at: string | null
+          exchange: string
+          id: string
+          is_active: boolean | null
+          name: string
+          paper_mode: boolean | null
+          parameters: Json | null
+          strategy_type: string
+          total_profit: number | null
+          total_trades: number | null
+          updated_at: string | null
+          user_id: string
+          win_rate: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          exchange: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          paper_mode?: boolean | null
+          parameters?: Json | null
+          strategy_type: string
+          total_profit?: number | null
+          total_trades?: number | null
+          updated_at?: string | null
+          user_id: string
+          win_rate?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          exchange?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          paper_mode?: boolean | null
+          parameters?: Json | null
+          strategy_type?: string
+          total_profit?: number | null
+          total_trades?: number | null
+          updated_at?: string | null
+          user_id?: string
+          win_rate?: number | null
         }
         Relationships: []
       }
