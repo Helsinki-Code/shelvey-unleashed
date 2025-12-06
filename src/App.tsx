@@ -43,6 +43,7 @@ import DeveloperToolsPage from "./pages/DeveloperToolsPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import CreateCEOPage from "./pages/CreateCEOPage";
 import SettingsPage from "./pages/SettingsPage";
+import DomainsPage from "./pages/DomainsPage";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/developer-tools" element={<DeveloperToolsPage />} />
               <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/domains" element={<DomainsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
