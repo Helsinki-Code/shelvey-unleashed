@@ -32,7 +32,7 @@ import { GlobalAgentActivityPanel } from '@/components/GlobalAgentActivityPanel'
 const UserDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, isLoading, signOut } = useAuth();
+  const { user, profile, isLoading, isSubscribed, isSuperAdmin, signOut } = useAuth();
   const [activeSection, setActiveSection] = useState('home');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFeatureGuide, setShowFeatureGuide] = useState(false);
@@ -46,8 +46,15 @@ const UserDashboard = () => {
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
+      return;
     }
-  }, [user, isLoading, navigate]);
+    
+    // If user is logged in but not subscribed (and not super admin), redirect to pricing
+    if (!isLoading && user && !isSubscribed && !isSuperAdmin) {
+      navigate('/pricing');
+      return;
+    }
+  }, [user, isLoading, isSubscribed, isSuperAdmin, navigate]);
 
   useEffect(() => {
     // Check if onboarding is needed (simplified check)
