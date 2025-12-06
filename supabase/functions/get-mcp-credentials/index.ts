@@ -21,7 +21,7 @@ const MCP_KEY_MAPPING: Record<string, string[]> = {
   'mcp-linear': ['LINEAR_API_KEY'],
   'mcp-stripe': ['STRIPE_SECRET_KEY'],
   'mcp-youtube': ['YOUTUBE_API_KEY'],
-  'mcp-canva': ['CANVA_API_KEY'],
+  'mcp-canva': ['CANVA_CLIENT_ID', 'CANVA_CLIENT_SECRET'],
   'mcp-googlecalendar': ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
   'mcp-googlemaps': ['GOOGLE_MAPS_API_KEY'],
   'mcp-21stdev': ['21ST_DEV_API_KEY'],

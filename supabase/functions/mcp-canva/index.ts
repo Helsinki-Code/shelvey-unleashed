@@ -21,108 +21,53 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: credData, error: credError } = await supabase.functions.invoke('get-mcp-credentials', {
-      body: { userId, mcpServer: 'canva' }
+      body: { userId, mcpServerId: 'mcp-canva' }
     });
 
-    if (credError || !credData?.credentials?.CANVA_API_KEY) {
-      throw new Error('Canva credentials not configured');
+    if (credError || !credData?.credentials?.CANVA_CLIENT_ID || !credData?.credentials?.CANVA_CLIENT_SECRET) {
+      throw new Error('Canva credentials not configured. Please add your Client ID and Client Secret from the Canva Developers portal.');
     }
 
-    const apiKey = credData.credentials.CANVA_API_KEY;
+    const clientId = credData.credentials.CANVA_CLIENT_ID;
+    const clientSecret = credData.credentials.CANVA_CLIENT_SECRET;
+    
+    // For now, we'll use client credentials - in production, you'd implement OAuth flow
+    // This is a placeholder that shows the credentials are configured
     const baseUrl = 'https://api.canva.com/rest/v1';
-    let result: unknown;
-
-    const headers = {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    };
-
-    switch (action) {
-      case 'list_designs':
-        const designsResponse = await fetch(
-          `${baseUrl}/designs?limit=${params?.limit || 20}`,
-          { headers }
-        );
-        result = await designsResponse.json();
-        break;
-
-      case 'get_design':
-        const designResponse = await fetch(
-          `${baseUrl}/designs/${params.designId}`,
-          { headers }
-        );
-        result = await designResponse.json();
-        break;
-
-      case 'create_design':
-        const createResponse = await fetch(
-          `${baseUrl}/designs`,
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              design_type: params.designType || 'doc',
-              title: params.title
-            })
-          }
-        );
-        result = await createResponse.json();
-        break;
-
-      case 'export_design':
-        const exportResponse = await fetch(
-          `${baseUrl}/designs/${params.designId}/exports`,
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              format: params.format || 'png',
-              quality: params.quality || 'regular'
-            })
-          }
-        );
-        result = await exportResponse.json();
-        break;
-
-      case 'list_templates':
-        const templatesResponse = await fetch(
-          `${baseUrl}/brand-templates?limit=${params?.limit || 20}`,
-          { headers }
-        );
-        result = await templatesResponse.json();
-        break;
-
-      case 'get_user_profile':
-        const profileResponse = await fetch(
-          `${baseUrl}/users/me`,
-          { headers }
-        );
-        result = await profileResponse.json();
-        break;
-
-      default:
-        throw new Error(`Unknown Canva action: ${action}`);
+    
+    // Canva requires OAuth 2.0 - for now we support a 'check_connection' action
+    // and return info that OAuth flow is needed for other actions
+    if (action === 'check_connection') {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        data: { 
+          configured: true, 
+          clientId: clientId.substring(0, 8) + '...',
+          message: 'Canva credentials are configured. OAuth flow required for full API access.' 
+        },
+        latency_ms: Date.now() - startTime 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    const latency = Date.now() - startTime;
-
-    await supabase.from('agent_mcp_usage').insert({
-      agent_id: params?.agentId || 'system',
-      mcp_server_id: 'mcp-canva',
-      action,
-      request_payload: params,
-      response_payload: result,
-      success: true,
-      latency_ms: latency
-    });
-
-    await supabase.rpc('update_mcp_metrics', {
-      p_server_id: 'mcp-canva',
-      p_latency_ms: latency,
-      p_requests_increment: 1
-    });
-
-    return new Response(JSON.stringify({ success: true, data: result, latency_ms: latency }), {
+    // For other actions, we need an access token from OAuth flow
+    // This would require implementing the full OAuth 2.0 authorization code flow
+    // For now, return an informative error
+    console.log(`Canva action ${action} requested with Client ID: ${clientId.substring(0, 8)}...`);
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Canva requires OAuth 2.0 authorization. Please complete the OAuth flow first.',
+      data: {
+        clientIdConfigured: true,
+        clientSecretConfigured: true,
+        action: action,
+        message: 'To use Canva API, you need to complete the OAuth authorization flow. This will be implemented in a future update.'
+      },
+      latency_ms: Date.now() - startTime
+    }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
