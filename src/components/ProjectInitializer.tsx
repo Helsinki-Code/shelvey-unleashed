@@ -61,8 +61,12 @@ export function ProjectInitializer({ onProjectCreated }: ProjectInitializerProps
     }
 
     setIsCreating(true);
+    
+    console.log('[ProjectInitializer] Starting project creation for user:', session.user.id);
+    
     try {
       // Step 1: Create the business project
+      console.log('[ProjectInitializer] Inserting business project...');
       const { data: project, error: projectError } = await supabase
         .from('business_projects')
         .insert({
@@ -78,24 +82,28 @@ export function ProjectInitializer({ onProjectCreated }: ProjectInitializerProps
         .single();
 
       if (projectError) {
-        console.error('Project creation failed:', projectError);
+        console.error('[ProjectInitializer] Project creation failed:', projectError);
         throw projectError;
       }
+      
+      console.log('[ProjectInitializer] Project created successfully:', project.id);
 
       // Step 2: Initialize the project phases via COO Coordinator
-      const { error: initError } = await supabase.functions.invoke('coo-coordinator', {
+      console.log('[ProjectInitializer] Initializing phases via COO coordinator...');
+      const { data: initData, error: initError } = await supabase.functions.invoke('coo-coordinator', {
         body: {
           action: 'initialize_project',
           projectId: project.id,
-          userId: user.id
+          userId: session.user.id
         }
       });
 
       if (initError) {
-        console.error('Phase initialization error:', initError);
+        console.error('[ProjectInitializer] Phase initialization error:', initError);
         // Don't throw - project is created, phases can be initialized later
         toast.warning('Project created, but phase initialization had an issue. You can retry from the Organization page.');
       } else {
+        console.log('[ProjectInitializer] Phases initialized:', initData);
         // Log the CEO activity
         await supabase.from('agent_activity_logs').insert({
           agent_id: 'ceo-agent',

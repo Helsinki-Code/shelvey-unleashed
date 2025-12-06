@@ -106,7 +106,9 @@ async function sendNotification(supabaseUrl: string, supabaseKey: string, userId
 
 // Check phase completion and trigger next phase - FIXED: accepts phaseId and userId directly
 async function checkPhaseCompletion(supabase: any, phaseId: string, userId: string, supabaseUrl: string, supabaseKey: string) {
-  console.log(`[checkPhaseCompletion] Checking phase ${phaseId} for user ${userId}`);
+  console.log(`[checkPhaseCompletion] START - Checking phase ${phaseId} for user ${userId}`);
+  
+  try {
   
   // Re-query ALL deliverables with FRESH data from the database
   const { data: phaseDeliverables, error: delError } = await supabase
@@ -201,14 +203,42 @@ async function checkPhaseCompletion(supabase: any, phaseId: string, userId: stri
         );
       }
 
-      console.log(`[checkPhaseCompletion] SUCCESS: Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
-      
-      return { phaseCompleted: true, nextPhase: nextPhaseNumber };
+        console.log(`[checkPhaseCompletion] SUCCESS: Phase ${phase.phase_number} completed. Phase ${nextPhaseNumber} activated.`);
+        
+        // Trigger phase-auto-worker to start work on the new phase
+        if (nextPhase) {
+          console.log(`[checkPhaseCompletion] Triggering phase-auto-worker for phase ${nextPhaseNumber}...`);
+          try {
+            await fetch(`${supabaseUrl}/functions/v1/phase-auto-worker`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({
+                action: 'start_phase_work',
+                userId: userId,
+                projectId: phase.project_id,
+                phaseId: nextPhase.id,
+              }),
+            });
+            console.log(`[checkPhaseCompletion] phase-auto-worker triggered successfully`);
+          } catch (workerError) {
+            console.error('[checkPhaseCompletion] Failed to trigger phase-auto-worker:', workerError);
+            // Don't fail the whole operation, phase is still activated
+          }
+        }
+        
+        return { phaseCompleted: true, nextPhase: nextPhaseNumber };
+      }
     }
-  }
 
-  console.log('[checkPhaseCompletion] Phase not yet complete');
-  return { phaseCompleted: false };
+    console.log('[checkPhaseCompletion] Phase not yet complete');
+    return { phaseCompleted: false };
+  } catch (error) {
+    console.error('[checkPhaseCompletion] CRITICAL ERROR:', error);
+    return { phaseCompleted: false, error: String(error) };
+  }
 }
 
 serve(async (req) => {

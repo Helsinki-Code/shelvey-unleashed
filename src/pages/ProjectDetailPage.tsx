@@ -206,6 +206,8 @@ const ProjectDetailPage = () => {
     if (!selectedPhase || !user) return;
     
     setIsAdvancingPhase(true);
+    console.log('[handleAdvancePhase] Starting phase advance for phase:', selectedPhase.id);
+    
     try {
       const { data, error } = await supabase.functions.invoke('phase-manager', {
         body: {
@@ -216,6 +218,8 @@ const ProjectDetailPage = () => {
         },
       });
 
+      console.log('[handleAdvancePhase] Response:', data, error);
+
       if (error) throw error;
 
       if (data?.success) {
@@ -223,6 +227,20 @@ const ProjectDetailPage = () => {
           title: '🎉 Phase Advanced!',
           description: data.message || 'Moving to next phase',
         });
+        
+        // Trigger phase-auto-worker for the new phase if it was activated
+        if (data.nextPhaseId) {
+          console.log('[handleAdvancePhase] Triggering phase-auto-worker for new phase:', data.nextPhaseId);
+          await supabase.functions.invoke('phase-auto-worker', {
+            body: {
+              action: 'start_phase_work',
+              userId: user.id,
+              projectId: projectId,
+              phaseId: data.nextPhaseId,
+            },
+          });
+        }
+        
         await fetchProjectData();
       } else {
         toast({
@@ -232,7 +250,7 @@ const ProjectDetailPage = () => {
         });
       }
     } catch (error) {
-      console.error('Advance phase error:', error);
+      console.error('[handleAdvancePhase] Error:', error);
       toast({
         title: 'Failed to advance phase',
         description: 'Please try again',
