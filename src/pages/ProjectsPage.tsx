@@ -11,6 +11,7 @@ import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { ProjectCreationCEOChat } from '@/components/ProjectCreationCEOChat';
 import { PageHeader } from '@/components/PageHeader';
+import { PhaseProgressIndicator } from '@/components/PhaseProgressIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -201,15 +202,18 @@ const ProjectsPage = () => {
                         </p>
                       )}
 
-                      {/* Phase Progress */}
+                      {/* Phase Progress Indicator */}
                       <div className="mb-4">
                         <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="text-muted-foreground">
-                            Phase {project.currentPhase}/6
+                          <span className="font-medium text-primary">
+                            Phase {project.currentPhase}: {['Research', 'Branding', 'Development', 'Content', 'Marketing', 'Sales'][project.currentPhase - 1]}
                           </span>
-                          <span className="font-medium">{project.progress}%</span>
+                          <span className="text-muted-foreground">{project.progress}% complete</span>
                         </div>
-                        <Progress value={project.progress} className="h-2" />
+                        <PhaseProgressIndicator 
+                          currentPhase={project.currentPhase || 1} 
+                          compact={true}
+                        />
                       </div>
 
                       {/* Approval Status */}

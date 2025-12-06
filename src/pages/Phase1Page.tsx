@@ -15,6 +15,7 @@ import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
 import { PageHeader } from '@/components/PageHeader';
+import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -153,6 +154,11 @@ const Phase1Page = () => {
     if (deliverables.length === 0) return 0;
     const approved = deliverables.filter(d => d.ceo_approved && d.user_approved).length;
     return Math.round((approved / deliverables.length) * 100);
+  };
+
+  const isPhaseFullyApproved = () => {
+    if (deliverables.length === 0) return false;
+    return deliverables.every(d => d.ceo_approved && d.user_approved);
   };
 
   const getAgentStatus = (agentId: string) => {
@@ -514,6 +520,13 @@ const Phase1Page = () => {
               />
             )}
           </Tabs>
+
+          {/* Proceed to Next Phase Button */}
+          <ProceedToNextPhaseButton
+            projectId={projectId || ''}
+            currentPhaseNumber={1}
+            isPhaseApproved={isPhaseFullyApproved()}
+          />
         </div>
       </main>
 

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
+import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
 import { SocialCommandCenter } from "@/components/SocialCommandCenter";
 import { PaidAdsHub } from "@/components/PaidAdsHub";
 import { InfluencerPipeline } from "@/components/InfluencerPipeline";
@@ -114,6 +115,11 @@ export default function Phase5Page() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const isPhaseFullyApproved = () => {
+    if (deliverables.length === 0) return false;
+    return deliverables.every((d: any) => d.ceo_approved && d.user_approved);
   };
 
   const loadCampaigns = async () => {
@@ -362,6 +368,13 @@ export default function Phase5Page() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Proceed to Next Phase Button */}
+          <ProceedToNextPhaseButton
+            projectId={projectId || ''}
+            currentPhaseNumber={5}
+            isPhaseApproved={isPhaseFullyApproved()}
+          />
         </ScrollArea>
       </main>
 

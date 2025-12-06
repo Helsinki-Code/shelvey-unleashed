@@ -17,6 +17,7 @@ import { ReactCodePreview } from '@/components/ReactCodePreview';
 import { HostingSetup } from '@/components/HostingSetup';
 import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { PageHeader } from '@/components/PageHeader';
+import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,6 +35,8 @@ interface GeneratedWebsite {
   hosting_type: string | null;
   dns_records: any | null;
   ssl_status: string | null;
+  ceo_approved: boolean | null;
+  user_approved: boolean | null;
 }
 
 const PHASE_3_AGENTS = [
@@ -105,6 +108,10 @@ const Phase3Page = () => {
     }
 
     setIsLoading(false);
+  };
+
+  const isPhaseFullyApproved = () => {
+    return generatedWebsite?.ceo_approved && generatedWebsite?.user_approved;
   };
 
   const handleGenerateWebsite = async () => {
@@ -856,6 +863,13 @@ const Phase3Page = () => {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Proceed to Next Phase Button */}
+          <ProceedToNextPhaseButton
+            projectId={projectId || ''}
+            currentPhaseNumber={3}
+            isPhaseApproved={isPhaseFullyApproved() || false}
+          />
         </div>
 
         {/* CEO Chat */}

@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
+import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
 import ContentStrategyBuilder from "@/components/ContentStrategyBuilder";
 import WebsiteCopyGenerator from "@/components/WebsiteCopyGenerator";
 import BlogArticleGenerator from "@/components/BlogArticleGenerator";
@@ -77,6 +78,11 @@ export default function Phase4Page() {
     if (deliverables.length === 0) return 0;
     const completed = deliverables.filter(d => d.status === 'approved' || d.status === 'completed').length;
     return Math.round((completed / deliverables.length) * 100);
+  };
+
+  const isPhaseFullyApproved = () => {
+    if (deliverables.length === 0) return false;
+    return deliverables.every(d => d.ceo_approved && d.user_approved);
   };
 
   if (loading) {
@@ -270,6 +276,13 @@ export default function Phase4Page() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Proceed to Next Phase Button */}
+        <ProceedToNextPhaseButton
+          projectId={projectId || ''}
+          currentPhaseNumber={4}
+          isPhaseApproved={isPhaseFullyApproved()}
+        />
       </main>
     </div>
   );
