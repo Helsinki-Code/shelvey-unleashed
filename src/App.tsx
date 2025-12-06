@@ -36,6 +36,7 @@ import IntegrationsPage from "./pages/IntegrationsPage";
 import ComputerUsePage from "./pages/ComputerUsePage";
 import DeveloperToolsPage from "./pages/DeveloperToolsPage";
 import WorkspacePage from "./pages/WorkspacePage";
+import CreateCEOPage from "./pages/CreateCEOPage";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/create-ceo" element={<CreateCEOPage />} />
               <Route path="/dashboard" element={<UserDashboard />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/pipeline" element={<PipelinePage />} />

@@ -233,3 +233,6 @@ verify_jwt = false
 
 [functions.brand-assets-generator]
 verify_jwt = false
+
+[functions.generate-ceo-welcome]
+verify_jwt = false

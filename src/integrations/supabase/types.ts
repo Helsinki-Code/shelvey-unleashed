@@ -1351,6 +1351,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ceos: {
+        Row: {
+          ceo_image_url: string | null
+          ceo_name: string
+          communication_style: string
+          created_at: string | null
+          gender: string
+          id: string
+          language: string
+          persona: string
+          personality_traits: Json | null
+          updated_at: string | null
+          user_id: string
+          voice_id: string
+          welcome_audio_url: string | null
+          welcome_email_sent: boolean | null
+        }
+        Insert: {
+          ceo_image_url?: string | null
+          ceo_name: string
+          communication_style?: string
+          created_at?: string | null
+          gender?: string
+          id?: string
+          language?: string
+          persona?: string
+          personality_traits?: Json | null
+          updated_at?: string | null
+          user_id: string
+          voice_id?: string
+          welcome_audio_url?: string | null
+          welcome_email_sent?: boolean | null
+        }
+        Update: {
+          ceo_image_url?: string | null
+          ceo_name?: string
+          communication_style?: string
+          created_at?: string | null
+          gender?: string
+          id?: string
+          language?: string
+          persona?: string
+          personality_traits?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          voice_id?: string
+          welcome_audio_url?: string | null
+          welcome_email_sent?: boolean | null
+        }
+        Relationships: []
+      }
       user_mcp_servers: {
         Row: {
           created_at: string | null

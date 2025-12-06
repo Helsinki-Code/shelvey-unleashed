@@ -39,6 +39,8 @@ const UserDashboard = () => {
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
+  const [ceoChecked, setCeoChecked] = useState(false);
+  const [userCeo, setUserCeo] = useState<any>(null);
   
   // Feature tour
   const { showTour, completeTour, skipTour } = useTour('dashboard');
@@ -55,6 +57,35 @@ const UserDashboard = () => {
       return;
     }
   }, [user, isLoading, isSubscribed, isSuperAdmin, navigate]);
+
+  // Check if user has created their CEO
+  useEffect(() => {
+    const checkCeo = async () => {
+      if (!user || !isSubscribed && !isSuperAdmin) return;
+      
+      const { data, error } = await supabase
+        .from('user_ceos')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setCeoChecked(true);
+      
+      if (!data && !error) {
+        // No CEO created yet, redirect to create-ceo
+        navigate('/create-ceo');
+        return;
+      }
+      
+      if (data) {
+        setUserCeo(data);
+      }
+    };
+
+    if (user && (isSubscribed || isSuperAdmin) && !isLoading) {
+      checkCeo();
+    }
+  }, [user, isSubscribed, isSuperAdmin, isLoading, navigate]);
 
   useEffect(() => {
     // Check if onboarding is needed (simplified check)
@@ -88,7 +119,7 @@ const UserDashboard = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !ceoChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -99,6 +130,7 @@ const UserDashboard = () => {
   if (!user) return null;
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
+  const ceoName = userCeo?.ceo_name || 'Ava';
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
@@ -121,7 +153,7 @@ const UserDashboard = () => {
                   {greeting}, {firstName}! 👋
                 </h1>
                 <p className="text-muted-foreground">
-                  Here's what's happening with your AI team
+                  {ceoName} and your AI team are ready to work
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -148,10 +180,10 @@ const UserDashboard = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-primary" />
-                    Quick Chat with CEO
+                    Quick Chat with {ceoName}
                     <HelpTooltip
-                      title="CEO Agent"
-                      description="Chat with Ava, your AI CEO. She can help plan projects, delegate tasks to your AI team, and answer any business questions."
+                      title="Your AI CEO"
+                      description={`Chat with ${ceoName}, your AI CEO. They can help plan projects, delegate tasks to your AI team, and answer any business questions.`}
                     />
                   </CardTitle>
                 </CardHeader>
