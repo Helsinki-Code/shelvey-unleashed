@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, ShoppingCart, Users, Plus, RefreshCw, BarChart3, ExternalLink, AlertCircle } from 'lucide-react';
+import { Store, Package, ShoppingCart, Users, Plus, RefreshCw, BarChart3, ExternalLink, AlertCircle, Bot, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { PageHeader } from '@/components/PageHeader';
@@ -16,6 +16,8 @@ import { StoreConnectionCard } from '@/components/stores/StoreConnectionCard';
 import { StoreProductsGrid } from '@/components/stores/StoreProductsGrid';
 import { StoreOrdersTable } from '@/components/stores/StoreOrdersTable';
 import { StoreCustomersTable } from '@/components/stores/StoreCustomersTable';
+import { StoreAutomationPanel } from '@/components/stores/StoreAutomationPanel';
+import { PODProductsPanel } from '@/components/stores/PODProductsPanel';
 
 interface StoreConfig {
   id: string;
@@ -31,6 +33,8 @@ const STORES: StoreConfig[] = [
   { id: 'etsy', name: 'Etsy', icon: '🧶', mcpId: 'mcp-etsy', requiredKeys: ['ETSY_API_KEY', 'ETSY_ACCESS_TOKEN'], color: 'from-orange-500 to-orange-600' },
   { id: 'woocommerce', name: 'WooCommerce', icon: '🛒', mcpId: 'mcp-woocommerce', requiredKeys: ['WOOCOMMERCE_URL', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'], color: 'from-purple-500 to-purple-600' },
   { id: 'amazon', name: 'Amazon', icon: '📦', mcpId: 'mcp-amazon', requiredKeys: ['AMAZON_SELLER_ID', 'AMAZON_MWS_AUTH_TOKEN'], color: 'from-yellow-500 to-yellow-600' },
+  { id: 'printful', name: 'Printful', icon: '👕', mcpId: 'mcp-printful', requiredKeys: ['PRINTFUL_API_KEY'], color: 'from-cyan-500 to-cyan-600' },
+  { id: 'printify', name: 'Printify', icon: '🎨', mcpId: 'mcp-printify', requiredKeys: ['PRINTIFY_API_KEY'], color: 'from-pink-500 to-pink-600' },
 ];
 
 const OnlineStoresPage = () => {
@@ -138,13 +142,13 @@ const OnlineStoresPage = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Online Stores</h1>
-            <p className="text-muted-foreground">Manage all your e-commerce stores from one dashboard</p>
+            <p className="text-muted-foreground">Manage all your e-commerce stores with AI automation</p>
           </div>
           <PageHeader />
         </div>
 
         {/* Store Connection Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {STORES.map((store) => (
             <StoreConnectionCard
               key={store.id}
@@ -189,7 +193,7 @@ const OnlineStoresPage = () => {
 
             {/* Data Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsList className="grid w-full max-w-2xl grid-cols-5">
                 <TabsTrigger value="products" className="flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   Products
@@ -201,6 +205,14 @@ const OnlineStoresPage = () => {
                 <TabsTrigger value="customers" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Customers
+                </TabsTrigger>
+                <TabsTrigger value="automation" className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  Automation
+                </TabsTrigger>
+                <TabsTrigger value="pod" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  POD
                 </TabsTrigger>
               </TabsList>
 
@@ -227,6 +239,14 @@ const OnlineStoresPage = () => {
                   isLoading={refreshing}
                 />
               </TabsContent>
+
+              <TabsContent value="automation" className="mt-6">
+                <StoreAutomationPanel />
+              </TabsContent>
+
+              <TabsContent value="pod" className="mt-6">
+                <PODProductsPanel />
+              </TabsContent>
             </Tabs>
           </motion.div>
         ) : (
@@ -235,7 +255,7 @@ const OnlineStoresPage = () => {
               <Store className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Store Selected</h3>
               <p className="text-muted-foreground text-center max-w-md mb-4">
-                Connect your e-commerce stores to manage products, orders, and customers from one place.
+                Connect your e-commerce stores to manage products, orders, and customers from one place with AI automation.
               </p>
               <Button onClick={() => navigate('/settings?tab=apikeys')}>
                 Configure API Keys

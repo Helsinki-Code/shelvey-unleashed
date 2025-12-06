@@ -13,7 +13,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface TradingStrategyBuilderProps {
-  onStrategyCreated: () => void;
+  exchange?: string;
+  exchangeType?: 'stocks' | 'crypto';
+  onStrategyCreated?: () => void;
 }
 
 type StrategyType = 'dca' | 'grid' | 'momentum';
@@ -36,11 +38,11 @@ const strategyConfigs: Record<StrategyType, { name: string; description: string;
   },
 };
 
-export function TradingStrategyBuilder({ onStrategyCreated }: TradingStrategyBuilderProps) {
+export function TradingStrategyBuilder({ exchange: propExchange, exchangeType, onStrategyCreated }: TradingStrategyBuilderProps) {
   const { user } = useAuth();
   const [creating, setCreating] = useState(false);
   const [strategyType, setStrategyType] = useState<StrategyType>('dca');
-  const [exchange, setExchange] = useState('alpaca');
+  const [exchange, setExchange] = useState(propExchange || 'alpaca');
   const [paperMode, setPaperMode] = useState(true);
   const [name, setName] = useState('');
   
@@ -111,7 +113,7 @@ export function TradingStrategyBuilder({ onStrategyCreated }: TradingStrategyBui
       
       toast.success(`Strategy "${name}" created!`);
       setName('');
-      onStrategyCreated();
+      onStrategyCreated?.();
     } catch (error) {
       console.error('Error creating strategy:', error);
       toast.error('Failed to create strategy');

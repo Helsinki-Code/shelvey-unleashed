@@ -20,10 +20,10 @@ interface AutomationSettings {
 }
 
 interface StoreAutomationPanelProps {
-  selectedStore: string | null;
+  selectedStore?: string | null;
 }
 
-export function StoreAutomationPanel({ selectedStore }: StoreAutomationPanelProps) {
+export function StoreAutomationPanel({ selectedStore = null }: StoreAutomationPanelProps) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<AutomationSettings>({
     auto_fulfill_orders: false,
