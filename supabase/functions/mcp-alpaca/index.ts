@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,11 +12,48 @@ serve(async (req) => {
   }
 
   try {
-    const { tool, arguments: args, credentials } = await req.json();
-
-    const apiKey = credentials?.ALPACA_API_KEY;
-    const secretKey = credentials?.ALPACA_SECRET_KEY;
-    const isPaper = credentials?.ALPACA_PAPER !== 'false';
+    const { tool, arguments: args, credentials, userId } = await req.json();
+    
+    let apiKey = credentials?.ALPACA_API_KEY;
+    let secretKey = credentials?.ALPACA_SECRET_KEY;
+    let isPaper = credentials?.ALPACA_PAPER !== 'false';
+    
+    // If no credentials provided, fetch from user_api_keys
+    if (!apiKey || !secretKey) {
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'User ID required to fetch credentials.',
+            requiresUserKeys: true 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      const { data: userKeys, error: keysError } = await supabase
+        .from('user_api_keys')
+        .select('key_name, encrypted_value')
+        .eq('user_id', userId)
+        .eq('is_configured', true)
+        .in('key_name', ['ALPACA_API_KEY', 'ALPACA_SECRET_KEY', 'ALPACA_PAPER']);
+      
+      if (keysError) {
+        console.error('[mcp-alpaca] Error fetching user keys:', keysError);
+      }
+      
+      if (userKeys && userKeys.length > 0) {
+        const keyMap = new Map(userKeys.map(k => [k.key_name, k.encrypted_value]));
+        apiKey = keyMap.get('ALPACA_API_KEY') || apiKey;
+        secretKey = keyMap.get('ALPACA_SECRET_KEY') || secretKey;
+        const paperValue = keyMap.get('ALPACA_PAPER');
+        isPaper = paperValue !== 'false';
+      }
+    }
 
     if (!apiKey || !secretKey) {
       return new Response(
