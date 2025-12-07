@@ -140,7 +140,9 @@ const TradingDashboardPage = () => {
           userId: user.id
         }
       });
-      setPositions(positionsData?.data || positionsData || []);
+      // Ensure positions is always an array
+      const positionsResult = positionsData?.data || positionsData;
+      setPositions(Array.isArray(positionsResult) ? positionsResult : []);
 
       // Fetch orders
       const { data: ordersData } = await supabase.functions.invoke(exchange.mcpId, {
@@ -150,7 +152,9 @@ const TradingDashboardPage = () => {
           userId: user.id
         }
       });
-      setOrders(ordersData?.data || ordersData || []);
+      // Ensure orders is always an array
+      const ordersResult = ordersData?.data || ordersData;
+      setOrders(Array.isArray(ordersResult) ? ordersResult : []);
 
     } catch (error: any) {
       console.error('Error fetching exchange data:', error);
