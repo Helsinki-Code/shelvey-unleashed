@@ -16,7 +16,7 @@ interface CEOReviewResult {
 }
 
 // CEO Review function using AI - returns full review details
-async function performCEOReview(deliverable: any, lovableApiKey: string): Promise<CEOReviewResult> {
+async function performCEOReview(deliverable: any, openaiApiKey: string): Promise<CEOReviewResult> {
   const reviewPrompt = `You are the CEO Agent reviewing a ${deliverable.deliverable_type} deliverable for a business project.
 
 Deliverable Name: ${deliverable.name}
@@ -43,14 +43,14 @@ Only approve if quality_score is 7 or higher. Be specific in your feedback about
   try {
     console.log('[performCEOReview] Making AI request for deliverable:', deliverable.name);
     
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "Authorization": `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You are a discerning CEO with high standards. Be constructive but thorough in your reviews. Always provide actionable feedback." },
           { role: "user", content: reviewPrompt },
@@ -272,7 +272,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -314,7 +314,7 @@ serve(async (req) => {
 
       // Handle CEO auto-review
       if (action === 'ceo_review') {
-        const review = await performCEOReview(deliverable, lovableApiKey);
+        const review = await performCEOReview(deliverable, openaiApiKey);
         
         // Store FULL CEO review details in feedback_history
         const ceoReviewEntry = {
@@ -659,14 +659,14 @@ serve(async (req) => {
 Website Name: ${website.name}
 HTML (truncated): ${website.html_content?.substring(0, 4000)}`;
 
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${lovableApiKey}`,
+            'Authorization': `Bearer ${openaiApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             messages: [
               { role: 'system', content: 'You are a CEO reviewing websites. Be constructive and professional.' },
               { role: 'user', content: reviewPrompt }

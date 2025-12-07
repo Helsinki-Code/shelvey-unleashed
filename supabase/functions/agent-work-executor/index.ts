@@ -510,7 +510,7 @@ async function executeMCPWork(
   params: any
 ): Promise<any> {
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
-  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  const falKey = Deno.env.get('FAL_KEY');
 
   // Route any lovable-ai-image requests to mcp-falai instead
   if (mcpServerId === 'lovable-ai-image') {
@@ -630,71 +630,62 @@ async function executeMCPWork(
   return await response.json();
 }
 
-async function generateImageWithLovableAI(lovableApiKey: string, taskType: string, inputData: any): Promise<any> {
-  let imagePrompt = '';
+async function generateImageWithFalAI(supabaseUrl: string, serviceKey: string, taskType: string, inputData: any): Promise<any> {
   const businessName = inputData?.projectName || inputData?.deliverableName || 'Business';
   const industry = inputData?.industry || 'general';
   
-  // Create specialized prompts for different brand asset types
+  console.log('[generateImageWithFalAI] Generating image for:', taskType);
+
+  // Map task type to Fal.ai tool
+  let tool = 'generate_image';
+  const args: any = { brandName: businessName, industry };
+
   switch (taskType) {
     case 'logo_design':
-      imagePrompt = `Create a modern, professional, high-quality business logo for "${businessName}". Industry: ${industry}. Style: Clean, minimalist, memorable, scalable. The logo should be on a clean white background, suitable for business cards, websites, and marketing materials.`;
+      tool = 'generate_logo';
+      args.style = 'modern minimalist';
       break;
     case 'brand_strategy':
-      imagePrompt = `Create a professional brand mood board visual for "${businessName}" in the ${industry} industry. Include visual elements representing: brand values, target audience aesthetics, competitor positioning, and brand personality. Modern, professional business style.`;
-      break;
     case 'color_palette':
-      imagePrompt = `Create a professional brand color palette visualization for "${businessName}" in the ${industry} industry. Show 5 harmonious colors as large color swatches with hex codes. Include primary, secondary, and accent colors that convey professionalism and trust.`;
-      break;
     case 'brand_guidelines':
-      imagePrompt = `Create a professional brand guidelines preview page for "${businessName}". Show logo placement rules, color usage examples, typography samples, and spacing guidelines. Clean, modern corporate design style.`;
-      break;
     case 'visual_assets':
-      imagePrompt = `Create a set of professional marketing visual assets for "${businessName}" in the ${industry} industry. Include social media banner concepts, business card design, and website hero image. Modern, cohesive brand style.`;
-      break;
     case 'typography':
-      imagePrompt = `Create a professional typography specimen sheet for "${businessName}" brand. Show heading and body font pairings, size hierarchy, and text styling examples. Clean, modern corporate design.`;
+      tool = 'generate_brand_assets';
+      args.type = taskType === 'visual_assets' ? 'marketing_visuals' : 'mood_board';
       break;
     default:
-      imagePrompt = `Create a professional brand visual for "${businessName}" in the ${industry} industry. ${inputData?.description || 'Modern, clean, professional business style.'}`;
+      tool = 'generate_image';
+      args.prompt = `Professional brand visual for ${businessName} in the ${industry} industry`;
   }
 
-  console.log('[generateImageWithLovableAI] Generating image for:', taskType, 'Prompt:', imagePrompt.substring(0, 100));
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch(`${supabaseUrl}/functions/v1/mcp-falai`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${lovableApiKey}`,
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash-image-preview',
-      messages: [{ role: 'user', content: imagePrompt }],
-      modalities: ['image', 'text'],
-    }),
+    body: JSON.stringify({ tool, arguments: args }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[generateImageWithLovableAI] Error:', response.status, errorText);
-    throw new Error(`Lovable AI image generation failed: ${response.status}`);
+    console.error('[generateImageWithFalAI] Error:', response.status, errorText);
+    throw new Error(`Fal AI image generation failed: ${response.status}`);
   }
 
   const result = await response.json();
-  const message = result.choices?.[0]?.message;
-
-  console.log('[generateImageWithLovableAI] Generated', message?.images?.length || 0, 'images');
+  console.log('[generateImageWithFalAI] Generated images:', result.data?.images?.length || 0);
 
   return {
     success: true,
     taskType,
     assetType: taskType,
-    generatedImages: (message?.images || []).map((img: any, idx: number) => ({
+    generatedImages: (result.data?.images || []).map((img: any, idx: number) => ({
       id: `${taskType}-${idx + 1}`,
-      url: img.image_url?.url || img.url,
+      url: img.url,
       type: taskType,
     })),
-    description: message?.content || '',
+    description: result.data?.description || '',
     brandName: businessName,
     industry: industry,
   };
