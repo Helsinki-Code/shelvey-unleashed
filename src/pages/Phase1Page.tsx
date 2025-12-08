@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare, Camera, Link2, Sparkles, Play, Image } from 'lucide-react';
+import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare, Camera, Link2, Sparkles, Play, Image, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -65,82 +65,107 @@ const Phase1Page = () => {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
   const [activeTab, setActiveTab] = useState('agents');
   const [chatAgent, setChatAgent] = useState<typeof PHASE_1_AGENTS[0] | null>(null);
 
+  const fetchData = useCallback(async () => {
+    if (!projectId || !user) return;
+    
+    try {
+      // Fetch project
+      const { data: projectData } = await supabase
+        .from('business_projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (projectData) setProject(projectData);
+
+      // Fetch phase
+      const phaseNum = parseInt(phaseNumber || '1');
+      const { data: phaseData } = await supabase
+        .from('business_phases')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('phase_number', phaseNum)
+        .single();
+
+      if (phaseData) setPhase(phaseData);
+
+      // Fetch deliverables
+      if (phaseData) {
+        const { data: deliverablesData } = await supabase
+          .from('phase_deliverables')
+          .select('*')
+          .eq('phase_id', phaseData.id)
+          .order('created_at');
+
+        if (deliverablesData) setDeliverables(deliverablesData);
+      }
+
+      // Fetch recent activity - FIXED: Filter by project
+      const { data: activityData } = await supabase
+        .from('agent_activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      // Filter activities that belong to this project
+      const projectActivities = (activityData || []).filter((activity: AgentActivity) => {
+        const metadata = activity.metadata as any;
+        return metadata?.projectId === projectId || 
+               PHASE_1_AGENTS.some(agent => agent.id === activity.agent_id);
+      });
+
+      setActivities(projectActivities.slice(0, 50));
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [projectId, phaseNumber, user]);
+
   useEffect(() => {
     if (projectId && user) {
       fetchData();
-      const unsubscribe = subscribeToUpdates();
-      return unsubscribe;
     }
-  }, [projectId, user]);
+  }, [projectId, user, fetchData]);
 
-  const fetchData = async () => {
-    // Fetch project
-    const { data: projectData } = await supabase
-      .from('business_projects')
-      .select('*')
-      .eq('id', projectId)
-      .single();
+  useEffect(() => {
+    if (!projectId || !user || !phase?.id) return;
 
-    if (projectData) setProject(projectData);
-
-    // Fetch phase (use phaseNumber from URL or default to 1)
-    const phaseNum = parseInt(phaseNumber || '1');
-    const { data: phaseData } = await supabase
-      .from('business_phases')
-      .select('*')
-      .eq('project_id', projectId)
-      .eq('phase_number', phaseNum)
-      .single();
-
-    if (phaseData) setPhase(phaseData);
-
-    // Fetch deliverables
-    if (phaseData) {
-      const { data: deliverablesData } = await supabase
-        .from('phase_deliverables')
-        .select('*')
-        .eq('phase_id', phaseData.id)
-        .order('created_at');
-
-      if (deliverablesData) setDeliverables(deliverablesData);
-    }
-
-    // Fetch recent activity
-    const { data: activityData } = await supabase
-      .from('agent_activity_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (activityData) setActivities(activityData);
-
-    setIsLoading(false);
-  };
-
-  const subscribeToUpdates = () => {
     const channel = supabase
-      .channel('phase1-updates')
+      .channel(`phase1-updates-${projectId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'agent_activity_logs' },
         (payload) => {
           if (payload.new) {
-            setActivities(prev => [payload.new as AgentActivity, ...prev.slice(0, 49)]);
+            const newActivity = payload.new as AgentActivity;
+            const metadata = newActivity.metadata as any;
+            // Only add if it's for our project or one of our agents
+            if (metadata?.projectId === projectId || PHASE_1_AGENTS.some(a => a.id === newActivity.agent_id)) {
+              setActivities(prev => [newActivity, ...prev.slice(0, 49)]);
+            }
           }
         }
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'phase_deliverables' },
+        { event: 'UPDATE', schema: 'public', table: 'phase_deliverables', filter: `phase_id=eq.${phase.id}` },
         (payload) => {
           if (payload.new) {
+            const updated = payload.new as Deliverable;
             setDeliverables(prev =>
-              prev.map(d => d.id === (payload.new as Deliverable).id ? payload.new as Deliverable : d)
+              prev.map(d => d.id === updated.id ? updated : d)
             );
+            // Show toast for status changes
+            if (updated.status === 'review') {
+              toast.success(`${updated.name} is ready for review!`);
+            }
           }
         }
       )
@@ -149,6 +174,12 @@ const Phase1Page = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [projectId, user, phase?.id]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    toast.success('Data refreshed');
   };
 
   const calculateProgress = () => {
@@ -186,10 +217,23 @@ const Phase1Page = () => {
     return null;
   };
 
+  const getStatusBadgeVariant = (status: string | null) => {
+    switch (status) {
+      case 'in_progress': return 'default';
+      case 'review': return 'secondary';
+      case 'approved': return 'default';
+      case 'completed': return 'default';
+      default: return 'outline';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading Phase 1...</p>
+        </div>
       </div>
     );
   }
@@ -224,6 +268,10 @@ const Phase1Page = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
                 {phase?.status || 'pending'}
               </Badge>
@@ -267,11 +315,11 @@ const Phase1Page = () => {
               </TabsTrigger>
               <TabsTrigger value="activity" className="gap-2">
                 <Play className="w-4 h-4" />
-                Live Activity
+                Live Activity ({activities.length})
               </TabsTrigger>
             </TabsList>
 
-            {/* AI Team Tab - Agent Cards with Live Previews */}
+            {/* AI Team Tab */}
             <TabsContent value="agents">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {PHASE_1_AGENTS.map((agent, index) => {
@@ -280,7 +328,7 @@ const Phase1Page = () => {
                   const agentDeliverables = getAgentDeliverables(agent.id);
                   const latestScreenshot = getAgentLatestScreenshot(agent.id);
                   const Icon = agent.icon;
-                  const completedCount = agentDeliverables.filter(d => d.status === 'approved').length;
+                  const completedCount = agentDeliverables.filter(d => d.status === 'approved' || (d.ceo_approved && d.user_approved)).length;
 
                   return (
                     <motion.div
@@ -290,7 +338,6 @@ const Phase1Page = () => {
                       transition={{ delay: index * 0.1 }}
                     >
                       <Card className={`overflow-hidden ${agent.isManager ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
-                        {/* Agent Header */}
                         <CardHeader className={`pb-3 ${agent.bgColor}`}>
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -310,7 +357,8 @@ const Phase1Page = () => {
                             <div className="flex items-center gap-2">
                               <span className={`w-3 h-3 rounded-full ${
                                 status === 'in_progress' ? 'bg-green-500 animate-pulse' :
-                                status === 'completed' ? 'bg-blue-500' : 'bg-muted-foreground'
+                                status === 'completed' ? 'bg-blue-500' : 
+                                status === 'failed' ? 'bg-red-500' : 'bg-muted-foreground'
                               }`} />
                               <span className="text-xs font-medium capitalize">
                                 {status === 'in_progress' ? 'Working' : status}
@@ -320,10 +368,8 @@ const Phase1Page = () => {
                         </CardHeader>
 
                         <CardContent className="p-4 space-y-4">
-                          {/* Description */}
                           <p className="text-sm text-muted-foreground">{agent.description}</p>
 
-                          {/* Current Task */}
                           {currentTask && (
                             <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                               <p className="text-xs font-medium text-primary mb-1">Currently Working On:</p>
@@ -331,12 +377,11 @@ const Phase1Page = () => {
                             </div>
                           )}
 
-                          {/* Live Work Preview */}
                           <div className="rounded-lg border overflow-hidden">
                             <div className="bg-muted px-3 py-2 flex items-center justify-between border-b">
                               <span className="text-xs font-medium flex items-center gap-1">
                                 <Image className="w-3 h-3" />
-                                Live Work Preview
+                                Work Preview
                               </span>
                               {status === 'in_progress' && (
                                 <span className="text-xs text-green-500 flex items-center gap-1">
@@ -352,16 +397,20 @@ const Phase1Page = () => {
                                   alt="Latest work screenshot"
                                   className="w-full h-full object-cover"
                                 />
+                              ) : agentDeliverables.length > 0 && agentDeliverables[0].generated_content ? (
+                                <div className="p-4 text-center">
+                                  <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                                  <p className="text-xs text-muted-foreground">Report generated</p>
+                                </div>
                               ) : (
                                 <div className="text-center text-muted-foreground p-4">
                                   <Camera className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                  <p className="text-xs">Screenshots will appear here as agent works</p>
+                                  <p className="text-xs">Waiting for agent to start work</p>
                                 </div>
                               )}
                             </div>
                           </div>
 
-                          {/* Stats Row */}
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-4">
                               <span className="flex items-center gap-1 text-muted-foreground">
@@ -375,7 +424,6 @@ const Phase1Page = () => {
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
                           <div className="flex gap-2 pt-2">
                             <Button
                               variant="default"
@@ -383,14 +431,14 @@ const Phase1Page = () => {
                               className="flex-1 gap-2"
                             >
                               <MessageSquare className="w-4 h-4" />
-                              Chat with {agent.isManager ? 'Manager' : 'Agent'}
+                              Chat
                             </Button>
                             {agentDeliverables.length > 0 && (
                               <Button
                                 variant="outline"
                                 onClick={() => {
                                   setSelectedDeliverable(agentDeliverables[0]);
-                                  setActiveTab('agent-work');
+                                  setActiveTab('deliverables');
                                 }}
                                 className="gap-2"
                               >
@@ -409,57 +457,45 @@ const Phase1Page = () => {
 
             {/* Deliverables Tab */}
             <TabsContent value="deliverables">
-              <div className="grid gap-4">
-                {deliverables.length > 0 ? (
-                  deliverables.map((deliverable, index) => (
-                    <motion.div
-                      key={deliverable.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <DeliverableCard
-                        deliverable={deliverable}
-                        onViewWork={() => {
-                          setSelectedDeliverable(deliverable);
-                          setActiveTab('agent-work');
-                        }}
-                        onRefresh={fetchData}
-                      />
-                    </motion.div>
-                  ))
-                ) : (
+              <div className="space-y-4">
+                {deliverables.length === 0 ? (
                   <Card>
-                    <CardContent className="py-16 text-center">
-                      <Loader2 className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
-                      <h3 className="text-lg font-semibold mb-2">Generating Deliverables...</h3>
-                      <p className="text-muted-foreground">
-                        Agents are being assigned to create research deliverables
-                      </p>
+                    <CardContent className="py-12 text-center">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No deliverables found. Start the phase to create deliverables.</p>
                     </CardContent>
                   </Card>
+                ) : (
+                  deliverables.map((deliverable) => (
+                    <DeliverableCard
+                      key={deliverable.id}
+                      deliverable={deliverable}
+                    />
+                  ))
                 )}
               </div>
             </TabsContent>
 
-            {/* Live Activity Tab */}
+            {/* Activity Tab */}
             <TabsContent value="activity">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Play className="w-5 h-5 text-green-500" />
-                    Real-Time Activity Feed
-                    <span className="ml-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <Play className="w-5 h-5" />
+                    Live Activity Feed
                   </CardTitle>
-                  <CardDescription>
-                    Live updates from all agents working on Phase 1
-                  </CardDescription>
+                  <CardDescription>Real-time updates from your research team</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[500px]">
-                    <div className="space-y-3">
-                      {activities.length > 0 ? (
-                        activities.map((activity) => {
+                    {activities.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No activity yet. Start the phase to see agent work.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {activities.map((activity, index) => {
                           const agent = PHASE_1_AGENTS.find(a => a.id === activity.agent_id);
                           const Icon = agent?.icon || Bot;
                           
@@ -468,78 +504,46 @@ const Phase1Page = () => {
                               key={activity.id}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                              transition={{ delay: index * 0.02 }}
+                              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                             >
-                              <div className={`p-2 rounded-full ${
-                                activity.status === 'completed' ? 'bg-green-500/20 text-green-500' :
-                                activity.status === 'in_progress' ? 'bg-blue-500/20 text-blue-500' :
-                                'bg-muted text-muted-foreground'
-                              }`}>
-                                {activity.status === 'completed' ? (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                ) : activity.status === 'in_progress' ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Clock className="w-4 h-4" />
-                                )}
+                              <div className={`p-2 rounded-lg ${agent?.bgColor || 'bg-muted'}`}>
+                                <Icon className={`w-4 h-4 ${agent?.color || 'text-foreground'}`} />
                               </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <Icon className={`w-4 h-4 ${agent?.color || 'text-muted-foreground'}`} />
-                                  <p className="font-medium text-sm">{activity.agent_name}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-sm">{activity.agent_name}</span>
+                                  <Badge variant={getStatusBadgeVariant(activity.status)} className="text-xs">
+                                    {activity.status}
+                                  </Badge>
                                 </div>
-                                <p className="text-sm text-muted-foreground">{activity.action}</p>
+                                <p className="text-sm text-muted-foreground truncate">{activity.action}</p>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {new Date(activity.created_at).toLocaleTimeString()}
                                 </p>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const matchingAgent = PHASE_1_AGENTS.find(a => a.id === activity.agent_id);
-                                  if (matchingAgent) setChatAgent(matchingAgent);
-                                }}
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                              </Button>
                             </motion.div>
                           );
-                        })
-                      ) : (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p>No activity yet - agents will start working soon</p>
-                        </div>
-                      )}
-                    </div>
+                        })}
+                      </div>
+                    )}
                   </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>
-
-            {/* Agent Work Viewer (hidden tab for viewing deliverable details) */}
-            {activeTab === 'agent-work' && selectedDeliverable && (
-              <AgentWorkViewer
-                deliverable={selectedDeliverable}
-                onBack={() => {
-                  setSelectedDeliverable(null);
-                  setActiveTab('deliverables');
-                }}
-              />
-            )}
           </Tabs>
 
-          {/* Proceed to Next Phase Button */}
-          <ProceedToNextPhaseButton
-            projectId={projectId || ''}
-            currentPhaseNumber={1}
-            isPhaseApproved={isPhaseFullyApproved()}
-          />
+          {/* Proceed Button */}
+          {isPhaseFullyApproved() && (
+            <div className="mt-8">
+              <ProceedToNextPhaseButton
+                projectId={projectId!}
+                currentPhaseNumber={1}
+              />
+            </div>
+          )}
         </div>
       </main>
-
-      <CEOChatSheet />
 
       {/* Agent Chat Sheet */}
       {chatAgent && (
@@ -549,9 +553,18 @@ const Phase1Page = () => {
           agentId={chatAgent.id}
           agentName={chatAgent.name}
           agentRole={chatAgent.role}
-          isManager={chatAgent.isManager}
-          projectId={projectId}
-          phaseId={phase?.id}
+        />
+      )}
+
+      {/* CEO Chat Sheet */}
+      <CEOChatSheet />
+
+      {/* Agent Work Viewer */}
+      {selectedDeliverable && (
+        <AgentWorkViewer
+          deliverable={selectedDeliverable}
+          isOpen={!!selectedDeliverable}
+          onClose={() => setSelectedDeliverable(null)}
         />
       )}
     </div>

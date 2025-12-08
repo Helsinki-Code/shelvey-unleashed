@@ -27,33 +27,51 @@ interface Citation {
   quote?: string;
 }
 
-// Agent specializations and suggested MCP servers (agents can use ANY server)
+// Agent specializations - ALL Phase 1 agents included, using ONLY mcp-perplexity (no brightdata)
 const AGENT_SPECIALIZATIONS: Record<string, { name: string; suggestedMCPs: string[]; capabilities: string[] }> = {
+  // Phase 1 Research Agents
+  'head-of-research': {
+    name: 'Head of Research',
+    suggestedMCPs: ['mcp-perplexity'],
+    capabilities: ['oversight', 'coordination', 'quality_review', 'research_strategy'],
+  },
   'market-research': {
     name: 'Market Research Agent',
-    suggestedMCPs: ['mcp-perplexity', 'mcp-brightdata'],
-    capabilities: ['market_analysis', 'competitor_research', 'trend_identification'],
+    suggestedMCPs: ['mcp-perplexity'],
+    capabilities: ['market_analysis', 'market_research', 'opportunity_assessment'],
   },
   'trend-prediction': {
     name: 'Trend Prediction Agent',
-    suggestedMCPs: ['mcp-perplexity', 'mcp-brightdata'],
-    capabilities: ['trend_forecasting', 'sentiment_analysis', 'market_signals'],
+    suggestedMCPs: ['mcp-perplexity'],
+    capabilities: ['trend_forecasting', 'trend_analysis', 'trend_forecast', 'market_signals'],
   },
+  'customer-profiler': {
+    name: 'Customer Profiler Agent',
+    suggestedMCPs: ['mcp-perplexity'],
+    capabilities: ['customer_personas', 'target_customer', 'demographics', 'psychographics'],
+  },
+  'competitor-analyst': {
+    name: 'Competitor Analyst Agent',
+    suggestedMCPs: ['mcp-perplexity'],
+    capabilities: ['competitor_analysis', 'competitor_research', 'swot_analysis', 'market_positioning'],
+  },
+  // Phase 2 Branding Agents
   'brand-identity': {
     name: 'Brand Identity Agent',
     suggestedMCPs: ['mcp-falai', 'mcp-perplexity'],
-    capabilities: ['logo_design', 'brand_guidelines', 'visual_identity'],
+    capabilities: ['logo_design', 'brand_guidelines', 'visual_identity', 'brand_strategy'],
   },
   'visual-design': {
     name: 'Visual Design Agent',
     suggestedMCPs: ['mcp-falai', 'mcp-perplexity'],
-    capabilities: ['image_generation', 'graphic_design', 'asset_creation'],
+    capabilities: ['image_generation', 'graphic_design', 'asset_creation', 'color_palette'],
   },
   'content-creator': {
     name: 'Content Creator Agent',
     suggestedMCPs: ['mcp-perplexity', 'mcp-falai'],
     capabilities: ['content_writing', 'blog_posts', 'social_content', 'typography_selection'],
   },
+  // Phase 3+ Agents
   'social-media': {
     name: 'Social Media Manager',
     suggestedMCPs: ['mcp-twitter', 'mcp-linkedin', 'mcp-facebook'],
@@ -94,20 +112,22 @@ serve(async (req) => {
 
     const { userId, projectId, deliverableId, agentId, taskType, inputData, requestedMCPs, useComputerUse } = await req.json();
 
-    console.log(`[agent-work-executor] Starting work for agent ${agentId} on deliverable ${deliverableId}`);
+    console.log(`[agent-work-executor] Starting work for agent ${agentId} on deliverable ${deliverableId}, taskType: ${taskType}`);
 
     // Get agent specialization
     const agentSpec = AGENT_SPECIALIZATIONS[agentId] || {
-      name: agentId,
+      name: agentId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
       suggestedMCPs: ['mcp-perplexity'],
       capabilities: ['general'],
     };
 
-    // Determine which MCP servers to use
+    // Determine which MCP servers to use - ONLY use perplexity for Phase 1 research
     let mcpServersToUse = requestedMCPs || [];
     if (mcpServersToUse.length === 0) {
       mcpServersToUse = selectMCPsForTask(taskType, agentSpec.suggestedMCPs);
     }
+
+    console.log(`[agent-work-executor] Using MCP servers: ${mcpServersToUse.join(', ')}`);
 
     // Initialize work tracking
     const workSteps: AgentWorkStep[] = [];
@@ -123,62 +143,22 @@ serve(async (req) => {
         .eq('id', deliverableId);
     }
 
-    // Log activity start
+    // Log activity start with project context
     await supabase.from('agent_activity_logs').insert({
       agent_id: agentId,
       agent_name: agentSpec.name,
-      action: `Starting ${taskType} work with visual documentation`,
+      action: `Starting ${taskType} work`,
       status: 'in_progress',
-      metadata: { deliverableId, mcpServers: mcpServersToUse, taskType, useComputerUse },
+      metadata: { deliverableId, projectId, mcpServers: mcpServersToUse, taskType, useComputerUse },
     });
-
-    // Step 1: Start Computer Use session for browser research if applicable
-    let computerUseSession: any = null;
-    if (useComputerUse !== false && ['market_research', 'market_analysis', 'competitor_analysis', 'trend_analysis'].includes(taskType)) {
-      try {
-        workSteps.push({
-          step: workSteps.length + 1,
-          action: 'Initializing browser session for research',
-          timestamp: new Date().toISOString(),
-          reasoning: 'Starting Computer Use session to capture visual proof of research',
-        });
-
-        const sessionResponse = await fetch(`${supabaseUrl}/functions/v1/computer-use-agent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            action: 'start_session',
-            task: {
-              taskId: deliverableId,
-              userId,
-              agentId,
-              objective: `Research: ${taskType} for ${inputData?.projectName || 'project'}`,
-              startUrl: 'https://www.google.com',
-              maxSteps: 10,
-            },
-          }),
-        });
-
-        if (sessionResponse.ok) {
-          computerUseSession = await sessionResponse.json();
-          console.log('[agent-work-executor] Computer Use session started:', computerUseSession.sessionId);
-        }
-      } catch (e) {
-        console.log('[agent-work-executor] Computer Use not available, continuing without:', e);
-      }
-    }
 
     // Execute real work using MCP servers
     const workResults: any[] = [];
-    let hasError = false;
-    let errorMessage = '';
+    let successCount = 0;
+    let errorMessages: string[] = [];
 
     for (const mcpServer of mcpServersToUse) {
       try {
-        // Log step start
         const stepNumber = workSteps.length + 1;
         workSteps.push({
           step: stepNumber,
@@ -187,42 +167,14 @@ serve(async (req) => {
           reasoning: `Using ${mcpServer} to gather ${taskType} data`,
         });
 
-        // Update activity in real-time
+        // Update activity in real-time with project context
         await supabase.from('agent_activity_logs').insert({
           agent_id: agentId,
           agent_name: agentSpec.name,
           action: `Querying ${mcpServer} for ${taskType}`,
           status: 'in_progress',
-          metadata: { step: stepNumber, mcpServer, deliverableId },
+          metadata: { step: stepNumber, mcpServer, deliverableId, projectId },
         });
-
-        // Take screenshot if Computer Use is active
-        if (computerUseSession?.sessionId) {
-          try {
-            const screenshotResponse = await fetch(`${supabaseUrl}/functions/v1/computer-use-agent`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify({
-                action: 'execute_step',
-                sessionId: computerUseSession.sessionId,
-                step: { type: 'screenshot' },
-              }),
-            });
-
-            if (screenshotResponse.ok) {
-              const ssResult = await screenshotResponse.json();
-              if (ssResult.screenshot) {
-                screenshots.push(ssResult.screenshot);
-                workSteps[stepNumber - 1].screenshot = ssResult.screenshot;
-              }
-            }
-          } catch (e) {
-            console.log('[agent-work-executor] Screenshot failed:', e);
-          }
-        }
 
         const mcpResult = await executeMCPWork(supabase, supabaseUrl, supabaseServiceKey, {
           userId,
@@ -247,6 +199,9 @@ serve(async (req) => {
           citations: resultCitations,
         });
 
+        successCount++;
+        console.log(`[agent-work-executor] ${mcpServer} succeeded with ${resultCitations.length} citations`);
+
         // Send progress update message
         await supabase.from('agent_messages').insert({
           user_id: userId,
@@ -254,7 +209,7 @@ serve(async (req) => {
           from_agent_id: agentId,
           from_agent_name: agentSpec.name,
           message_type: 'status_update',
-          subject: `Progress: ${mcpServer} work completed`,
+          subject: `Progress: ${mcpServer} completed`,
           content: `Successfully completed ${taskType} work using ${mcpServer}. Found ${resultCitations.length} sources.`,
           context: { mcpServer, taskType, citationsCount: resultCitations.length },
           priority: 'normal',
@@ -262,21 +217,26 @@ serve(async (req) => {
 
       } catch (mcpError) {
         const errMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
-        console.error(`[agent-work-executor] MCP ${mcpServer} error:`, mcpError);
+        console.error(`[agent-work-executor] MCP ${mcpServer} error:`, errMsg);
         workResults.push({
           mcpServer,
           success: false,
           error: errMsg,
         });
-        hasError = true;
-        errorMessage = errMsg;
+        errorMessages.push(`${mcpServer}: ${errMsg}`);
       }
     }
 
+    // Determine if work was successful (at least one MCP succeeded)
+    const hasAnySuccess = successCount > 0;
+    const hasAllFailed = successCount === 0 && mcpServersToUse.length > 0;
+
+    console.log(`[agent-work-executor] Work complete: ${successCount}/${mcpServersToUse.length} MCPs succeeded`);
+
     // Generate comprehensive report from work results
-    let generatedContent = {};
+    let generatedContent: any = {};
     
-    if (openaiApiKey && workResults.some(r => r.success)) {
+    if (openaiApiKey && hasAnySuccess) {
       try {
         generatedContent = await generateComprehensiveReport(
           openaiApiKey,
@@ -285,12 +245,15 @@ serve(async (req) => {
           inputData,
           allCitations
         );
+        console.log('[agent-work-executor] Report generated successfully');
       } catch (reportError) {
         console.error('[agent-work-executor] Report generation error:', reportError);
-        generatedContent = { rawResults: workResults };
+        generatedContent = { rawResults: workResults.filter(r => r.success) };
       }
+    } else if (hasAnySuccess) {
+      generatedContent = { rawResults: workResults.filter(r => r.success) };
     } else {
-      generatedContent = { rawResults: workResults };
+      generatedContent = { error: 'No data collected', messages: errorMessages };
     }
 
     // Store screenshots in Supabase Storage
@@ -316,7 +279,10 @@ serve(async (req) => {
       }
     }
 
-    // Update deliverable with generated content, screenshots, citations
+    // Determine final status - only 'pending' if ALL failed, otherwise 'review'
+    const finalStatus = hasAllFailed ? 'pending' : 'review';
+
+    // Update deliverable with generated content
     if (deliverableId) {
       await supabase
         .from('phase_deliverables')
@@ -325,31 +291,50 @@ serve(async (req) => {
           screenshots: storedScreenshots,
           agent_work_steps: workSteps,
           citations: allCitations,
-          status: hasError ? 'pending' : 'review',
+          status: finalStatus,
           updated_at: new Date().toISOString(),
         })
         .eq('id', deliverableId);
     }
 
-    // Log completion
+    // Log completion with project context
     await supabase.from('agent_activity_logs').insert({
       agent_id: agentId,
       agent_name: agentSpec.name,
       action: `Completed ${taskType} work with ${workSteps.length} steps and ${allCitations.length} citations`,
-      status: hasError ? 'partial' : 'completed',
+      status: hasAnySuccess ? 'completed' : 'failed',
       metadata: { 
-        deliverableId, 
+        deliverableId,
+        projectId,
         mcpServersUsed: mcpServersToUse,
-        successCount: workResults.filter(r => r.success).length,
-        totalCount: workResults.length,
+        successCount,
+        totalCount: mcpServersToUse.length,
         stepsCount: workSteps.length,
         citationsCount: allCitations.length,
         screenshotsCount: storedScreenshots.length,
       },
     });
 
-    // If there was an error, consider escalating
-    if (hasError) {
+    // Auto-trigger CEO review if work succeeded
+    if (hasAnySuccess && deliverableId) {
+      try {
+        console.log('[agent-work-executor] Triggering CEO review for deliverable:', deliverableId);
+        await supabase.functions.invoke('ceo-agent-chat', {
+          body: {
+            action: 'review_deliverable',
+            userId,
+            projectId,
+            deliverableId,
+          },
+        });
+      } catch (ceoError) {
+        console.error('[agent-work-executor] CEO review trigger failed:', ceoError);
+        // Non-blocking - don't fail the whole operation
+      }
+    }
+
+    // Only escalate if ALL MCPs failed
+    if (hasAllFailed) {
       await supabase.functions.invoke('escalation-handler', {
         body: {
           action: 'create_escalation',
@@ -358,7 +343,7 @@ serve(async (req) => {
           agentId,
           agentName: agentSpec.name,
           issueType: 'technical_issue',
-          issueDescription: `Work execution partially failed: ${errorMessage}`,
+          issueDescription: `Work execution failed: ${errorMessages.join('; ')}`,
           context: { taskType, failedMCPs: workResults.filter(r => !r.success) },
           deliverableId,
         },
@@ -367,7 +352,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        success: !hasError,
+        success: hasAnySuccess,
         data: {
           deliverableId,
           agentId,
@@ -378,7 +363,8 @@ serve(async (req) => {
           workSteps,
           citations: allCitations,
           screenshots: storedScreenshots,
-          hasError,
+          successCount,
+          totalCount: mcpServersToUse.length,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -396,6 +382,8 @@ serve(async (req) => {
 function extractCitations(mcpResult: any, startId: number): Citation[] {
   const citations: Citation[] = [];
   let id = startId;
+
+  if (!mcpResult) return citations;
 
   // Extract sources from various MCP response formats
   if (mcpResult?.sources) {
@@ -427,14 +415,24 @@ function extractCitations(mcpResult: any, startId: number): Citation[] {
   // Extract from Perplexity-style results
   if (mcpResult?.webPages) {
     for (const page of mcpResult.webPages) {
-      citations.push({
-        id: id++,
-        source: new URL(page.url).hostname.replace('www.', ''),
-        url: page.url,
-        title: page.title || page.name,
-        accessedAt: new Date().toISOString(),
-        quote: page.snippet,
-      });
+      try {
+        citations.push({
+          id: id++,
+          source: new URL(page.url).hostname.replace('www.', ''),
+          url: page.url,
+          title: page.title || page.name,
+          accessedAt: new Date().toISOString(),
+          quote: page.snippet,
+        });
+      } catch {
+        citations.push({
+          id: id++,
+          source: 'Web Source',
+          url: page.url || '#',
+          title: page.title || 'Source',
+          accessedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 
@@ -444,29 +442,33 @@ function extractCitations(mcpResult: any, startId: number): Citation[] {
 function summarizeData(mcpResult: any): any {
   if (!mcpResult) return null;
   
-  // Create a summary of the data extracted
   const summary: any = {};
   
   if (mcpResult.marketSize) summary.marketSize = mcpResult.marketSize;
-  if (mcpResult.competitors) summary.competitorCount = mcpResult.competitors.length;
-  if (mcpResult.trends) summary.trendCount = mcpResult.trends.length;
-  if (mcpResult.insights) summary.insightCount = mcpResult.insights.length;
+  if (mcpResult.competitors) summary.competitorCount = Array.isArray(mcpResult.competitors) ? mcpResult.competitors.length : 0;
+  if (mcpResult.trends) summary.trendCount = Array.isArray(mcpResult.trends) ? mcpResult.trends.length : 0;
+  if (mcpResult.insights) summary.insightCount = Array.isArray(mcpResult.insights) ? mcpResult.insights.length : 0;
   if (mcpResult.keyFindings) summary.keyFindings = mcpResult.keyFindings;
+  if (mcpResult.answer) summary.hasAnswer = true;
+  if (mcpResult.data) summary.hasData = true;
   
   return Object.keys(summary).length > 0 ? summary : { dataReceived: true };
 }
 
+// FIXED: Removed mcp-brightdata from all Phase 1 tasks - only use mcp-perplexity
 function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] {
   const taskMCPMapping: Record<string, string[]> = {
-    'market_research': ['mcp-perplexity', 'mcp-brightdata'],
-    'market_analysis': ['mcp-perplexity', 'mcp-brightdata'],
-    'competitor_analysis': ['mcp-perplexity', 'mcp-brightdata'],
+    // Phase 1 Research tasks - ONLY Perplexity (no BrightData)
+    'market_research': ['mcp-perplexity'],
+    'market_analysis': ['mcp-perplexity'],
+    'competitor_analysis': ['mcp-perplexity'],
     'trend_analysis': ['mcp-perplexity'],
     'trend_forecast': ['mcp-perplexity'],
     'target_customer': ['mcp-perplexity'],
     'sentiment_analysis': ['mcp-perplexity'],
     'social_sentiment': ['mcp-perplexity'],
     'community_research': ['mcp-perplexity'],
+    // Phase 2 Branding tasks
     'brand_strategy': ['mcp-falai', 'mcp-perplexity'],
     'brand_identity': ['mcp-falai'],
     'logo_design': ['mcp-falai'],
@@ -474,6 +476,7 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'brand_guidelines': ['mcp-falai', 'mcp-perplexity'],
     'visual_assets': ['mcp-falai'],
     'typography': ['mcp-falai'],
+    // Phase 3+ tasks
     'content_creation': ['mcp-perplexity'],
     'social_media': ['mcp-perplexity', 'mcp-linkedin'],
     'lead_generation': ['mcp-linkedin'],
@@ -500,7 +503,7 @@ function selectMCPsForTask(taskType: string, suggestedMCPs: string[]): string[] 
     'crm_setup': ['mcp-perplexity'],
   };
 
-  return taskMCPMapping[taskType] || suggestedMCPs.slice(0, 2);
+  return taskMCPMapping[taskType] || suggestedMCPs.slice(0, 1) || ['mcp-perplexity'];
 }
 
 async function executeMCPWork(
@@ -510,12 +513,10 @@ async function executeMCPWork(
   params: any
 ): Promise<any> {
   const { userId, projectId, agentId, mcpServerId, taskType, inputData } = params;
-  const falKey = Deno.env.get('FAL_KEY');
 
   // Route any lovable-ai-image requests to mcp-falai instead
   if (mcpServerId === 'lovable-ai-image') {
     console.log('[executeMCPWork] Routing lovable-ai-image to mcp-falai:', taskType);
-    // Call mcp-falai directly for image generation
     const response = await fetch(`${supabaseUrl}/functions/v1/mcp-falai`, {
       method: 'POST',
       headers: {
@@ -543,15 +544,15 @@ async function executeMCPWork(
 
   const toolMapping: Record<string, Record<string, { tool: string; args: any }>> = {
     'mcp-perplexity': {
-      'market_research': { tool: 'market_research', args: inputData },
-      'market_analysis': { tool: 'market_research', args: inputData },
-      'competitor_analysis': { tool: 'competitor_analysis', args: inputData },
-      'trend_analysis': { tool: 'trend_analysis', args: inputData },
-      'trend_forecast': { tool: 'trend_analysis', args: inputData },
-      'target_customer': { tool: 'market_research', args: { ...inputData, focus: 'customer personas' } },
+      'market_research': { tool: 'research', args: { query: `${industry} market size growth trends opportunities 2024`, projectName: brandName } },
+      'market_analysis': { tool: 'research', args: { query: `${industry} market analysis size growth potential`, projectName: brandName } },
+      'competitor_analysis': { tool: 'research', args: { query: `${industry} top competitors market leaders analysis`, projectName: brandName } },
+      'trend_analysis': { tool: 'research', args: { query: `${industry} emerging trends future predictions 2024 2025`, projectName: brandName } },
+      'trend_forecast': { tool: 'research', args: { query: `${industry} trend forecast future market predictions`, projectName: brandName } },
+      'target_customer': { tool: 'research', args: { query: `${industry} target customer demographics psychographics personas`, projectName: brandName } },
       'brand_strategy': { tool: 'research', args: { query: `brand strategy best practices for ${industry}` } },
       'color_palette': { tool: 'research', args: { query: `brand color palette for ${industry}` } },
-      'default': { tool: 'research', args: { query: inputData?.query || inputData?.description || inputData?.projectName } },
+      'default': { tool: 'research', args: { query: inputData?.query || inputData?.description || `${brandName} ${industry} research` } },
     },
     'mcp-falai': {
       'logo_design': { 
@@ -587,11 +588,6 @@ async function executeMCPWork(
         args: { prompt: `Professional brand visual for ${brandName} in the ${industry} industry` } 
       },
     },
-    'mcp-brightdata': {
-      'market_research': { tool: 'scrape_search', args: { query: `${industry} market size trends 2024` } },
-      'competitor_analysis': { tool: 'scrape_search', args: { query: `${industry} competitors top companies` } },
-      'default': { tool: 'scrape_search', args: { query: inputData?.query || industry } },
-    },
     'mcp-linkedin': {
       'lead_generation': { tool: 'search_people', args: inputData },
       'company_research': { tool: 'search_companies', args: inputData },
@@ -605,6 +601,8 @@ async function executeMCPWork(
 
   const serverTools = toolMapping[mcpServerId] || {};
   const toolConfig = serverTools[taskType] || serverTools['default'] || { tool: 'default', args: {} };
+
+  console.log(`[executeMCPWork] Calling ${mcpServerId} with tool: ${toolConfig.tool}`);
 
   const response = await fetch(`${supabaseUrl}/functions/v1/mcp-gateway`, {
     method: 'POST',
@@ -630,67 +628,6 @@ async function executeMCPWork(
   return await response.json();
 }
 
-async function generateImageWithFalAI(supabaseUrl: string, serviceKey: string, taskType: string, inputData: any): Promise<any> {
-  const businessName = inputData?.projectName || inputData?.deliverableName || 'Business';
-  const industry = inputData?.industry || 'general';
-  
-  console.log('[generateImageWithFalAI] Generating image for:', taskType);
-
-  // Map task type to Fal.ai tool
-  let tool = 'generate_image';
-  const args: any = { brandName: businessName, industry };
-
-  switch (taskType) {
-    case 'logo_design':
-      tool = 'generate_logo';
-      args.style = 'modern minimalist';
-      break;
-    case 'brand_strategy':
-    case 'color_palette':
-    case 'brand_guidelines':
-    case 'visual_assets':
-    case 'typography':
-      tool = 'generate_brand_assets';
-      args.type = taskType === 'visual_assets' ? 'marketing_visuals' : 'mood_board';
-      break;
-    default:
-      tool = 'generate_image';
-      args.prompt = `Professional brand visual for ${businessName} in the ${industry} industry`;
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/mcp-falai`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify({ tool, arguments: args }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[generateImageWithFalAI] Error:', response.status, errorText);
-    throw new Error(`Fal AI image generation failed: ${response.status}`);
-  }
-
-  const result = await response.json();
-  console.log('[generateImageWithFalAI] Generated images:', result.data?.images?.length || 0);
-
-  return {
-    success: true,
-    taskType,
-    assetType: taskType,
-    generatedImages: (result.data?.images || []).map((img: any, idx: number) => ({
-      id: `${taskType}-${idx + 1}`,
-      url: img.url,
-      type: taskType,
-    })),
-    description: result.data?.description || '',
-    brandName: businessName,
-    industry: industry,
-  };
-}
-
 async function generateComprehensiveReport(
   openaiApiKey: string,
   taskType: string,
@@ -699,6 +636,10 @@ async function generateComprehensiveReport(
   citations: Citation[]
 ): Promise<any> {
   const successfulResults = workResults.filter(r => r.success);
+
+  if (successfulResults.length === 0) {
+    return { error: 'No successful results to generate report from' };
+  }
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -729,6 +670,8 @@ Format as JSON with: executive_summary, key_findings (array), detailed_analysis,
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[generateComprehensiveReport] OpenAI error:', errorText);
     throw new Error('Failed to generate report');
   }
 
