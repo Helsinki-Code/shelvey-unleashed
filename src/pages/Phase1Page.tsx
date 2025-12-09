@@ -470,6 +470,8 @@ const Phase1Page = () => {
                     <DeliverableCard
                       key={deliverable.id}
                       deliverable={deliverable}
+                      onViewWork={() => setSelectedDeliverable(deliverable)}
+                      onRefresh={fetchData}
                     />
                   ))
                 )}
@@ -539,6 +541,7 @@ const Phase1Page = () => {
               <ProceedToNextPhaseButton
                 projectId={projectId!}
                 currentPhaseNumber={1}
+                isPhaseApproved={isPhaseFullyApproved()}
               />
             </div>
           )}
@@ -563,8 +566,7 @@ const Phase1Page = () => {
       {selectedDeliverable && (
         <AgentWorkViewer
           deliverable={selectedDeliverable}
-          isOpen={!!selectedDeliverable}
-          onClose={() => setSelectedDeliverable(null)}
+          onBack={() => setSelectedDeliverable(null)}
         />
       )}
     </div>
