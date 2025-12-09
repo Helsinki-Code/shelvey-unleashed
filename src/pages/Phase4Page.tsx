@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   ArrowLeft, FileText, Target, Type, Newspaper, Search, 
-  Share2, Users, Loader2, CheckCircle2, Clock, Bot
+  Share2, Users, Loader2, CheckCircle2, Clock, Bot, MessageSquare
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,11 +17,20 @@ import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
 import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
 import { StartPhaseButton } from "@/components/StartPhaseButton";
+import { AgentChatSheet } from "@/components/AgentChatSheet";
+import { DeliverableCard } from "@/components/DeliverableCard";
 import ContentStrategyBuilder from "@/components/ContentStrategyBuilder";
 import WebsiteCopyGenerator from "@/components/WebsiteCopyGenerator";
 import BlogArticleGenerator from "@/components/BlogArticleGenerator";
 import SEODashboard from "@/components/SEODashboard";
 import SocialContentFactory from "@/components/SocialContentFactory";
+
+const contentAgents = [
+  { id: 'content-head', name: 'Content Director', role: 'Division Manager', description: 'Leads content strategy and creation' },
+  { id: 'content-creator', name: 'Content Creator', role: 'Team Member', description: 'Creates compelling content' },
+  { id: 'seo-agent', name: 'SEO Specialist', role: 'Team Member', description: 'Optimizes content for search' },
+  { id: 'social-content', name: 'Social Content', role: 'Team Member', description: 'Creates social media content' },
+];
 
 export default function Phase4Page() {
   const { projectId } = useParams();
@@ -30,7 +40,9 @@ export default function Phase4Page() {
   const [project, setProject] = useState<any>(null);
   const [phase, setPhase] = useState<any>(null);
   const [deliverables, setDeliverables] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("strategy");
+  const [activeTab, setActiveTab] = useState("team");
+  const [selectedAgent, setSelectedAgent] = useState<typeof contentAgents[0] | null>(null);
+  const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
     if (projectId && user) {
