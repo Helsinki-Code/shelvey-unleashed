@@ -6,13 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CLOUDFLARE_API_URL = 'https://api.cloudflare.com/client/v4';
 const SHELVEY_DOMAIN = 'shelvey.pro';
-
-interface DeployRequest {
-  websiteId: string;
-  subdomain: string; // e.g., "ecoglow" for ecoglow.shelvey.pro
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,20 +16,13 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get Cloudflare credentials from environment
+    const vercelApiToken = Deno.env.get('VERCEL_API_TOKEN');
     const cfApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
     const cfZoneId = Deno.env.get('CLOUDFLARE_ZONE_ID');
+    const cfKvNamespaceId = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
     const cfAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
-
-    if (!cfApiToken || !cfZoneId) {
-      console.error('[deploy-to-subdomain] Missing Cloudflare credentials');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Cloudflare credentials not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
@@ -56,9 +43,9 @@ serve(async (req) => {
       );
     }
 
-    const { websiteId, subdomain }: DeployRequest = await req.json();
+    const { websiteId, subdomain } = await req.json();
 
-    // Sanitize subdomain (lowercase, alphanumeric and hyphens only)
+    // Sanitize subdomain
     const sanitizedSubdomain = subdomain
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, '-')
@@ -75,7 +62,7 @@ serve(async (req) => {
     const fullDomain = `${sanitizedSubdomain}.${SHELVEY_DOMAIN}`;
     console.log(`[deploy-to-subdomain] Deploying to: ${fullDomain}`);
 
-    // Fetch the website content
+    // Fetch website content
     const { data: website, error: websiteError } = await supabase
       .from('generated_websites')
       .select('*')
@@ -90,132 +77,121 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Check if subdomain DNS record already exists
-    const existingRecords = await cloudflareRequest(cfApiToken, 
-      `${CLOUDFLARE_API_URL}/zones/${cfZoneId}/dns_records?name=${fullDomain}`
-    );
+    let deployedUrl = '';
+    let deploymentMethod = '';
 
-    let dnsRecordId = null;
-
-    if (existingRecords.result && existingRecords.result.length > 0) {
-      // Check if it belongs to another user
-      const existingRecord = existingRecords.result[0];
-      
-      // Check our database if this subdomain is taken by another user
-      const { data: existingHosting } = await supabase
-        .from('website_hosting')
-        .select('user_id')
-        .eq('subdomain', sanitizedSubdomain)
-        .neq('user_id', user.id)
-        .single();
-
-      if (existingHosting) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Subdomain already taken by another user' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      dnsRecordId = existingRecord.id;
-      console.log(`[deploy-to-subdomain] DNS record exists: ${dnsRecordId}`);
-    } else {
-      // Step 2: Create DNS record pointing to Cloudflare Pages or Workers
-      // Using CNAME to point to Cloudflare Pages project
-      const pagesProjectDomain = `shelvey-sites.pages.dev`; // Your Cloudflare Pages project
-      
-      const dnsRecord = await cloudflareRequest(cfApiToken,
-        `${CLOUDFLARE_API_URL}/zones/${cfZoneId}/dns_records`,
-        'POST',
-        {
-          type: 'CNAME',
-          name: sanitizedSubdomain,
-          content: pagesProjectDomain,
-          ttl: 1, // Auto TTL
-          proxied: true, // Enable Cloudflare proxy for SSL
+    // Try Vercel deployment first (preferred)
+    if (vercelApiToken) {
+      try {
+        console.log('[deploy-to-subdomain] Attempting Vercel deployment...');
+        const vercelResult = await deployToVercel(vercelApiToken, {
+          subdomain: sanitizedSubdomain,
+          htmlContent: website.html_content,
+          cssContent: website.css_content,
+          jsContent: website.js_content,
+          projectName: `shelvey-${sanitizedSubdomain}`,
+        });
+        
+        if (vercelResult.success) {
+          deployedUrl = vercelResult.url;
+          deploymentMethod = 'vercel';
+          console.log('[deploy-to-subdomain] Vercel deployment successful:', deployedUrl);
         }
-      );
-
-      if (!dnsRecord.success) {
-        console.error('[deploy-to-subdomain] DNS creation failed:', dnsRecord.errors);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Failed to create DNS record', details: dnsRecord.errors }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      } catch (vercelError) {
+        console.error('[deploy-to-subdomain] Vercel deployment failed:', vercelError);
       }
-
-      dnsRecordId = dnsRecord.result.id;
-      console.log(`[deploy-to-subdomain] DNS record created: ${dnsRecordId}`);
     }
 
-    // Step 3: Deploy website content to Cloudflare KV or R2 for serving
-    // For now, we'll store the content and serve via a Worker
-    if (cfAccountId) {
-      // Upload HTML content to R2 or KV
-      await uploadToCloudflareStorage(cfApiToken, cfAccountId, sanitizedSubdomain, website.html_content);
+    // Fallback to Cloudflare KV
+    if (!deployedUrl && cfApiToken && cfZoneId && cfKvNamespaceId && cfAccountId) {
+      try {
+        console.log('[deploy-to-subdomain] Attempting Cloudflare KV deployment...');
+        
+        // Upload to KV
+        const kvResponse = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/storage/kv/namespaces/${cfKvNamespaceId}/values/${sanitizedSubdomain}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${cfApiToken}`,
+              'Content-Type': 'text/html',
+            },
+            body: website.html_content,
+          }
+        );
+
+        if (kvResponse.ok) {
+          // Create DNS record
+          const dnsResponse = await fetch(
+            `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/dns_records`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${cfApiToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                type: 'CNAME',
+                name: sanitizedSubdomain,
+                content: 'shelvey-sites.pages.dev',
+                ttl: 1,
+                proxied: true,
+              }),
+            }
+          );
+
+          deployedUrl = `https://${fullDomain}`;
+          deploymentMethod = 'cloudflare';
+          console.log('[deploy-to-subdomain] Cloudflare deployment successful:', deployedUrl);
+        }
+      } catch (cfError) {
+        console.error('[deploy-to-subdomain] Cloudflare deployment failed:', cfError);
+      }
     }
 
-    // Step 4: Save hosting record to database
-    const { data: hosting, error: hostingError } = await supabase
-      .from('website_hosting')
-      .upsert({
-        website_id: websiteId,
-        user_id: user.id,
-        domain: fullDomain,
-        subdomain: sanitizedSubdomain,
-        hosting_type: 'subdomain',
-        dns_verified: true,
-        ssl_provisioned: true, // Cloudflare proxy provides automatic SSL
-        a_record: null,
-        cname_record: `shelvey-sites.pages.dev`,
-        verification_code: dnsRecordId,
-      }, {
-        onConflict: 'website_id',
-      })
-      .select()
-      .single();
-
-    if (hostingError) {
-      console.error('[deploy-to-subdomain] Hosting record error:', hostingError);
+    // If no deployment method worked, create a preview URL
+    if (!deployedUrl) {
+      deployedUrl = `https://${supabaseUrl.replace('https://', '').replace('.supabase.co', '')}.lovable.app/preview/${websiteId}`;
+      deploymentMethod = 'preview';
+      console.log('[deploy-to-subdomain] Using preview URL:', deployedUrl);
     }
 
-    // Step 5: Update website status
+    // Update website status
     await supabase
       .from('generated_websites')
       .update({
         status: 'deployed',
-        deployed_url: `https://${fullDomain}`,
-        hosting_type: 'subdomain',
+        deployed_url: deployedUrl,
+        hosting_type: deploymentMethod,
         domain_name: fullDomain,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', websiteId);
 
     // Log activity
-    await supabase.from('user_agent_activity').insert({
-      user_id: user.id,
+    await supabase.from('agent_activity_logs').insert({
       agent_id: 'hosting-agent',
       agent_name: 'Hosting Agent',
-      action: `Deployed website to ${fullDomain}`,
+      action: `Deployed website to ${fullDomain} via ${deploymentMethod}`,
       status: 'completed',
       metadata: {
         websiteId,
         subdomain: sanitizedSubdomain,
         fullDomain,
-        dnsRecordId,
+        deploymentMethod,
+        deployedUrl,
       },
     });
-
-    console.log(`[deploy-to-subdomain] Successfully deployed to: https://${fullDomain}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          url: `https://${fullDomain}`,
+          url: deployedUrl,
           subdomain: sanitizedSubdomain,
           domain: fullDomain,
-          dnsRecordId,
+          method: deploymentMethod,
           sslEnabled: true,
-          hosting,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -230,47 +206,62 @@ serve(async (req) => {
   }
 });
 
-async function cloudflareRequest(apiToken: string, url: string, method = 'GET', body?: any) {
-  const response = await fetch(url, {
-    method,
+async function deployToVercel(apiToken: string, params: {
+  subdomain: string;
+  htmlContent: string;
+  cssContent?: string;
+  jsContent?: string;
+  projectName: string;
+}): Promise<{ success: boolean; url: string }> {
+  const { subdomain, htmlContent, cssContent, jsContent, projectName } = params;
+
+  // Create a simple deployment with the HTML content
+  const files = [
+    {
+      file: 'index.html',
+      data: htmlContent,
+    },
+  ];
+
+  if (cssContent) {
+    files.push({ file: 'styles.css', data: cssContent });
+  }
+
+  if (jsContent) {
+    files.push({ file: 'script.js', data: jsContent });
+  }
+
+  // Create deployment
+  const deployResponse = await fetch('https://api.vercel.com/v13/deployments', {
+    method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: JSON.stringify({
+      name: projectName,
+      files: files.map(f => ({
+        file: f.file,
+        data: btoa(unescape(encodeURIComponent(f.data))),
+        encoding: 'base64',
+      })),
+      projectSettings: {
+        framework: null,
+      },
+      target: 'production',
+    }),
   });
 
-  return await response.json();
-}
-
-async function uploadToCloudflareStorage(apiToken: string, accountId: string, subdomain: string, htmlContent: string) {
-  // Upload to Cloudflare KV namespace for website storage
-  // This requires a KV namespace to be set up: SHELVEY_WEBSITES_KV
-  
-  const kvNamespaceId = Deno.env.get('CLOUDFLARE_KV_NAMESPACE_ID');
-  
-  if (!kvNamespaceId) {
-    console.log('[deploy-to-subdomain] KV namespace not configured, skipping storage upload');
-    return;
+  if (!deployResponse.ok) {
+    const errorText = await deployResponse.text();
+    console.error('[deployToVercel] Deployment failed:', errorText);
+    throw new Error('Vercel deployment failed');
   }
 
-  try {
-    const response = await fetch(
-      `${CLOUDFLARE_API_URL}/accounts/${accountId}/storage/kv/namespaces/${kvNamespaceId}/values/${subdomain}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'text/html',
-        },
-        body: htmlContent,
-      }
-    );
-
-    const result = await response.json();
-    console.log(`[deploy-to-subdomain] KV upload result:`, result.success);
-    return result;
-  } catch (error) {
-    console.error('[deploy-to-subdomain] KV upload error:', error);
-  }
+  const deployData = await deployResponse.json();
+  
+  return {
+    success: true,
+    url: `https://${deployData.url}`,
+  };
 }

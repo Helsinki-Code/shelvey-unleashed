@@ -19,6 +19,7 @@ import Phase2Page from "./pages/Phase2Page";
 import Phase3Page from "./pages/Phase3Page";
 import Phase4Page from "./pages/Phase4Page";
 import Phase5Page from "./pages/Phase5Page";
+import Phase6Page from "./pages/Phase6Page";
 import AdminDashboard from "./pages/AdminDashboard";
 import MCPServersPage from "./pages/MCPServersPage";
 import AuthPage from "./pages/AuthPage";
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/projects/:projectId/phase/3" element={<Phase3Page />} />
               <Route path="/projects/:projectId/phase/4" element={<Phase4Page />} />
               <Route path="/projects/:projectId/phase/5" element={<Phase5Page />} />
+              <Route path="/projects/:projectId/phase/6" element={<Phase6Page />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/mcp" element={<MCPServersPage />} />
               <Route path="/websites" element={<WebsitesPage />} />

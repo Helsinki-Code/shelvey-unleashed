@@ -45,7 +45,8 @@ serve(async (req) => {
       ctaText,
       brandColors,
       projectId,
-      useBranding // Flag to pull from Phase 2 approved branding
+      useBranding,
+      generateReact // New flag to generate React code
     } = await req.json();
 
     if (!businessName) {
@@ -55,14 +56,11 @@ serve(async (req) => {
       });
     }
 
-    // Try to fetch approved branding from Phase 2 deliverables
+    // Fetch approved branding from Phase 2
     let approvedBranding: any = null;
     let brandingDeliverableId: string | null = null;
 
     if (projectId && useBranding !== false) {
-      console.log("Looking for approved branding in project:", projectId);
-      
-      // First find the Phase 2 (Branding) phase
       const { data: phase2 } = await supabase
         .from('business_phases')
         .select('id')
@@ -71,177 +69,69 @@ serve(async (req) => {
         .single();
 
       if (phase2) {
-        // Get approved visual-identity deliverable
         const { data: brandingDeliverable } = await supabase
           .from('phase_deliverables')
           .select('*')
           .eq('phase_id', phase2.id)
-          .eq('deliverable_type', 'visual-identity')
+          .in('deliverable_type', ['visual-identity', 'design'])
           .eq('ceo_approved', true)
           .eq('user_approved', true)
-          .single();
+          .maybeSingle();
 
         if (brandingDeliverable?.generated_content) {
           approvedBranding = brandingDeliverable.generated_content;
           brandingDeliverableId = brandingDeliverable.id;
-          console.log("Found approved branding:", approvedBranding);
-        }
-
-        // Also try to get brand strategy for messaging
-        const { data: strategyDeliverable } = await supabase
-          .from('phase_deliverables')
-          .select('*')
-          .eq('phase_id', phase2.id)
-          .eq('deliverable_type', 'brand-strategy')
-          .eq('ceo_approved', true)
-          .eq('user_approved', true)
-          .single();
-
-        if (strategyDeliverable?.generated_content) {
-          approvedBranding = {
-            ...approvedBranding,
-            brandStrategy: strategyDeliverable.generated_content
-          };
         }
       }
     }
 
-    // Build colors from approved branding or fallback to provided
+    // Build colors
     const colors = approvedBranding?.colorPalette || brandColors || {};
     const primaryColor = colors.primary || '#10B981';
     const secondaryColor = colors.secondary || '#059669';
     const accentColor = colors.accent || '#34D399';
-
-    // Build brand elements
     const brandName = approvedBranding?.brandStrategy?.brandName || businessName;
-    const brandVoice = approvedBranding?.brandStrategy?.brandVoice || 'Professional and trustworthy';
     const tagline = approvedBranding?.brandStrategy?.taglines?.[0] || headline;
     const typography = approvedBranding?.typography || { heading: 'Inter', body: 'Inter' };
-    const logoDescription = approvedBranding?.logoDescription || '';
 
-    // Build website generation prompt with branding
-    const WEBSITE_GENERATION_PROMPT = `You are an expert web developer. Generate a complete, modern, responsive landing page.
+    console.log(`Generating ${generateReact ? 'React' : 'HTML'} website for:`, brandName);
 
-IMPORTANT: Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
-{
-  "html": "<!DOCTYPE html>...",
-  "css": "/* additional styles */",
-  "js": "// scripts"
-}
+    let websiteCode: any;
 
-BRANDING REQUIREMENTS (MUST USE EXACTLY):
-- Primary Color: ${primaryColor}
-- Secondary Color: ${secondaryColor}
-- Accent Color: ${accentColor}
-- Brand Name: ${brandName}
-- Heading Font: ${typography.heading}
-- Body Font: ${typography.body}
-- Brand Voice: ${brandVoice}
-${logoDescription ? `- Logo Style: ${logoDescription}` : ''}
-
-Requirements for the landing page:
-1. Hero section with compelling headline and CTA button
-2. Features/benefits section with icons
-3. Testimonials section with placeholder quotes
-4. Pricing/CTA section
-5. Footer with contact info and social links
-
-Technical requirements:
-- Use Tailwind CSS via CDN
-- Import Google Fonts for: ${typography.heading}, ${typography.body}
-- Use the EXACT brand colors specified above
-- Fully responsive (mobile-first)
-- Modern gradient backgrounds using brand colors
-- Smooth animations and transitions
-- SEO meta tags included
-- Clean, semantic HTML5
-- Accessibility best practices`;
-
-    const userPrompt = `Create a landing page for:
-
-Business Name: ${brandName}
-Industry: ${industry || 'Technology'}
-Headline: ${tagline || `Transform Your Business with ${brandName}`}
-Description: ${description || `${brandName} provides innovative solutions for modern businesses.`}
-Features: ${features?.join(', ') || 'Fast, Reliable, Secure, Scalable'}
-CTA Text: ${ctaText || 'Get Started Today'}
-
-${approvedBranding ? `
-APPROVED BRANDING TO USE:
-- Logo Concept: ${logoDescription}
-- Brand Positioning: ${approvedBranding?.brandStrategy?.positioning || ''}
-- Value Proposition: ${approvedBranding?.brandStrategy?.valueProposition || ''}
-- Design Principles: ${approvedBranding?.designPrinciples?.join(', ') || ''}
-` : ''}
-
-Generate the complete landing page code now using ONLY the specified brand colors and fonts.`;
-
-    console.log("Generating website for:", brandName, "with branding:", !!approvedBranding);
-
-    // Call OpenAI API
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: WEBSITE_GENERATION_PROMPT },
-          { role: "user", content: userPrompt }
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI Gateway error:", errorText);
-      
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      return new Response(JSON.stringify({ error: "Website generation failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (generateReact) {
+      // Generate React/TypeScript code
+      websiteCode = await generateReactWebsite(openaiApiKey, {
+        brandName,
+        industry: industry || 'Technology',
+        tagline: tagline || `Welcome to ${brandName}`,
+        description: description || `${brandName} provides innovative solutions.`,
+        features: features || ['Fast', 'Reliable', 'Secure', 'Scalable'],
+        ctaText: ctaText || 'Get Started',
+        colors: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
+        typography,
+      });
+    } else {
+      // Generate HTML (existing behavior)
+      websiteCode = await generateHTMLWebsite(openaiApiKey, {
+        brandName,
+        industry: industry || 'Technology',
+        tagline,
+        description,
+        features,
+        ctaText,
+        colors: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
+        typography,
       });
     }
 
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
-
-    console.log("AI Response received, parsing...");
-
-    // Parse the JSON response
-    let websiteCode;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        websiteCode = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
-      }
-    } catch (parseError) {
-      console.error("Parse error:", parseError);
-      websiteCode = {
-        html: generateFallbackHTML(brandName, tagline, description, features, ctaText, { primary: primaryColor, secondary: secondaryColor, accent: accentColor }, typography),
-        css: "",
-        js: ""
-      };
-    }
-
-    // Save to database with branding linkage
+    // Save to database
     const { data: website, error: insertError } = await supabase
       .from('generated_websites')
       .insert({
         user_id: user.id,
         project_id: projectId,
         name: brandName,
-        html_content: websiteCode.html,
+        html_content: websiteCode.html || websiteCode.preview_html,
         css_content: websiteCode.css || "",
         js_content: websiteCode.js || "",
         branding_deliverable_id: brandingDeliverableId,
@@ -254,6 +144,9 @@ Generate the complete landing page code now using ONLY the specified brand color
           brandColors: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
           typography,
           usedApprovedBranding: !!approvedBranding,
+          isReact: !!generateReact,
+          components: websiteCode.components,
+          dependencies: websiteCode.dependencies,
           generatedAt: new Date().toISOString()
         },
         status: 'draft',
@@ -273,20 +166,13 @@ Generate the complete landing page code now using ONLY the specified brand color
       });
     }
 
-    // Log agent activity
-    await supabase.from('user_agent_activity').insert({
-      user_id: user.id,
-      project_id: projectId,
-      agent_id: 'agent-8',
+    // Log activity
+    await supabase.from('agent_activity_logs').insert({
+      agent_id: 'visual-design',
       agent_name: 'Visual Design Agent',
-      action: 'generate_website',
+      action: `Generated ${generateReact ? 'React' : 'HTML'} website for ${brandName}`,
       status: 'completed',
-      metadata: { 
-        websiteId: website.id, 
-        businessName: brandName,
-        usedApprovedBranding: !!approvedBranding 
-      },
-      result: { success: true }
+      metadata: { websiteId: website.id, projectId, isReact: !!generateReact },
     });
 
     return new Response(JSON.stringify({
@@ -294,11 +180,14 @@ Generate the complete landing page code now using ONLY the specified brand color
       website: {
         id: website.id,
         name: website.name,
-        html: websiteCode.html,
+        html: websiteCode.html || websiteCode.preview_html,
         css: websiteCode.css,
         js: websiteCode.js,
+        components: websiteCode.components,
+        dependencies: websiteCode.dependencies,
         status: website.status,
-        usedApprovedBranding: !!approvedBranding
+        usedApprovedBranding: !!approvedBranding,
+        isReact: !!generateReact
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -313,20 +202,222 @@ Generate the complete landing page code now using ONLY the specified brand color
   }
 });
 
-function generateFallbackHTML(
-  businessName: string,
-  headline?: string,
-  description?: string,
-  features?: string[],
-  ctaText?: string,
-  brandColors?: { primary?: string; secondary?: string; accent?: string },
-  typography?: { heading?: string; body?: string }
-): string {
-  const primary = brandColors?.primary || '#10B981';
-  const secondary = brandColors?.secondary || '#059669';
-  const accent = brandColors?.accent || '#34D399';
-  const headingFont = typography?.heading || 'Inter';
-  const bodyFont = typography?.body || 'Inter';
+async function generateReactWebsite(openaiApiKey: string, params: any): Promise<any> {
+  const { brandName, industry, tagline, description, features, ctaText, colors, typography } = params;
+
+  const prompt = `Generate a modern React landing page with TypeScript and Tailwind CSS.
+
+BRAND DETAILS:
+- Name: ${brandName}
+- Industry: ${industry}
+- Tagline: ${tagline}
+- Description: ${description}
+- Features: ${features?.join(', ')}
+- CTA: ${ctaText}
+- Primary Color: ${colors.primary}
+- Secondary Color: ${colors.secondary}
+- Accent Color: ${colors.accent}
+- Heading Font: ${typography.heading}
+- Body Font: ${typography.body}
+
+Generate a complete React application with these components:
+1. App.tsx - Main app with all sections
+2. Hero section with gradient background
+3. Features section with icons
+4. Testimonials section
+5. CTA section
+6. Footer
+
+Return JSON with this structure:
+{
+  "components": {
+    "App.tsx": "// Full component code here",
+    "components/Hero.tsx": "// Component code",
+    "components/Features.tsx": "// Component code",
+    "components/Testimonials.tsx": "// Component code",
+    "components/CTA.tsx": "// Component code",
+    "components/Footer.tsx": "// Component code"
+  },
+  "dependencies": ["framer-motion", "lucide-react"],
+  "preview_html": "<!DOCTYPE html>... full preview HTML..."
+}
+
+Use these Tailwind classes for brand colors:
+- Primary: Use inline style with ${colors.primary}
+- Secondary: Use inline style with ${colors.secondary}
+- Accent: Use inline style with ${colors.accent}
+
+Include Framer Motion animations and Lucide icons.`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a senior React developer. Generate production-ready React components with TypeScript, Tailwind CSS, and Framer Motion. Return ONLY valid JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate React code');
+  }
+
+  const result = await response.json();
+  const content = result.choices[0]?.message?.content || '';
+
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('No JSON found');
+  } catch {
+    // Fallback to simple React template
+    return generateFallbackReact(params);
+  }
+}
+
+async function generateHTMLWebsite(openaiApiKey: string, params: any): Promise<any> {
+  const { brandName, industry, tagline, description, features, ctaText, colors, typography } = params;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { 
+          role: 'system', 
+          content: `Generate a complete HTML landing page with Tailwind CSS. Return ONLY valid JSON: {"html": "<!DOCTYPE html>...", "css": "", "js": ""}` 
+        },
+        { 
+          role: 'user', 
+          content: `Create landing page for ${brandName} (${industry}). Tagline: ${tagline}. Colors: primary ${colors.primary}, secondary ${colors.secondary}. Features: ${features?.join(', ')}. CTA: ${ctaText}` 
+        }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    return { html: generateFallbackHTML(params), css: '', js: '' };
+  }
+
+  const result = await response.json();
+  const content = result.choices[0]?.message?.content || '';
+
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch {
+    // Fallback
+  }
+
+  return { html: generateFallbackHTML(params), css: '', js: '' };
+}
+
+function generateFallbackReact(params: any): any {
+  const { brandName, tagline, description, features, ctaText, colors } = params;
+  
+  const appCode = `import React from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle, Zap, Shield, Users } from 'lucide-react';
+
+const App = () => {
+  const primaryColor = '${colors.primary}';
+  const secondaryColor = '${colors.secondary}';
+  
+  return (
+    <div className="min-h-screen">
+      {/* Hero */}
+      <section 
+        className="py-20 text-white text-center"
+        style={{ background: \`linear-gradient(135deg, \${primaryColor}, \${secondaryColor})\` }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="container mx-auto px-6"
+        >
+          <h1 className="text-5xl font-bold mb-4">${brandName}</h1>
+          <p className="text-xl mb-8 opacity-90">${tagline || description}</p>
+          <button className="bg-white text-gray-900 px-8 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition">
+            ${ctaText}
+          </button>
+        </motion.div>
+      </section>
+      
+      {/* Features */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Us</h2>
+          <div className="grid md:grid-cols-4 gap-8">
+            {${JSON.stringify(features || ['Fast', 'Reliable', 'Secure', 'Scalable'])}.map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center p-6 bg-white rounded-xl shadow-lg"
+              >
+                <div 
+                  className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: primaryColor + '20' }}
+                >
+                  <CheckCircle style={{ color: primaryColor }} />
+                </div>
+                <h3 className="font-semibold">{feature}</h3>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* CTA */}
+      <section 
+        className="py-20 text-white text-center"
+        style={{ background: \`linear-gradient(135deg, \${primaryColor}, \${secondaryColor})\` }}
+      >
+        <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+        <button className="bg-white text-gray-900 px-8 py-3 rounded-lg font-semibold">
+          ${ctaText}
+        </button>
+      </section>
+      
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 text-center">
+        <p>&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+};
+
+export default App;`;
+
+  return {
+    components: {
+      'App.tsx': appCode,
+    },
+    dependencies: ['framer-motion', 'lucide-react'],
+    preview_html: generateFallbackHTML(params),
+  };
+}
+
+function generateFallbackHTML(params: any): string {
+  const { brandName, tagline, description, features, ctaText, colors, typography } = params;
+  const primary = colors?.primary || '#10B981';
+  const secondary = colors?.secondary || '#059669';
   const featureList = features || ['Fast', 'Reliable', 'Secure', 'Scalable'];
   
   return `<!DOCTYPE html>
@@ -334,104 +425,42 @@ function generateFallbackHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${businessName}</title>
-  <meta name="description" content="${description || `${businessName} - Your trusted partner`}">
+  <title>${brandName}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=${headingFont.replace(' ', '+')}:wght@400;600;700&family=${bodyFont.replace(' ', '+')}:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { 
-      --primary: ${primary}; 
-      --secondary: ${secondary}; 
-      --accent: ${accent};
-    }
-    body { font-family: '${bodyFont}', sans-serif; }
-    h1, h2, h3, h4, h5, h6 { font-family: '${headingFont}', sans-serif; }
+    body { font-family: 'Inter', sans-serif; }
     .gradient-bg { background: linear-gradient(135deg, ${primary}, ${secondary}); }
-    .gradient-text { background: linear-gradient(135deg, ${primary}, ${accent}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   </style>
 </head>
-<body class="antialiased">
-  <header class="gradient-bg text-white">
-    <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-      <div class="text-2xl font-bold">${businessName}</div>
-      <div class="space-x-6 hidden md:flex">
-        <a href="#features" class="hover:opacity-80 transition">Features</a>
-        <a href="#testimonials" class="hover:opacity-80 transition">Testimonials</a>
-        <a href="#pricing" class="hover:opacity-80 transition">Pricing</a>
-      </div>
-      <a href="#" class="hidden md:inline-block bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">${ctaText || 'Get Started'}</a>
-    </nav>
-    <div class="container mx-auto px-6 py-24 text-center">
-      <h1 class="text-5xl md:text-6xl font-bold mb-6">${headline || `Welcome to ${businessName}`}</h1>
-      <p class="text-xl mb-8 opacity-90 max-w-2xl mx-auto">${description || 'Innovative solutions for modern businesses'}</p>
-      <a href="#" class="inline-block bg-white text-gray-900 px-8 py-4 rounded-xl font-semibold hover:bg-opacity-90 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">${ctaText || 'Get Started'}</a>
-    </div>
+<body>
+  <header class="gradient-bg text-white py-20 text-center">
+    <h1 class="text-5xl font-bold mb-4">${brandName}</h1>
+    <p class="text-xl mb-8 opacity-90">${tagline || description || 'Welcome'}</p>
+    <a href="#" class="bg-white text-gray-900 px-8 py-3 rounded-lg font-semibold">${ctaText || 'Get Started'}</a>
   </header>
-  
-  <section id="features" class="py-20 bg-gray-50">
+  <section class="py-20 bg-gray-50">
     <div class="container mx-auto px-6">
-      <h2 class="text-4xl font-bold text-center mb-4">Why Choose Us</h2>
-      <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Everything you need to succeed</p>
+      <h2 class="text-3xl font-bold text-center mb-12">Why Choose Us</h2>
       <div class="grid md:grid-cols-4 gap-8">
-        ${featureList.map(f => `
-        <div class="text-center p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition">
-          <div class="w-14 h-14 mx-auto mb-4 rounded-full gradient-bg flex items-center justify-center">
-            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        ${featureList.map((f: string) => `
+        <div class="text-center p-6 bg-white rounded-xl shadow-lg">
+          <div class="w-12 h-12 mx-auto mb-4 rounded-full gradient-bg flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
           </div>
-          <h3 class="font-semibold text-lg mb-2">${f}</h3>
-          <p class="text-gray-600 text-sm">Excellence in every detail</p>
+          <h3 class="font-semibold">${f}</h3>
         </div>`).join('')}
       </div>
     </div>
   </section>
-  
-  <section id="testimonials" class="py-20">
-    <div class="container mx-auto px-6">
-      <h2 class="text-4xl font-bold text-center mb-12">What Our Clients Say</h2>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="p-8 bg-gray-50 rounded-2xl">
-          <div class="flex items-center gap-1 mb-4" style="color: ${accent}">★★★★★</div>
-          <p class="italic mb-4 text-gray-700">"Amazing service! Highly recommended."</p>
-          <p class="font-semibold">- Happy Customer</p>
-        </div>
-        <div class="p-8 bg-gray-50 rounded-2xl">
-          <div class="flex items-center gap-1 mb-4" style="color: ${accent}">★★★★★</div>
-          <p class="italic mb-4 text-gray-700">"Transformed our business completely."</p>
-          <p class="font-semibold">- Business Owner</p>
-        </div>
-        <div class="p-8 bg-gray-50 rounded-2xl">
-          <div class="flex items-center gap-1 mb-4" style="color: ${accent}">★★★★★</div>
-          <p class="italic mb-4 text-gray-700">"Best decision we ever made."</p>
-          <p class="font-semibold">- CEO, Tech Corp</p>
-        </div>
-      </div>
-    </div>
+  <section class="gradient-bg py-20 text-white text-center">
+    <h2 class="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+    <a href="#" class="bg-white text-gray-900 px-8 py-3 rounded-lg font-semibold">${ctaText || 'Start Free Trial'}</a>
   </section>
-  
-  <section id="pricing" class="py-20 gradient-bg text-white">
-    <div class="container mx-auto px-6 text-center">
-      <h2 class="text-4xl font-bold mb-6">Ready to Get Started?</h2>
-      <p class="text-xl mb-8 opacity-90 max-w-2xl mx-auto">Join thousands of satisfied customers today.</p>
-      <a href="#" class="inline-block bg-white text-gray-900 px-8 py-4 rounded-xl font-semibold hover:bg-opacity-90 transition shadow-lg">${ctaText || 'Start Free Trial'}</a>
-    </div>
-  </section>
-  
-  <footer class="bg-gray-900 text-white py-12">
-    <div class="container mx-auto px-6">
-      <div class="flex flex-col md:flex-row justify-between items-center">
-        <p class="text-2xl font-bold mb-4 md:mb-0">${businessName}</p>
-        <div class="flex gap-6">
-          <a href="#" class="hover:opacity-80">Privacy</a>
-          <a href="#" class="hover:opacity-80">Terms</a>
-          <a href="#" class="hover:opacity-80">Contact</a>
-        </div>
-      </div>
-      <p class="text-center mt-8 opacity-60">© ${new Date().getFullYear()} ${businessName}. All rights reserved.</p>
-    </div>
+  <footer class="bg-gray-900 text-white py-8 text-center">
+    <p>&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
   </footer>
 </body>
 </html>`;
