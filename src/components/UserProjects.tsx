@@ -29,13 +29,25 @@ import { supabase } from '@/integrations/supabase/client';
 interface Project {
   id: string;
   name: string;
-  description: string | null;
+  description: string | object | null;
   stage: string;
   industry: string | null;
   revenue: number;
   status: string;
   created_at: string;
 }
+
+// Helper to safely render description (can be string or object)
+const safeRenderDescription = (desc: string | object | null): string => {
+  if (!desc) return '';
+  if (typeof desc === 'string') return desc;
+  if (typeof desc === 'object') {
+    // Handle object with known keys
+    const obj = desc as Record<string, any>;
+    return obj.summary || obj.description || obj.project_name || JSON.stringify(obj);
+  }
+  return String(desc);
+};
 
 const stageColors: Record<string, string> = {
   research: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
@@ -231,7 +243,7 @@ export const UserProjects = () => {
                       <CardTitle className="text-lg">{project.name}</CardTitle>
                       {project.description && (
                         <CardDescription className="mt-1 line-clamp-2">
-                          {project.description}
+                          {safeRenderDescription(project.description)}
                         </CardDescription>
                       )}
                     </div>

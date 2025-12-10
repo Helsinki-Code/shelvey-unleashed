@@ -84,7 +84,11 @@ export const ProjectJourneyView = ({
           <div>
             <h1 className="text-2xl font-bold">{project.name}</h1>
             {project.description && (
-              <p className="text-muted-foreground">{project.description}</p>
+              <p className="text-muted-foreground">
+                {typeof project.description === 'string' 
+                  ? project.description 
+                  : (project.description as any)?.summary || (project.description as any)?.description || JSON.stringify(project.description)}
+              </p>
             )}
           </div>
         </div>
