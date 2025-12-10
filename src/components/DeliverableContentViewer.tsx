@@ -173,6 +173,21 @@ const parseGeneratedContent = (rawContent: any): GeneratedContent | null => {
   }
 };
 
+// Safely render any value as a string (prevents React error #31)
+const safeRenderValue = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object') {
+    // Handle objects with specific known keys gracefully
+    if (value.date || value.summary || value.project_name || value.industry) {
+      return value.summary || value.description || value.project_name || JSON.stringify(value);
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+};
+
 // Render any array of strings as a list
 const renderStringList = (items: string[] | undefined, icon: string, color: string) => {
   if (!items || items.length === 0) return null;
@@ -181,7 +196,7 @@ const renderStringList = (items: string[] | undefined, icon: string, color: stri
       {items.map((item, i) => (
         <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
           <span className={color}>{icon}</span>
-          <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+          <span>{safeRenderValue(item)}</span>
         </li>
       ))}
     </ul>
@@ -731,10 +746,10 @@ export const DeliverableContentViewer = ({
                         💡 Recommendations
                       </h4>
                       <ul className="space-y-1">
-                        {content.recommendations.map((rec, i) => (
+                        {content.recommendations.map((rec: any, i: number) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                             <span className="text-amber-500">{i + 1}.</span>
-                            <span>{typeof rec === 'string' ? rec : JSON.stringify(rec)}</span>
+                            <span>{safeRenderValue(rec)}</span>
                           </li>
                         ))}
                       </ul>
@@ -850,7 +865,7 @@ export const DeliverableContentViewer = ({
                           {content.key_findings.map((finding, i) => (
                             <li key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                               <span className="text-primary font-bold">{i + 1}.</span>
-                              <span className="text-muted-foreground">{typeof finding === 'string' ? finding : JSON.stringify(finding)}</span>
+                              <span className="text-muted-foreground">{safeRenderValue(finding)}</span>
                             </li>
                           ))}
                         </ul>
@@ -896,9 +911,9 @@ export const DeliverableContentViewer = ({
                           📈 Market Trends
                         </h3>
                         <div className="flex flex-wrap gap-2">
-                          {content.trends.map((trend, i) => (
+                          {content.trends.map((trend: any, i: number) => (
                             <Badge key={i} variant="secondary" className="px-3 py-1">
-                              ↗ {typeof trend === 'string' ? trend : JSON.stringify(trend)}
+                              ↗ {safeRenderValue(trend)}
                             </Badge>
                           ))}
                         </div>
@@ -917,7 +932,7 @@ export const DeliverableContentViewer = ({
                               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 text-amber-950 flex items-center justify-center text-sm font-bold">
                                 {i + 1}
                               </span>
-                              <span className="text-muted-foreground">{typeof rec === 'string' ? rec : JSON.stringify(rec)}</span>
+                              <span className="text-muted-foreground">{safeRenderValue(rec)}</span>
                             </li>
                           ))}
                         </ol>
@@ -933,10 +948,10 @@ export const DeliverableContentViewer = ({
                               🎯 Opportunities
                             </h3>
                             <ul className="space-y-1">
-                              {content.opportunities.map((opp, i) => (
+                              {content.opportunities.map((opp: any, i: number) => (
                                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                                   <span className="text-green-500">✓</span>
-                                  {typeof opp === 'string' ? opp : JSON.stringify(opp)}
+                                  {safeRenderValue(opp)}
                                 </li>
                               ))}
                             </ul>
@@ -948,10 +963,10 @@ export const DeliverableContentViewer = ({
                               ⚠️ Risks
                             </h3>
                             <ul className="space-y-1">
-                              {content.risks.map((risk, i) => (
+                              {content.risks.map((risk: any, i: number) => (
                                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                                   <span className="text-red-500">!</span>
-                                  {typeof risk === 'string' ? risk : JSON.stringify(risk)}
+                                  {safeRenderValue(risk)}
                                 </li>
                               ))}
                             </ul>

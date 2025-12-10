@@ -77,20 +77,20 @@ const NetworkVisualization = () => {
         <motion.circle
           cx="50"
           cy="50"
-          r="3"
+          r={3}
           fill="#00E5A0"
-          animate={{ r: [3, 3.5, 3] }}
+          animate={{ scale: [1, 1.15, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
         <motion.circle
           cx="50"
           cy="50"
-          r="5"
+          r={5}
           fill="none"
           stroke="#00E5A0"
           strokeWidth="0.2"
           strokeOpacity="0.5"
-          animate={{ r: [5, 7, 5], strokeOpacity: [0.5, 0.2, 0.5] }}
+          animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0.2, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
 
@@ -100,10 +100,10 @@ const NetworkVisualization = () => {
             <motion.circle
               cx={node.x}
               cy={node.y}
-              r="1.5"
+              r={1.5}
               fill={node.color}
               animate={{ 
-                r: node.agent.status === 'active' ? [1.5, 2, 1.5] : 1.5,
+                scale: node.agent.status === 'active' ? [1, 1.33, 1] : 1,
               }}
               transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
             />
@@ -111,11 +111,11 @@ const NetworkVisualization = () => {
               <motion.circle
                 cx={node.x}
                 cy={node.y}
-                r="2.5"
+                r={2.5}
                 fill="none"
                 stroke={node.color}
                 strokeWidth="0.1"
-                animate={{ r: [2.5, 4, 2.5], strokeOpacity: [0.5, 0, 0.5] }}
+                animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
               />
             )}
