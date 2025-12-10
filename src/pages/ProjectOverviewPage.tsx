@@ -229,7 +229,9 @@ const ProjectOverviewPage = () => {
                 {project.description && (
                   <div className="pt-4 border-t">
                     <p className="text-sm text-muted-foreground mb-2">Description</p>
-                    <p>{project.description}</p>
+                    <p>{typeof project.description === 'string' 
+                      ? project.description 
+                      : (project.description as any)?.summary || (project.description as any)?.description || JSON.stringify(project.description)}</p>
                   </div>
                 )}
 

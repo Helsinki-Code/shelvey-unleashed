@@ -198,7 +198,9 @@ const ProjectsPage = () => {
                     <CardContent>
                       {project.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                          {project.description}
+                          {typeof project.description === 'string' 
+                            ? project.description 
+                            : (project.description as any)?.summary || (project.description as any)?.description || JSON.stringify(project.description)}
                         </p>
                       )}
 
