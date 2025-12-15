@@ -279,6 +279,7 @@ async function startPhase(supabase: any, supabaseUrl: string, serviceKey: string
           deliverableId: deliverable.id,
           agentId: assignedAgent,
           taskType: deliverable.deliverable_type,
+          phaseNumber, // CRITICAL: Pass phase number for phase-specific work
           inputData: {
             projectName: project?.name,
             industry: project?.industry,
@@ -491,6 +492,7 @@ async function startPhaseWork(supabase: any, supabaseUrl: string, serviceKey: st
           deliverableId: deliverable.id,
           agentId: assignedAgent,
           taskType: deliverable.deliverable_type,
+          phaseNumber: phase.phase_number, // CRITICAL: Pass phase number
           inputData: {
             projectName: project?.name,
             industry: project?.industry,
