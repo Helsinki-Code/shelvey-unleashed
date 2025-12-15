@@ -357,16 +357,16 @@ const Phase2Page = () => {
                               )}
                             </div>
                             <div className="aspect-video bg-muted/50 flex items-center justify-center relative">
-                              {latestScreenshot ? (
+                              {previewImage ? (
                                 <img
-                                  src={latestScreenshot}
-                                  alt="Latest work screenshot"
+                                  src={previewImage}
+                                  alt="Latest work preview"
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="text-center text-muted-foreground p-4">
                                   <Camera className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                  <p className="text-xs">Screenshots will appear here as agent works</p>
+                                  <p className="text-xs">Screenshots or brand assets will appear here as the agent works</p>
                                 </div>
                               )}
                             </div>
