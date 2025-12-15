@@ -36,6 +36,38 @@ export const DeliverableCard = ({ deliverable, onViewWork, onRefresh }: Delivera
   const citations = deliverable.citations || [];
   const hasContent = Object.keys(content).length > 0 || content.report;
 
+  // Safely derive a short preview text for the card without ever rendering raw objects
+  const getPreviewText = (): string => {
+    const candidate =
+      content.executive_summary ||
+      (Array.isArray(content.key_findings) ? content.key_findings[0] : undefined) ||
+      content.report;
+
+    if (!candidate) {
+      return 'Content available - click View Work to see full report';
+    }
+
+    // If it's already a simple string
+    if (typeof candidate === 'string') {
+      return candidate.slice(0, 200);
+    }
+
+    // Handle objects with known keys from Phase 1 reports
+    if (typeof candidate === 'object') {
+      const obj = candidate as Record<string, any>;
+      const text =
+        obj.summary ||
+        obj.description ||
+        obj.project_name ||
+        obj.industry ||
+        JSON.stringify(obj);
+      return String(text).slice(0, 200);
+    }
+
+    // Fallback for other primitive types
+    return String(candidate).slice(0, 200);
+  };
+
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'approved': return 'bg-green-500';
@@ -117,10 +149,7 @@ export const DeliverableCard = ({ deliverable, onViewWork, onRefresh }: Delivera
           <div className="p-4 bg-muted/50 rounded-lg">
             <h4 className="text-sm font-medium mb-2">Preview</h4>
             <p className="text-sm text-muted-foreground line-clamp-3">
-              {content.executive_summary || 
-               content.key_findings?.[0] || 
-               content.report?.slice(0, 200) ||
-               'Content available - click View Work to see full report'}
+              {getPreviewText()}
             </p>
           </div>
         )}

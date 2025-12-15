@@ -177,16 +177,26 @@ const Phase2Page = () => {
     return deliverables.filter(d => d.assigned_agent_id === agentId);
   };
 
-  const getAgentLatestScreenshot = (agentId: string) => {
+  // Phase 2: show either live screenshots or generated brand asset images as previews
+  const getAgentPreviewImage = (agentId: string) => {
     const agentDeliverables = getAgentDeliverables(agentId);
     for (const d of agentDeliverables) {
+      // Prefer explicit screenshots if present
       if (d.screenshots && Array.isArray(d.screenshots) && d.screenshots.length > 0) {
         return d.screenshots[d.screenshots.length - 1];
+      }
+      // Fallback to generated brand assets from generated_content
+      const gc = d.generated_content || {};
+      if (gc.primaryLogo?.imageUrl) return gc.primaryLogo.imageUrl;
+      if (Array.isArray(gc.assets)) {
+        const logoAsset = gc.assets.find((a: any) => a.type === 'logo' && a.imageUrl);
+        if (logoAsset) return logoAsset.imageUrl;
+        const anyAsset = gc.assets.find((a: any) => a.imageUrl);
+        if (anyAsset) return anyAsset.imageUrl;
       }
     }
     return null;
   };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -279,7 +289,7 @@ const Phase2Page = () => {
                   const status = getAgentStatus(agent.id);
                   const currentTask = getAgentCurrentTask(agent.id);
                   const agentDeliverables = getAgentDeliverables(agent.id);
-                  const latestScreenshot = getAgentLatestScreenshot(agent.id);
+                  const previewImage = getAgentPreviewImage(agent.id);
                   const Icon = agent.icon;
                   const completedCount = agentDeliverables.filter(d => d.status === 'approved').length;
 
