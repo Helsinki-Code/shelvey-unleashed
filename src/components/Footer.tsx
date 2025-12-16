@@ -5,13 +5,14 @@ import shelveyLogo from '@/assets/shelvey-logo.png';
 const footerLinks = {
   product: [
     { name: 'Features', href: '/#features' },
-    { name: 'Pricing', href: '/#pricing' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Agents', href: '/agents' },
     { name: 'MCP Servers', href: '/mcp' },
   ],
   company: [
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
+    { name: 'Blog', href: '/blog' },
   ],
   legal: [
     { name: 'Privacy', href: '/privacy' },

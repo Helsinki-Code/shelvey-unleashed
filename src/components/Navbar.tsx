@@ -13,6 +13,7 @@ const navLinks = [
   { name: 'Agents', href: '/agents' },
   { name: 'MCP', href: '/mcp' },
   { name: 'Pricing', href: '/pricing' },
+  { name: 'Blog', href: '/blog' },
 ];
 
 export const Navbar = () => {
