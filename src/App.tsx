@@ -49,6 +49,8 @@ import SettingsPage from "./pages/SettingsPage";
 import DomainsPage from "./pages/DomainsPage";
 import OnlineStoresPage from "./pages/OnlineStoresPage";
 import TradingDashboardPage from "./pages/TradingDashboardPage";
+import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +106,8 @@ const App = () => (
               <Route path="/domains" element={<DomainsPage />} />
               <Route path="/stores" element={<OnlineStoresPage />} />
               <Route path="/trading" element={<TradingDashboardPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
