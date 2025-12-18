@@ -1825,6 +1825,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_activity_logs: {
+        Row: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          phase_id: string | null
+          project_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          agent_name: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          phase_id?: string | null
+          project_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          agent_name?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          phase_id?: string | null
+          project_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_activity_logs_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "trading_project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_activity_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trading_executions: {
         Row: {
           action: string
@@ -1868,6 +1922,247 @@ export type Database = {
             columns: ["strategy_id"]
             isOneToOne: false
             referencedRelation: "trading_strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_orders: {
+        Row: {
+          approved_by_ceo: boolean | null
+          approved_by_user: boolean | null
+          created_at: string | null
+          executed_at: string | null
+          execution_price: number | null
+          id: string
+          order_type: string
+          phase_id: string | null
+          price: number | null
+          project_id: string
+          quantity: number
+          rejection_reason: string | null
+          side: string
+          status: string
+          stop_loss_price: number | null
+          symbol: string
+          take_profit_price: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_by_ceo?: boolean | null
+          approved_by_user?: boolean | null
+          created_at?: string | null
+          executed_at?: string | null
+          execution_price?: number | null
+          id?: string
+          order_type?: string
+          phase_id?: string | null
+          price?: number | null
+          project_id: string
+          quantity: number
+          rejection_reason?: string | null
+          side: string
+          status?: string
+          stop_loss_price?: number | null
+          symbol: string
+          take_profit_price?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_by_ceo?: boolean | null
+          approved_by_user?: boolean | null
+          created_at?: string | null
+          executed_at?: string | null
+          execution_price?: number | null
+          id?: string
+          order_type?: string
+          phase_id?: string | null
+          price?: number | null
+          project_id?: string
+          quantity?: number
+          rejection_reason?: string | null
+          side?: string
+          status?: string
+          stop_loss_price?: number | null
+          symbol?: string
+          take_profit_price?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_orders_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "trading_project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_project_phases: {
+        Row: {
+          agent_id: string
+          agent_work_steps: Json | null
+          ceo_approved: boolean | null
+          ceo_feedback: string | null
+          completed_at: string | null
+          created_at: string | null
+          deliverables: Json | null
+          id: string
+          phase_name: string
+          phase_number: number
+          project_id: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+          user_approved: boolean | null
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          agent_work_steps?: Json | null
+          ceo_approved?: boolean | null
+          ceo_feedback?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          deliverables?: Json | null
+          id?: string
+          phase_name: string
+          phase_number: number
+          project_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_approved?: boolean | null
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          agent_work_steps?: Json | null
+          ceo_approved?: boolean | null
+          ceo_feedback?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          deliverables?: Json | null
+          id?: string
+          phase_name?: string
+          phase_number?: number
+          project_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_approved?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_project_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_projects: {
+        Row: {
+          capital: number
+          created_at: string | null
+          current_phase: number | null
+          exchange: string
+          id: string
+          mode: string
+          name: string
+          risk_level: string
+          status: string
+          total_pnl: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          capital?: number
+          created_at?: string | null
+          current_phase?: number | null
+          exchange: string
+          id?: string
+          mode?: string
+          name: string
+          risk_level?: string
+          status?: string
+          total_pnl?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          capital?: number
+          created_at?: string | null
+          current_phase?: number | null
+          exchange?: string
+          id?: string
+          mode?: string
+          name?: string
+          risk_level?: string
+          status?: string
+          total_pnl?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trading_risk_controls: {
+        Row: {
+          created_at: string | null
+          daily_loss_limit: number
+          id: string
+          kill_switch_activated_at: string | null
+          kill_switch_active: boolean | null
+          last_checked_at: string | null
+          max_position_pct: number
+          project_id: string
+          stop_loss_pct: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          daily_loss_limit?: number
+          id?: string
+          kill_switch_activated_at?: string | null
+          kill_switch_active?: boolean | null
+          last_checked_at?: string | null
+          max_position_pct?: number
+          project_id: string
+          stop_loss_pct?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          daily_loss_limit?: number
+          id?: string
+          kill_switch_activated_at?: string | null
+          kill_switch_active?: boolean | null
+          last_checked_at?: string | null
+          max_position_pct?: number
+          project_id?: string
+          stop_loss_pct?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_risk_controls_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "trading_projects"
             referencedColumns: ["id"]
           },
         ]
