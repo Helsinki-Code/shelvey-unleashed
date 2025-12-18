@@ -318,5 +318,11 @@ verify_jwt = false
 [functions.trading-ai-agent]
 verify_jwt = false
 
+[functions.trading-project-worker]
+verify_jwt = false
+
+[functions.trading-agent-executor]
+verify_jwt = false
+
 [functions.pod-automation-agent]
 verify_jwt = false

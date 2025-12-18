@@ -49,6 +49,15 @@ import SettingsPage from "./pages/SettingsPage";
 import DomainsPage from "./pages/DomainsPage";
 import OnlineStoresPage from "./pages/OnlineStoresPage";
 import TradingDashboardPage from "./pages/TradingDashboardPage";
+import TradingProjectsPage from "./pages/TradingProjectsPage";
+import TradingProjectWizard from "./pages/TradingProjectWizard";
+import TradingCommandCenter from "./pages/TradingCommandCenter";
+import TradingResearchPhase from "./pages/trading/TradingResearchPhase";
+import TradingStrategyPhase from "./pages/trading/TradingStrategyPhase";
+import TradingSetupPhase from "./pages/trading/TradingSetupPhase";
+import TradingExecutionPhase from "./pages/trading/TradingExecutionPhase";
+import TradingMonitorPhase from "./pages/trading/TradingMonitorPhase";
+import TradingOptimizePhase from "./pages/trading/TradingOptimizePhase";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
 
@@ -105,7 +114,16 @@ const App = () => (
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/domains" element={<DomainsPage />} />
               <Route path="/stores" element={<OnlineStoresPage />} />
-              <Route path="/trading" element={<TradingDashboardPage />} />
+              <Route path="/trading-old" element={<TradingDashboardPage />} />
+              <Route path="/trading" element={<TradingProjectsPage />} />
+              <Route path="/trading/new" element={<TradingProjectWizard />} />
+              <Route path="/trading/:projectId" element={<TradingCommandCenter />} />
+              <Route path="/trading/:projectId/research" element={<TradingResearchPhase />} />
+              <Route path="/trading/:projectId/strategy" element={<TradingStrategyPhase />} />
+              <Route path="/trading/:projectId/setup" element={<TradingSetupPhase />} />
+              <Route path="/trading/:projectId/execution" element={<TradingExecutionPhase />} />
+              <Route path="/trading/:projectId/monitor" element={<TradingMonitorPhase />} />
+              <Route path="/trading/:projectId/optimize" element={<TradingOptimizePhase />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="*" element={<NotFound />} />
