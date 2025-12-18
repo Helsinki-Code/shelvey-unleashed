@@ -101,7 +101,7 @@ const Phase3Page = () => {
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (websiteData) {
       setGeneratedWebsite(websiteData);
