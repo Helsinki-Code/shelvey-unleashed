@@ -18,6 +18,7 @@ import { StoreOrdersTable } from '@/components/stores/StoreOrdersTable';
 import { StoreCustomersTable } from '@/components/stores/StoreCustomersTable';
 import { StoreAutomationPanel } from '@/components/stores/StoreAutomationPanel';
 import { PODProductsPanel } from '@/components/stores/PODProductsPanel';
+import { ECommerceCEOHeader } from '@/components/ecommerce/ECommerceCEOHeader';
 
 interface StoreConfig {
   id: string;
@@ -139,9 +140,12 @@ const OnlineStoresPage = () => {
       <SimpleDashboardSidebar />
       
       <main className="flex-1 ml-[260px] p-6">
+        {/* E-Commerce CEO Header */}
+        <ECommerceCEOHeader />
+        
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Online Stores</h1>
+            <h1 className="text-3xl font-bold">Store Operations</h1>
             <p className="text-muted-foreground">Manage all your e-commerce stores with AI automation</p>
           </div>
           <PageHeader />

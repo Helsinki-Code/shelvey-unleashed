@@ -52,6 +52,7 @@ import TradingDashboardPage from "./pages/TradingDashboardPage";
 import TradingProjectsPage from "./pages/TradingProjectsPage";
 import TradingProjectWizard from "./pages/TradingProjectWizard";
 import TradingCommandCenter from "./pages/TradingCommandCenter";
+import CommandCenterPage from "./pages/CommandCenterPage";
 import TradingResearchPhase from "./pages/trading/TradingResearchPhase";
 import TradingStrategyPhase from "./pages/trading/TradingStrategyPhase";
 import TradingSetupPhase from "./pages/trading/TradingSetupPhase";
@@ -114,6 +115,7 @@ const App = () => (
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/domains" element={<DomainsPage />} />
               <Route path="/stores" element={<OnlineStoresPage />} />
+              <Route path="/command-center" element={<CommandCenterPage />} />
               <Route path="/trading-old" element={<TradingDashboardPage />} />
               <Route path="/trading" element={<TradingProjectsPage />} />
               <Route path="/trading/new" element={<TradingProjectWizard />} />

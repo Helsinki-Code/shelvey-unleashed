@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight, Store, TrendingUp
+  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight, Store, TrendingUp, Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,9 +27,10 @@ export const SimpleDashboardSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems: NavItem[] = [
+    { id: 'command', label: 'Command Center', icon: Building2, path: '/command-center', helpText: 'AI Conglomerate overview' },
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard', helpText: 'Your main command center' },
-    { id: 'projects', label: 'Projects', icon: Briefcase, path: '/dashboard?section=projects', helpText: 'View and manage your business projects' },
-    { id: 'stores', label: 'Online Stores', icon: Store, path: '/stores', helpText: 'Manage Shopify, Etsy, WooCommerce' },
+    { id: 'projects', label: 'Business Projects', icon: Briefcase, path: '/projects', helpText: 'View and manage business projects' },
+    { id: 'stores', label: 'E-Commerce', icon: Store, path: '/stores', helpText: 'Manage Shopify, Etsy, WooCommerce' },
     { id: 'trading', label: 'Trading AI', icon: TrendingUp, path: '/trading', helpText: 'Stocks and crypto trading' },
     { id: 'apikeys', label: 'API Keys', icon: Key, path: '/settings?tab=apikeys', helpText: 'Manage your API keys' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', helpText: 'Account and preferences' },
