@@ -234,14 +234,14 @@ const TradingPhaseLayout = ({ phaseNumber, children }: TradingPhaseLayoutProps) 
             )}
 
             {/* Work Steps */}
-            {phase.agent_work_steps && phase.agent_work_steps.length > 0 && (
+            {phase.agent_work_steps && Array.isArray(phase.agent_work_steps) && phase.agent_work_steps.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Agent Work Log</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {phase.agent_work_steps.map((step, i) => (
+                    {(phase.agent_work_steps as Array<{ step: number; action: string; result: string }>).map((step, i) => (
                       <div key={i} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                         <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
                           {step.step}
