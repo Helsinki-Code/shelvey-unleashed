@@ -86,7 +86,7 @@ export const COMPANY_CONFIGS: Record<CompanyType, CompanyConfig> = {
     agentCount: 6,
     phaseCount: 5,
     revenueModel: 'Ad revenue + Affiliate commissions',
-    status: 'planned',
+    status: 'building',
     route: '/blog-empire',
     color: 'hsl(30, 95%, 55%)'
   },
