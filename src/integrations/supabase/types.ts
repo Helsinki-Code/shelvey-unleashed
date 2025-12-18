@@ -368,6 +368,51 @@ export type Database = {
           },
         ]
       }
+      ai_companies: {
+        Row: {
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          status: string | null
+          total_clients: number | null
+          total_expenses: number | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          status?: string | null
+          total_clients?: number | null
+          total_expenses?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          company_type?: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          status?: string | null
+          total_clients?: number | null
+          total_expenses?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           category: string | null
@@ -600,6 +645,197 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_activity_logs: {
+        Row: {
+          action: string
+          ceo_name: string
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at: string | null
+          details: Json | null
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          ceo_name: string
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          ceo_name?: string
+          company_id?: string
+          company_type?: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_activity_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "ai_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_ceos: {
+        Row: {
+          avatar_url: string | null
+          communication_style: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          name: string
+          persona_type: string | null
+          personality_traits: Json | null
+          updated_at: string | null
+          user_id: string
+          voice_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          communication_style?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          persona_type?: string | null
+          personality_traits?: Json | null
+          updated_at?: string | null
+          user_id: string
+          voice_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          communication_style?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          persona_type?: string | null
+          personality_traits?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          voice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_ceos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "ai_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_projects: {
+        Row: {
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at: string | null
+          current_phase: number | null
+          external_project_id: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          revenue: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          current_phase?: number | null
+          external_project_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          revenue?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          company_type?: Database["public"]["Enums"]["company_type"]
+          created_at?: string | null
+          current_phase?: number | null
+          external_project_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          revenue?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "ai_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_revenue_logs: {
+        Row: {
+          amount: number
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          id: string
+          metadata: Json | null
+          recorded_at: string | null
+          revenue_type: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          company_type: Database["public"]["Enums"]["company_type"]
+          id?: string
+          metadata?: Json | null
+          recorded_at?: string | null
+          revenue_type: string
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          company_type?: Database["public"]["Enums"]["company_type"]
+          id?: string
+          metadata?: Json | null
+          recorded_at?: string | null
+          revenue_type?: string
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_revenue_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "ai_companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2653,6 +2889,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "subscriber" | "user" | "super_admin"
+      company_type:
+        | "business_building"
+        | "trading"
+        | "ecommerce"
+        | "seo_agency"
+        | "blog_empire"
+        | "web_design"
+        | "automation"
+        | "digital_products"
       subscription_status: "trial" | "active" | "canceled" | "expired"
     }
     CompositeTypes: {
@@ -2782,6 +3027,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "subscriber", "user", "super_admin"],
+      company_type: [
+        "business_building",
+        "trading",
+        "ecommerce",
+        "seo_agency",
+        "blog_empire",
+        "web_design",
+        "automation",
+        "digital_products",
+      ],
       subscription_status: ["trial", "active", "canceled", "expired"],
     },
   },

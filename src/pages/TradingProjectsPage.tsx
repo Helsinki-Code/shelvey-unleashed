@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
+import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
+import { PageHeader } from '@/components/PageHeader';
+import { TradingCEOHeader } from '@/components/trading/TradingCEOHeader';
 
 interface TradingProject {
   id: string;
@@ -101,20 +102,26 @@ const TradingProjectsPage = () => {
         <meta name="description" content="AI-powered autonomous trading automation" />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
-        <Navbar />
+      <div className="min-h-screen bg-background flex">
+        <SimpleDashboardSidebar />
         
-        <main className="container mx-auto px-4 py-8 mt-16">
+        <main className="flex-1 ml-[260px] p-6">
+          {/* Trading CEO Header */}
+          <TradingCEOHeader />
+          
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold">Trading Terminal</h1>
+              <h1 className="text-3xl font-bold">Trading Projects</h1>
               <p className="text-muted-foreground mt-1">AI-powered autonomous trading automation</p>
             </div>
-            <Button onClick={() => navigate('/trading/new')} size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              New Trading Project
-            </Button>
+            <div className="flex items-center gap-4">
+              <PageHeader />
+              <Button onClick={() => navigate('/trading/new')} size="lg" className="gap-2">
+                <Plus className="h-5 w-5" />
+                New Trading Project
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -255,8 +262,6 @@ const TradingProjectsPage = () => {
             </div>
           )}
         </main>
-
-        <Footer />
       </div>
     </>
   );
