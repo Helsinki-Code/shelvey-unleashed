@@ -61,6 +61,7 @@ import TradingMonitorPhase from "./pages/trading/TradingMonitorPhase";
 import TradingOptimizePhase from "./pages/trading/TradingOptimizePhase";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
+import BlogEmpirePage from "./pages/BlogEmpirePage";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ const App = () => (
               <Route path="/trading/:projectId/optimize" element={<TradingOptimizePhase />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
+              <Route path="/blog-empire" element={<BlogEmpirePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

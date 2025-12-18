@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight, Store, TrendingUp, Building2
+  Home, Briefcase, Key, Settings, LogOut, ChevronLeft, ChevronRight, Store, TrendingUp, Building2, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ export const SimpleDashboardSidebar = () => {
     { id: 'projects', label: 'Business Projects', icon: Briefcase, path: '/projects', helpText: 'View and manage business projects' },
     { id: 'stores', label: 'E-Commerce', icon: Store, path: '/stores', helpText: 'Manage Shopify, Etsy, WooCommerce' },
     { id: 'trading', label: 'Trading AI', icon: TrendingUp, path: '/trading', helpText: 'Stocks and crypto trading' },
+    { id: 'blog-empire', label: 'Blog Empire', icon: FileText, path: '/blog-empire', helpText: 'AI-powered blog monetization' },
     { id: 'apikeys', label: 'API Keys', icon: Key, path: '/settings?tab=apikeys', helpText: 'Manage your API keys' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings', helpText: 'Account and preferences' },
   ];
