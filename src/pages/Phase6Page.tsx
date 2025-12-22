@@ -32,40 +32,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-const salesAgents = [
-  { 
-    id: 'sales-head', 
-    name: 'Sales Director', 
-    role: 'Division Manager',
-    description: 'Leads all sales activities and revenue generation',
-    icon: DollarSign,
-    color: 'from-green-500 to-emerald-500'
-  },
-  { 
-    id: 'sales-development', 
-    name: 'Sales Development Rep', 
-    role: 'Team Member',
-    description: 'Generates and qualifies leads',
-    icon: Target,
-    color: 'from-blue-500 to-cyan-500'
-  },
-  { 
-    id: 'sales-closer', 
-    name: 'Sales Closer', 
-    role: 'Team Member',
-    description: 'Handles negotiations and closes deals',
-    icon: Handshake,
-    color: 'from-purple-500 to-pink-500'
-  },
-  { 
-    id: 'customer-success', 
-    name: 'Customer Success', 
-    role: 'Team Member',
-    description: 'Ensures customer satisfaction and retention',
-    icon: Users,
-    color: 'from-orange-500 to-amber-500'
-  },
-];
+import { getPhaseAgent } from '@/lib/phase-agents';
+import { PhaseAgentCard } from '@/components/PhaseAgentCard';
+
+const PHASE_AGENT = getPhaseAgent(6)!;
 
 interface Deliverable {
   id: string;
@@ -101,7 +71,7 @@ export default function Phase6Page() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<typeof salesAgents[0] | null>(null);
+  const [showAgentChat, setShowAgentChat] = useState(false);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
 
   useEffect(() => {
@@ -285,49 +255,12 @@ export default function Phase6Page() {
               </TabsList>
 
               <TabsContent value="team">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {salesAgents.map((agent) => {
-                    const Icon = agent.icon;
-                    const isWorking = activities.some(a => 
-                      a.agent_id === agent.id && a.status === 'in_progress'
-                    );
-                    
-                    return (
-                      <Card 
-                        key={agent.id} 
-                        className="cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => setSelectedAgent(agent)}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg bg-gradient-to-r ${agent.color}`}>
-                              <Icon className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <CardTitle className="text-base">{agent.name}</CardTitle>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">{agent.role}</Badge>
-                                {isWorking && (
-                                  <Badge className="text-xs bg-green-500/20 text-green-500 border-green-500/30">
-                                    Working
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {agent.description}
-                          </p>
-                          <Button variant="outline" className="w-full" size="sm">
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Chat
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                <div className="max-w-2xl">
+                  <PhaseAgentCard 
+                    phaseNumber={6} 
+                    status="idle"
+                    onChat={() => setShowAgentChat(true)}
+                  />
                 </div>
               </TabsContent>
 
@@ -430,11 +363,11 @@ export default function Phase6Page() {
 
       {/* Agent Chat Sheet */}
       <AgentChatSheet
-        isOpen={!!selectedAgent}
-        onClose={() => setSelectedAgent(null)}
-        agentId={selectedAgent?.id || ''}
-        agentName={selectedAgent?.name || ''}
-        agentRole={selectedAgent?.role || ''}
+        isOpen={showAgentChat}
+        onClose={() => setShowAgentChat(false)}
+        agentId={PHASE_AGENT.id}
+        agentName={PHASE_AGENT.name}
+        agentRole={PHASE_AGENT.role}
       />
     </div>
   );
