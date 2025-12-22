@@ -25,12 +25,10 @@ import BlogArticleGenerator from "@/components/BlogArticleGenerator";
 import SEODashboard from "@/components/SEODashboard";
 import SocialContentFactory from "@/components/SocialContentFactory";
 
-const contentAgents = [
-  { id: 'content-head', name: 'Content Director', role: 'Division Manager', description: 'Leads content strategy and creation' },
-  { id: 'content-creator', name: 'Content Creator', role: 'Team Member', description: 'Creates compelling content' },
-  { id: 'seo-agent', name: 'SEO Specialist', role: 'Team Member', description: 'Optimizes content for search' },
-  { id: 'social-content', name: 'Social Content', role: 'Team Member', description: 'Creates social media content' },
-];
+import { getPhaseAgent } from '@/lib/phase-agents';
+import { PhaseAgentCard } from '@/components/PhaseAgentCard';
+
+const PHASE_AGENT = getPhaseAgent(4)!;
 
 export default function Phase4Page() {
   const { projectId } = useParams();
@@ -41,7 +39,7 @@ export default function Phase4Page() {
   const [phase, setPhase] = useState<any>(null);
   const [deliverables, setDeliverables] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("team");
-  const [selectedAgent, setSelectedAgent] = useState<typeof contentAgents[0] | null>(null);
+  const [showAgentChat, setShowAgentChat] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {

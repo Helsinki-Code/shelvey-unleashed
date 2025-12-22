@@ -33,43 +33,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-const marketingAgents = [
-  { 
-    id: 'marketing-head', 
-    name: 'Marketing Director', 
-    role: 'Division Manager',
-    description: 'Orchestrates all marketing activities and strategy',
-    icon: Megaphone
-  },
-  { 
-    id: 'seo-agent', 
-    name: 'SEO Specialist', 
-    role: 'Team Member',
-    description: 'Optimizes content for search engines',
-    icon: TrendingUp
-  },
-  { 
-    id: 'social-media-agent', 
-    name: 'Social Media Manager', 
-    role: 'Team Member',
-    description: 'Manages all social media channels',
-    icon: Share2
-  },
-  { 
-    id: 'paid-ads-agent', 
-    name: 'Paid Ads Specialist', 
-    role: 'Team Member',
-    description: 'Creates and manages paid advertising campaigns',
-    icon: Target
-  },
-  { 
-    id: 'influencer-agent', 
-    name: 'Influencer Outreach', 
-    role: 'Team Member',
-    description: 'Discovers and manages influencer partnerships',
-    icon: Users
-  },
-];
+import { getPhaseAgent } from '@/lib/phase-agents';
+import { PhaseAgentCard } from '@/components/PhaseAgentCard';
+
+const PHASE_AGENT = getPhaseAgent(5)!;
 
 export default function Phase5Page() {
   const { projectId } = useParams();
@@ -80,7 +47,7 @@ export default function Phase5Page() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<typeof marketingAgents[0] | null>(null);
+  const [showAgentChat, setShowAgentChat] = useState(false);
 
   useEffect(() => {
     if (projectId && user) {
@@ -297,38 +264,12 @@ export default function Phase5Page() {
               </TabsContent>
 
               <TabsContent value="team">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {marketingAgents.map((agent) => {
-                    const Icon = agent.icon;
-                    return (
-                      <Card 
-                        key={agent.id} 
-                        className="cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => setSelectedAgent(agent)}
-                      >
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-gradient-to-r from-pink-500 to-rose-500">
-                              <Icon className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{agent.name}</CardTitle>
-                              <Badge variant="outline" className="mt-1">{agent.role}</Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {agent.description}
-                          </p>
-                          <Button variant="outline" className="w-full">
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Chat with Agent
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                <div className="max-w-2xl">
+                  <PhaseAgentCard 
+                    phaseNumber={5} 
+                    status="idle"
+                    onChat={() => setShowAgentChat(true)}
+                  />
                 </div>
               </TabsContent>
             </Tabs>
@@ -389,11 +330,11 @@ export default function Phase5Page() {
 
       {/* Agent Chat Sheet */}
       <AgentChatSheet
-        isOpen={!!selectedAgent}
-        onClose={() => setSelectedAgent(null)}
-        agentId={selectedAgent?.id || ''}
-        agentName={selectedAgent?.name || ''}
-        agentRole={selectedAgent?.role || ''}
+        isOpen={showAgentChat}
+        onClose={() => setShowAgentChat(false)}
+        agentId={PHASE_AGENT.id}
+        agentName={PHASE_AGENT.name}
+        agentRole={PHASE_AGENT.role}
       />
     </div>
   );
