@@ -131,14 +131,20 @@ export const ImageGenerationStudio = ({
       if (row?.generated_content) {
         const content = row.generated_content as Record<string, unknown>;
         const assets: GeneratedImage[] = [];
+        const comments: Record<string, string> = {};
 
         // Load all assets from the assets array with individual approval states
         if (Array.isArray(content.assets)) {
           content.assets.forEach((asset: Record<string, unknown>, idx: number) => {
             const assetCeoApproved = asset.ceoApproved === true;
             const assetUserApproved = asset.userApproved === true;
+            const id = (asset.id as string) || `asset-${idx}`;
+
+            const ceoFeedback = typeof asset.ceoFeedback === 'string' ? asset.ceoFeedback : undefined;
+            if (ceoFeedback) comments[id] = ceoFeedback;
+
             assets.push({
-              id: (asset.id as string) || `asset-${idx}`,
+              id,
               type: (asset.type as GeneratedImage['type']) || 'icon',
               name: (asset.name as string) || `Asset ${idx + 1}`,
               imageUrl: asset.imageUrl as string,
@@ -154,6 +160,7 @@ export const ImageGenerationStudio = ({
 
         if (assets.length > 0) {
           setGeneratedImages(assets);
+          if (Object.keys(comments).length > 0) setCeoReviewComments(comments);
         }
       }
     };
@@ -402,143 +409,103 @@ export const ImageGenerationStudio = ({
     startGeneration();
   };
 
-  // CEO Review function - AI reviews each image
+  // CEO Review function - review the saved Phase 2 brand-assets deliverable (no extra docs)
   const triggerCeoReview = async () => {
-    const pendingImages = generatedImages.filter(img => 
-      img.status === 'pending_review' && !img.ceoApproved && img.imageUrl
-    );
-    
-    if (pendingImages.length === 0) {
-      toast.info('No images pending CEO review');
+    if (!phaseId) {
+      toast.error('Missing phase context for CEO review');
       return;
     }
 
     setIsCeoReviewing(true);
-    setCurrentStatus('CEO Agent is reviewing brand assets...');
-    
+    setCurrentStatus('Preparing CEO review...');
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Find latest brand_assets deliverable for this phase
+      const { data: deliverables, error: deliverableError } = await supabase
+        .from('phase_deliverables')
+        .select('id, generated_content')
+        .eq('phase_id', phaseId)
+        .eq('deliverable_type', 'brand_assets')
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      // Get project info for context
-      const { data: project } = await supabase
-        .from('business_projects')
-        .select('name, description, industry, target_market')
-        .eq('id', projectId)
-        .single();
-
-      // Review each image
-      for (const image of pendingImages) {
-        setCurrentStatus(`CEO reviewing: ${image.name}...`);
-        
-        // Call CEO agent to review this specific image
-        const { data: reviewData, error } = await supabase.functions.invoke('ceo-agent-chat', {
-          body: {
-            projectId,
-            message: `As the CEO, please review this ${image.type} asset named "${image.name}" for the ${project?.name || 'business'} project.
-            
-Project Context:
-- Industry: ${project?.industry || 'Not specified'}
-- Target Market: ${project?.target_market || 'Not specified'}
-- Description: ${project?.description || 'Not specified'}
-
-Asset URL: ${image.imageUrl}
-
-Please evaluate:
-1. Brand alignment and professionalism
-2. Visual appeal and quality
-3. Suitability for target market
-
-Respond with APPROVED if the asset meets standards, or NEEDS_REVISION with specific feedback.
-Keep your response brief (1-2 sentences max).`,
-            systemContext: 'You are the AI CEO reviewing brand assets. Be concise and decisive. Either approve or request specific revisions.'
-          }
-        });
-
-        if (error) {
-          console.error('CEO review error:', error);
-          continue;
-        }
-
-        const response = (reviewData?.response || '').toUpperCase();
-        const isApproved = response.includes('APPROVED') && !response.includes('NEEDS_REVISION');
-        const comment = reviewData?.response || 'Reviewed by CEO';
-        
-        // Update the image with CEO approval status
-        setCeoReviewComments(prev => ({ ...prev, [image.id]: comment }));
-        
-        // Auto-approve or mark with feedback
-        setGeneratedImages(imgs =>
-          imgs.map(img =>
-            img.id === image.id
-              ? { 
-                  ...img, 
-                  ceoApproved: isApproved,
-                  feedback: isApproved ? undefined : comment,
-                  status: isApproved && img.userApproved ? 'approved' : 'pending_review'
-                }
-              : img
-          )
-        );
-
-        // Update database
-        if (phaseId) {
-          const { data: deliverable } = await supabase
-            .from('phase_deliverables')
-            .select('id, generated_content')
-            .eq('phase_id', phaseId)
-            .eq('deliverable_type', 'brand_assets')
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          const row = deliverable?.[0];
-          if (row) {
-            const content = (row.generated_content || {}) as Record<string, unknown>;
-            const assets = Array.isArray(content.assets) ? [...content.assets] : [];
-            
-            const assetIndex = assets.findIndex((a: Record<string, unknown>) => 
-              (a.id === image.id) || (a.name === image.name)
-            );
-            
-            if (assetIndex >= 0) {
-              assets[assetIndex] = {
-                ...assets[assetIndex],
-                ceoApproved: isApproved,
-                ceoFeedback: comment,
-              };
-            }
-
-            const allAssetsApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => 
-              a.ceoApproved === true && a.userApproved === true
-            );
-
-            await supabase
-              .from('phase_deliverables')
-              .update({
-                generated_content: { ...content, assets },
-                ceo_approved: allAssetsApproved,
-                status: allAssetsApproved ? 'approved' : 'pending_review',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', row.id);
-          }
-        }
-
-        if (isApproved) {
-          toast.success(`CEO approved: ${image.name}`);
-        } else {
-          toast.info(`CEO feedback on ${image.name}: ${comment.slice(0, 50)}...`);
-        }
+      if (deliverableError) throw deliverableError;
+      const deliverableRow = deliverables?.[0];
+      if (!deliverableRow?.id) {
+        throw new Error('Brand assets deliverable not found');
       }
 
-      setCurrentStatus('CEO review complete!');
-      setIsCeoReviewing(false);
-      
+      setCurrentStatus('CEO Agent reviewing the brand assets deliverable...');
+
+      // Use the existing CEO action endpoint (returns JSON; avoids streaming chat)
+      const { data: result, error: fnError } = await supabase.functions.invoke('ceo-agent-chat', {
+        body: {
+          action: 'review_deliverable',
+          deliverableId: deliverableRow.id,
+          projectId,
+        },
+      });
+
+      if (fnError) throw fnError;
+
+      const review = result?.review as
+        | { approved: boolean; feedback: string; qualityScore: number }
+        | undefined;
+
+      if (!review) throw new Error('CEO review did not return a result');
+
+      const approved = review.approved === true;
+      const feedback = (review.feedback || 'CEO review complete').trim();
+
+      // Attach CEO comment to all assets shown in this studio
+      setCeoReviewComments(() => {
+        const next: Record<string, string> = {};
+        generatedImages.forEach((img) => {
+          if (img.status === 'pending_review') next[img.id] = feedback;
+        });
+        return next;
+      });
+
+      setGeneratedImages((imgs) =>
+        imgs.map((img) =>
+          img.status === 'pending_review'
+            ? {
+                ...img,
+                ceoApproved: approved,
+                feedback: approved ? undefined : feedback,
+                status: approved && img.userApproved ? 'approved' : 'pending_review',
+              }
+            : img
+        )
+      );
+
+      // Persist per-asset CEO review flags into generated_content.assets for Phase 2 UI
+      const content = (deliverableRow.generated_content || {}) as Record<string, unknown>;
+      const assets = Array.isArray(content.assets) ? [...content.assets] : [];
+      const updatedAssets = assets.map((a: Record<string, unknown>) => ({
+        ...a,
+        ceoApproved: approved,
+        ceoFeedback: feedback,
+      }));
+
+      if (assets.length > 0) {
+        await supabase
+          .from('phase_deliverables')
+          .update({
+            generated_content: { ...content, assets: updatedAssets },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', deliverableRow.id);
+      }
+
+      setCurrentStatus('CEO review complete');
+      toast.success(approved ? 'CEO approved the brand assets' : 'CEO requested changes');
     } catch (error) {
       console.error('CEO review failed:', error);
-      setIsCeoReviewing(false);
       setCurrentStatus('CEO review failed');
       toast.error('CEO review failed');
+    } finally {
+      setIsCeoReviewing(false);
     }
   };
 
@@ -619,15 +586,15 @@ Keep your response brief (1-2 sentences max).`,
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg"
+            className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg"
           >
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Crown className="w-5 h-5 text-amber-500" />
-                <div className="absolute inset-0 w-5 h-5 bg-amber-500/20 rounded-full animate-ping" />
+                <Crown className="w-5 h-5 text-primary" />
+                <div className="absolute inset-0 w-5 h-5 bg-primary/20 rounded-full animate-ping" />
               </div>
               <div>
-                <p className="font-medium text-sm text-amber-600 dark:text-amber-400">CEO Agent Reviewing Assets</p>
+                <p className="font-medium text-sm">CEO Agent Reviewing Assets</p>
                 <p className="text-xs text-muted-foreground">{currentStatus}</p>
               </div>
             </div>
@@ -724,11 +691,11 @@ Keep your response brief (1-2 sentences max).`,
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center gap-3"
+            className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-3"
           >
-            <CheckCircle2 className="w-5 h-5 text-green-500" />
+            <CheckCircle2 className="w-5 h-5 text-primary" />
             <div>
-              <p className="font-medium text-sm text-green-600 dark:text-green-400">CEO Review Complete</p>
+              <p className="font-medium text-sm">CEO Review Complete</p>
               <p className="text-xs text-muted-foreground">All assets have been reviewed by the CEO. Your approval is now needed.</p>
             </div>
           </motion.div>
@@ -909,12 +876,12 @@ Keep your response brief (1-2 sentences max).`,
                       {image.status === 'pending_review' && (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-xs">
-                            <Crown className="w-3 h-3 text-amber-500" />
+                            <Crown className="w-3 h-3 text-primary" />
                             <span>CEO:</span>
                             {image.ceoApproved ? (
                               <CheckCircle2 className="w-4 h-4 text-green-500" />
                             ) : isCeoReviewing ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
                             ) : (
                               <span className="text-muted-foreground">Pending</span>
                             )}
