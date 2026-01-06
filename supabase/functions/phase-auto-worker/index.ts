@@ -25,10 +25,7 @@ const PHASE_DELIVERABLES: Record<number, { type: string; name: string; descripti
     { type: 'document', name: 'Target Audience Profile', description: 'Detailed customer personas and segments' },
   ],
   2: [
-    { type: 'document', name: 'Brand Strategy', description: 'Brand positioning, values, and voice guidelines' },
-    { type: 'design', name: 'Logo Design', description: 'Primary logo and variations using AI image generation' },
-    { type: 'design', name: 'Color Palette', description: 'Brand colors and usage guidelines' },
-    { type: 'document', name: 'Brand Guidelines', description: 'Complete brand style guide' },
+    { type: 'brand_assets', name: 'Brand Assets', description: 'AI-generated logos, icons, color palette, and social banners' },
   ],
   3: [
     { type: 'design', name: 'Website Design', description: 'UI/UX design for main website' },

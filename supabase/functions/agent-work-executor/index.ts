@@ -114,19 +114,19 @@ serve(async (req) => {
       await logAgentActivity(supabase, agentId, agentSpec.name, `Research complete: ${taskType}`, 'completed', { citationsCount: allCitations.length });
       
     } else if (effectivePhase === 2) {
-      // Phase 2: Branding - Use Fal.ai, Canva
-      workSteps.push(createWorkStep(1, 'Generating brand strategy', 'lovable-ai', 'Creating comprehensive brand strategy document'));
-      await logAgentActivity(supabase, agentId, agentSpec.name, 'Creating brand strategy', 'working', { step: 1, mcpUsed: 'lovable-ai' });
+      // Phase 2: Branding - ONLY image generation via Fal.ai, NO documentation
+      workSteps.push(createWorkStep(1, 'Generating color palette', 'falai', 'Creating unique brand color palette based on industry'));
+      await logAgentActivity(supabase, agentId, agentSpec.name, 'Generating brand color palette', 'working', { step: 1, mcpUsed: 'falai' });
       
-      workSteps.push(createWorkStep(2, 'Generating visual assets with Fal.ai', 'falai', 'Creating logo, icons, and brand visuals'));
+      workSteps.push(createWorkStep(2, 'Generating brand images with Fal.ai', 'falai', 'Creating logos, icons, and banners with brand consistency'));
       await logAgentActivity(supabase, agentId, agentSpec.name, 'Generating brand assets with Fal.ai', 'working', { step: 2, mcpUsed: 'falai' });
       
       const brandResult = await executePhase2Work(supabase, falApiKey, lovableApiKey, agentId, taskType, projectContext, inputData);
       generatedContent = brandResult.content;
       screenshots = brandResult.imageUrls || [];
       
-      workSteps.push(createWorkStep(3, `Generated ${screenshots.length} brand assets`, 'falai', 'Brand visual assets created successfully'));
-      await logAgentActivity(supabase, agentId, agentSpec.name, `Brand assets generated: ${screenshots.length} images`, 'completed', { imageCount: screenshots.length });
+      workSteps.push(createWorkStep(3, `Generated ${screenshots.length} brand images`, 'falai', 'Brand visual assets created - logos, icon, banner, color palette'));
+      await logAgentActivity(supabase, agentId, agentSpec.name, `Brand images generated: ${screenshots.length} visuals`, 'completed', { imageCount: screenshots.length });
       
     } else if (effectivePhase === 3) {
       // Phase 3: Development - Use 21st.dev, shadcn, GitHub
@@ -280,11 +280,11 @@ async function executePhase1Work(apiKey: string | undefined, agentId: string, ta
   return await callLovableAI(apiKey, systemPrompt, userPrompt);
 }
 
-// Phase 2: Brand asset generation with actual images
+// Phase 2: Brand image generation ONLY - no text documentation
 async function executePhase2Work(
   supabase: any,
   falApiKey: string | undefined,
-  lovableApiKey: string | undefined,
+  _lovableApiKey: string | undefined,
   agentId: string,
   taskType: string,
   projectContext: any,
@@ -294,9 +294,40 @@ async function executePhase2Work(
   const industry = projectContext.industry || 'Technology';
   const imageUrls: string[] = [];
 
-  // Generate brand strategy text first
-  const brandStrategyPrompt = `You are a brand strategist. Create a brand strategy for "${brandName}" in the ${industry} industry. Return valid JSON with: brandName (string), taglines (array of 3 strings), brandVoice (string), colorPalette (object with primary, secondary, accent as hex colors), typography (object with heading, body font names), brandValues (array of 3 strings).`;
-  const brandStrategy = await callLovableAI(lovableApiKey, brandStrategyPrompt, `Create brand strategy for ${brandName}`);
+  // Generate unique color palette based on industry
+  const industryPalettes: Record<string, Array<{ primary: string; secondary: string; accent: string }>> = {
+    technology: [
+      { primary: '#3B82F6', secondary: '#1E40AF', accent: '#60A5FA' },
+      { primary: '#6366F1', secondary: '#4338CA', accent: '#A5B4FC' },
+    ],
+    finance: [
+      { primary: '#059669', secondary: '#047857', accent: '#34D399' },
+      { primary: '#0F766E', secondary: '#115E59', accent: '#5EEAD4' },
+    ],
+    health: [
+      { primary: '#10B981', secondary: '#059669', accent: '#6EE7B7' },
+      { primary: '#14B8A6', secondary: '#0D9488', accent: '#5EEAD4' },
+    ],
+    creative: [
+      { primary: '#EC4899', secondary: '#BE185D', accent: '#F9A8D4' },
+      { primary: '#A855F7', secondary: '#7C3AED', accent: '#D8B4FE' },
+    ],
+    business: [
+      { primary: '#3B82F6', secondary: '#1E40AF', accent: '#93C5FD' },
+      { primary: '#0EA5E9', secondary: '#0284C7', accent: '#7DD3FC' },
+    ],
+  };
+
+  const lowerIndustry = industry.toLowerCase();
+  let palettes = industryPalettes.business;
+  for (const [key, val] of Object.entries(industryPalettes)) {
+    if (lowerIndustry.includes(key)) {
+      palettes = val;
+      break;
+    }
+  }
+  const hash = brandName.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  const colorPalette = palettes[(hash + Date.now()) % palettes.length];
 
   // Generate actual images using Fal.ai
   if (falApiKey) {
@@ -306,11 +337,11 @@ async function executePhase2Work(
       try {
         let prompt = '';
         if (imageType === 'logo') {
-          prompt = `Professional minimalist logo design for "${brandName}", ${industry} company, clean modern style, vector-like, white background, corporate branding`;
+          prompt = `Professional minimalist logo design for "${brandName}", ${industry} company, clean modern style, vector-like, white background, using colors ${colorPalette.primary} and ${colorPalette.secondary}, corporate branding`;
         } else if (imageType === 'icon') {
-          prompt = `App icon design for "${brandName}", ${industry}, modern gradient, rounded corners, simple iconography`;
+          prompt = `App icon design for "${brandName}", ${industry}, modern gradient using colors ${colorPalette.primary} to ${colorPalette.secondary}, rounded corners, simple iconography`;
         } else {
-          prompt = `Social media banner for "${brandName}", ${industry} business, professional gradient background, modern typography style`;
+          prompt = `Social media banner for "${brandName}", ${industry} business, professional gradient from ${colorPalette.primary} to ${colorPalette.secondary}, modern typography style`;
         }
 
         console.log(`[Phase2] Generating ${imageType} image with Fal.ai...`);
@@ -347,14 +378,20 @@ async function executePhase2Work(
     console.warn('[Phase2] FAL_KEY not configured, skipping image generation');
   }
 
+  // Content is ONLY images and color palette - NO text documentation
   const content = {
-    ...brandStrategy,
+    colorPalette,
     assets: imageUrls.map((url, i) => ({
-      type: ['logo', 'icon', 'social_banner'][i] || 'asset',
+      id: `asset-${i}`,
+      type: ['logo', 'icon', 'banner'][i] || 'asset',
+      name: ['Primary Logo', 'App Icon', 'Social Banner'][i] || `Asset ${i + 1}`,
       imageUrl: url,
+      ceoApproved: false,
+      userApproved: false,
       generatedAt: new Date().toISOString(),
     })),
     primaryLogo: imageUrls[0] ? { imageUrl: imageUrls[0] } : null,
+    generatedAt: new Date().toISOString(),
   };
 
   return { content, imageUrls };
