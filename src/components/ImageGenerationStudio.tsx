@@ -19,7 +19,8 @@ import {
   Zap,
   Clock,
   Server,
-  Upload
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ interface GeneratedImage {
   type: 'logo' | 'icon' | 'banner' | 'color_palette' | 'typography';
   name: string;
   imageUrl?: string;
-  status: 'pending' | 'generating' | 'uploading' | 'pending_review' | 'approved' | 'rejected';
+  status: 'pending' | 'generating' | 'uploading' | 'review' | 'approved' | 'rejected';
   progress: number;
   ceoApproved?: boolean;
   userApproved?: boolean;
@@ -87,7 +88,8 @@ export const ImageGenerationStudio = ({
   const [streamEvents, setStreamEvents] = useState<StreamEvent[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [ceoReviewComments, setCeoReviewComments] = useState<Record<string, string>>({});
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Timer for elapsed time
@@ -145,12 +147,15 @@ export const ImageGenerationStudio = ({
             const ceoFeedback = typeof asset.ceoFeedback === 'string' ? asset.ceoFeedback : undefined;
             if (ceoFeedback) comments[id] = ceoFeedback;
 
+            // Use 'review' instead of 'pending_review' for valid DB status
+            const derivedStatus: GeneratedImage['status'] = assetUserApproved ? 'approved' : 'review';
+
             assets.push({
               id,
               type: (asset.type as GeneratedImage['type']) || 'icon',
               name: (asset.name as string) || `Asset ${idx + 1}`,
               imageUrl: asset.imageUrl as string,
-              status: assetCeoApproved && assetUserApproved ? 'approved' : 'pending_review',
+              status: derivedStatus,
               progress: 100,
               ceoApproved: assetCeoApproved,
               userApproved: assetUserApproved,
@@ -185,8 +190,8 @@ export const ImageGenerationStudio = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -196,147 +201,178 @@ export const ImageGenerationStudio = ({
     setOverallProgress(0);
     setCurrentStatus('Connecting to generation service...');
     setStreamEvents([]);
+    setConnectionError(false);
     
     // Initialize assets as pending
     const initialAssets: GeneratedImage[] = [
+      { id: 'palette-1', type: 'color_palette', name: 'Color Palette', status: 'pending', progress: 0 },
       { id: 'logo-1', type: 'logo', name: 'Primary Logo', status: 'pending', progress: 0 },
       { id: 'logo-2', type: 'logo', name: 'Logo Variant', status: 'pending', progress: 0 },
       { id: 'icon-1', type: 'icon', name: 'App Icon', status: 'pending', progress: 0 },
       { id: 'banner-1', type: 'banner', name: 'Social Banner', status: 'pending', progress: 0 },
-      { id: 'palette-1', type: 'color_palette', name: 'Color Palette', status: 'pending', progress: 0 },
     ];
     setGeneratedImages(initialAssets);
 
-    // Get Supabase URL from the client
+    // Get auth token for authenticated SSE request
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const streamUrl = `${supabaseUrl}/functions/v1/brand-assets-stream?projectId=${projectId}${phaseId ? `&phaseId=${phaseId}` : ''}`;
 
     try {
-      const eventSource = new EventSource(streamUrl);
-      eventSourceRef.current = eventSource;
+      // Use fetch with streaming instead of EventSource to send auth headers
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data: StreamEvent = JSON.parse(event.data);
-          setStreamEvents(prev => [...prev.slice(-20), data]); // Keep last 20 events
+      const response = await fetch(streamUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken || supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          'Accept': 'text/event-stream',
+        },
+        signal: abortController.signal,
+      });
 
-          switch (data.type) {
-            case 'start':
-              setCurrentStatus(data.message || 'Starting generation...');
-              break;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-            case 'context_loaded':
-            case 'brand_context_loaded':
-              setCurrentStatus(data.message || 'Loading brand context...');
-              break;
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
 
-            case 'generating':
-              setCurrentStatus(data.message || `Generating ${data.name}...`);
-              setCurrentModel(data.model || '');
-              setOverallProgress(data.progress || 0);
-              
-              // Update specific asset to generating
-              setGeneratedImages(prev => prev.map(img =>
-                img.id === data.assetId
-                  ? { ...img, status: 'generating' as const, model: data.model }
-                  : img
-              ));
-              break;
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-            case 'api_call':
-              setCurrentStatus(data.message || 'Calling AI API...');
-              break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-            case 'api_response':
-              setCurrentStatus(data.message || 'Processing response...');
-              break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-            case 'uploading':
-              setCurrentStatus(data.message || 'Uploading to storage...');
-              setGeneratedImages(prev => prev.map(img =>
-                img.id === data.assetId
-                  ? { ...img, status: 'uploading' as const }
-                  : img
-              ));
-              break;
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data: StreamEvent = JSON.parse(line.slice(6));
+              setStreamEvents(prev => [...prev.slice(-20), data]);
 
-            case 'asset_complete':
-              setOverallProgress(data.progress || 0);
-              setCurrentStatus(data.message || `${data.name} complete!`);
-              
-              setGeneratedImages(prev => prev.map(img =>
-                img.id === data.assetId
-                  ? {
-                      ...img,
-                      status: 'pending_review' as const,
-                      progress: 100,
-                      imageUrl: data.imageUrl,
-                      colorData: data.colorData,
-                      model: data.model,
-                      generatedAt: data.timestamp,
-                    }
-                  : img
-              ));
-              break;
+              switch (data.type) {
+                case 'start':
+                  setCurrentStatus(data.message || 'Starting generation...');
+                  break;
 
-            case 'asset_error':
-              setGeneratedImages(prev => prev.map(img =>
-                img.id === data.assetId
-                  ? { ...img, status: 'rejected' as const, feedback: data.message }
-                  : img
-              ));
-              break;
+                case 'context_loaded':
+                case 'brand_context_loaded':
+                case 'palette_generated':
+                  setCurrentStatus(data.message || 'Loading brand context...');
+                  break;
 
-            case 'saving':
-              setCurrentStatus(data.message || 'Saving to database...');
-              break;
+                case 'generating':
+                  setCurrentStatus(data.message || `Generating ${data.name}...`);
+                  setCurrentModel(data.model || '');
+                  setOverallProgress(data.progress || 0);
+                  
+                  setGeneratedImages(prev => prev.map(img =>
+                    img.id === data.assetId
+                      ? { ...img, status: 'generating' as const, model: data.model }
+                      : img
+                  ));
+                  break;
 
-            case 'complete':
-              setIsGenerating(false);
-              setOverallProgress(100);
-              setCurrentStatus('All assets generated! Starting CEO review...');
-              setCurrentModel('');
-              eventSource.close();
-              toast.success('Brand assets generated! CEO is now reviewing...');
-              // Auto-trigger CEO review
-              setTimeout(() => {
-                triggerCeoReview();
-              }, 1000);
-              break;
+                case 'api_call':
+                  setCurrentStatus(data.message || 'Calling AI API...');
+                  break;
 
-            case 'error':
-              setIsGenerating(false);
-              setCurrentStatus(`Error: ${data.message}`);
-              eventSource.close();
-              toast.error(data.message || 'Generation failed');
-              break;
+                case 'api_response':
+                  setCurrentStatus(data.message || 'Processing response...');
+                  break;
+
+                case 'uploading':
+                  setCurrentStatus(data.message || 'Uploading to storage...');
+                  setGeneratedImages(prev => prev.map(img =>
+                    img.id === data.assetId
+                      ? { ...img, status: 'uploading' as const }
+                      : img
+                  ));
+                  break;
+
+                case 'asset_complete':
+                  setOverallProgress(data.progress || 0);
+                  setCurrentStatus(data.message || `${data.name} complete!`);
+                  
+                  setGeneratedImages(prev => prev.map(img =>
+                    img.id === data.assetId
+                      ? {
+                          ...img,
+                          status: 'review' as const,
+                          progress: 100,
+                          imageUrl: data.imageUrl,
+                          colorData: data.colorData,
+                          model: data.model,
+                          generatedAt: data.timestamp,
+                        }
+                      : img
+                  ));
+                  break;
+
+                case 'asset_error':
+                  setGeneratedImages(prev => prev.map(img =>
+                    img.id === data.assetId
+                      ? { ...img, status: 'rejected' as const, feedback: data.message }
+                      : img
+                  ));
+                  break;
+
+                case 'saving':
+                  setCurrentStatus(data.message || 'Saving to database...');
+                  break;
+
+                case 'complete':
+                  setIsGenerating(false);
+                  setOverallProgress(100);
+                  setCurrentStatus('All assets generated! Starting CEO review...');
+                  setCurrentModel('');
+                  toast.success('Brand assets generated! CEO is now reviewing...');
+                  // Auto-trigger CEO review
+                  setTimeout(() => {
+                    triggerCeoReview();
+                  }, 1000);
+                  break;
+
+                case 'error':
+                  setIsGenerating(false);
+                  setCurrentStatus(`Error: ${data.message}`);
+                  setConnectionError(true);
+                  toast.error(data.message || 'Generation failed');
+                  break;
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e);
+            }
           }
-        } catch (e) {
-          console.error('Failed to parse SSE event:', e);
         }
-      };
+      }
 
-      eventSource.onerror = (error) => {
-        console.error('SSE Error:', error);
+    } catch (error: any) {
+      console.error('Stream error:', error);
+      if (error.name !== 'AbortError') {
         setIsGenerating(false);
-        setCurrentStatus('Connection error');
-        eventSource.close();
+        setCurrentStatus('Connection error - click Retry to try again');
+        setConnectionError(true);
         toast.error('Connection to generation service lost');
-      };
-
-    } catch (error) {
-      console.error('Failed to start generation:', error);
-      setIsGenerating(false);
-      toast.error('Failed to start generation');
+      }
     }
   };
 
   const handleApprove = async (image: GeneratedImage, approver: 'ceo' | 'user') => {
     const updatedCeoApproved = approver === 'ceo' ? true : (image.ceoApproved || false);
     const updatedUserApproved = approver === 'user' ? true : (image.userApproved || false);
-    const fullyApproved = updatedCeoApproved && updatedUserApproved;
 
-    // Update local state
+    // Update local state - user approval determines if fully approved
     setGeneratedImages((images) =>
       images.map((img) =>
         img.id === image.id
@@ -344,7 +380,7 @@ export const ImageGenerationStudio = ({
               ...img,
               ceoApproved: updatedCeoApproved,
               userApproved: updatedUserApproved,
-              status: fullyApproved ? 'approved' : img.status,
+              status: updatedUserApproved ? 'approved' : 'review',
             }
           : img
       )
@@ -352,8 +388,7 @@ export const ImageGenerationStudio = ({
 
     toast.success(`${approver === 'ceo' ? 'CEO' : 'You'} approved ${image.name}`);
 
-    // Persist approval on the Phase 2 brand_assets deliverable.
-    // IMPORTANT: Users should not write deliverable-level CEO flags.
+    // Persist approval on the Phase 2 brand_assets deliverable
     if (phaseId) {
       try {
         const { data: deliverables, error: fetchError } = await supabase
@@ -393,25 +428,19 @@ export const ImageGenerationStudio = ({
           assets.push(nextAsset);
         }
 
-        const allCeoApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => a.ceoApproved === true);
         const allUserApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => a.userApproved === true);
-        const allFullyApproved =
-          assets.length > 0 &&
-          assets.every((a: Record<string, unknown>) => a.ceoApproved === true && a.userApproved === true);
 
+        // User-only gating: deliverable is approved when all assets are user-approved
         const updatePayload: Record<string, unknown> = {
           generated_content: { ...content, assets },
-          status: allFullyApproved ? 'approved' : 'pending_review',
+          status: allUserApproved ? 'approved' : 'review',
+          user_approved: allUserApproved,
           updated_at: new Date().toISOString(),
         };
 
-        // Only write the user's approval state from the user UI.
-        if (approver === 'user') {
-          updatePayload.user_approved = allUserApproved;
-        }
-
-        // If a CEO UI ever calls this, it can write CEO approval.
+        // Also update ceo_approved if this is a CEO action
         if (approver === 'ceo') {
+          const allCeoApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => a.ceoApproved === true);
           updatePayload.ceo_approved = allCeoApproved;
         }
 
@@ -446,12 +475,11 @@ export const ImageGenerationStudio = ({
   };
 
   const handleRegenerate = async (image: GeneratedImage) => {
-    // For now, trigger a full regeneration
     toast.info(`Regenerating ${image.name}...`);
     startGeneration();
   };
 
-  // CEO Review function - review the saved Phase 2 brand-assets deliverable (no extra docs)
+  // CEO Review function
   const triggerCeoReview = async () => {
     if (!phaseId) {
       toast.error('Missing phase context for CEO review');
@@ -462,7 +490,6 @@ export const ImageGenerationStudio = ({
     setCurrentStatus('Preparing CEO review...');
 
     try {
-      // Find latest brand_assets deliverable for this phase
       const { data: deliverables, error: deliverableError } = await supabase
         .from('phase_deliverables')
         .select('id, generated_content')
@@ -479,7 +506,6 @@ export const ImageGenerationStudio = ({
 
       setCurrentStatus('CEO Agent reviewing the brand assets deliverable...');
 
-      // Use the existing CEO action endpoint (returns JSON; avoids streaming chat)
       const { data: result, error: fnError } = await supabase.functions.invoke('ceo-agent-chat', {
         body: {
           action: 'review_deliverable',
@@ -503,25 +529,25 @@ export const ImageGenerationStudio = ({
       setCeoReviewComments(() => {
         const next: Record<string, string> = {};
         generatedImages.forEach((img) => {
-          if (img.status === 'pending_review') next[img.id] = feedback;
+          if (img.status === 'review') next[img.id] = feedback;
         });
         return next;
       });
 
       setGeneratedImages((imgs) =>
         imgs.map((img) =>
-          img.status === 'pending_review'
+          img.status === 'review'
             ? {
                 ...img,
                 ceoApproved: approved,
                 feedback: approved ? undefined : feedback,
-                status: approved && img.userApproved ? 'approved' : 'pending_review',
+                status: img.userApproved ? 'approved' : 'review',
               }
             : img
         )
       );
 
-      // Persist per-asset CEO review flags into generated_content.assets for Phase 2 UI
+      // Persist per-asset CEO review flags into generated_content.assets
       const content = (deliverableRow.generated_content || {}) as Record<string, unknown>;
       const assets = Array.isArray(content.assets) ? [...content.assets] : [];
       const updatedAssets = assets.map((a: Record<string, unknown>) => ({
@@ -535,6 +561,7 @@ export const ImageGenerationStudio = ({
           .from('phase_deliverables')
           .update({
             generated_content: { ...content, assets: updatedAssets },
+            ceo_approved: approved,
             updated_at: new Date().toISOString(),
           })
           .eq('id', deliverableRow.id);
@@ -561,7 +588,7 @@ export const ImageGenerationStudio = ({
     switch (status) {
       case 'generating': return <Loader2 className="w-4 h-4 animate-spin" />;
       case 'uploading': return <Upload className="w-4 h-4 animate-pulse" />;
-      case 'pending_review': return <Clock className="w-4 h-4" />;
+      case 'review': return <Clock className="w-4 h-4" />;
       case 'approved': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
       case 'rejected': return <XCircle className="w-4 h-4 text-red-500" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
@@ -572,7 +599,7 @@ export const ImageGenerationStudio = ({
     switch (status) {
       case 'generating': return 'bg-blue-500';
       case 'uploading': return 'bg-purple-500';
-      case 'pending_review': return 'bg-yellow-500';
+      case 'review': return 'bg-yellow-500';
       case 'approved': return 'bg-green-500';
       case 'rejected': return 'bg-red-500';
       default: return 'bg-muted';
@@ -589,6 +616,11 @@ export const ImageGenerationStudio = ({
       default: return <Image className="w-4 h-4" />;
     }
   };
+
+  // Check if there are assets that can be generated or retried
+  const hasNoAssets = generatedImages.length === 0;
+  const hasPendingOrFailed = generatedImages.some(img => img.status === 'pending' || img.status === 'rejected');
+  const showGenerateButton = !isGenerating && (hasNoAssets || connectionError || hasPendingOrFailed);
 
   return (
     <Card className="border-primary/20">
@@ -612,10 +644,10 @@ export const ImageGenerationStudio = ({
                 CEO Review
               </Button>
             )}
-            {!isGenerating && generatedImages.length === 0 && (
+            {showGenerateButton && (
               <Button onClick={startGeneration} className="gap-2">
-                <Sparkles className="w-4 h-4" />
-                Generate Assets
+                {connectionError ? <RefreshCw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                {connectionError ? 'Retry Generation' : hasNoAssets ? 'Generate Assets' : 'Regenerate'}
               </Button>
             )}
           </div>
@@ -623,6 +655,23 @@ export const ImageGenerationStudio = ({
       </CardHeader>
 
       <CardContent>
+        {/* Connection Error Alert */}
+        {connectionError && !isGenerating && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg"
+          >
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              <div>
+                <p className="font-medium text-sm">Generation failed</p>
+                <p className="text-xs text-muted-foreground">{currentStatus}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* CEO Reviewing Status */}
         {isCeoReviewing && (
           <motion.div
@@ -683,13 +732,13 @@ export const ImageGenerationStudio = ({
 
             {/* Generation Timeline */}
             <div className="grid grid-cols-5 gap-2">
-              {generatedImages.map((img, idx) => (
+              {generatedImages.map((img) => (
                 <div
                   key={img.id}
                   className={`p-2 rounded-md text-center transition-all ${
                     img.status === 'generating' 
                       ? 'bg-primary/20 ring-2 ring-primary' 
-                      : img.status === 'pending_review' 
+                      : img.status === 'review' 
                         ? 'bg-green-500/20' 
                         : img.status === 'uploading'
                           ? 'bg-purple-500/20'
@@ -700,348 +749,215 @@ export const ImageGenerationStudio = ({
                     {getStatusIcon(img.status)}
                   </div>
                   <p className="text-xs truncate">{img.name}</p>
-                  {img.model && img.status !== 'pending' && (
-                    <p className="text-[10px] text-muted-foreground truncate">{img.model}</p>
-                  )}
                 </div>
               ))}
             </div>
-
-            {/* Live Event Log */}
-            <div className="bg-background/50 rounded-md p-2 max-h-24 overflow-y-auto">
-              <div className="space-y-1">
-                {streamEvents.slice(-5).map((event, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <Zap className="w-3 h-3 text-primary flex-shrink-0" />
-                    <span className="text-muted-foreground truncate">{event.message}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
           </motion.div>
         )}
 
-        {/* CEO Review Complete Banner */}
-        {!isGenerating && !isCeoReviewing && generatedImages.length > 0 && 
-         generatedImages.filter(img => img.imageUrl).every(img => img.ceoApproved) && 
-         generatedImages.some(img => !img.userApproved) && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-3"
-          >
-            <CheckCircle2 className="w-5 h-5 text-primary" />
-            <div>
-              <p className="font-medium text-sm">CEO Review Complete</p>
-              <p className="text-xs text-muted-foreground">All assets have been reviewed by the CEO. Your approval is now needed.</p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Generated Images Grid */}
-        <ScrollArea className="h-[500px]">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Generated Assets Grid */}
+        {generatedImages.length > 0 && !isGenerating && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <AnimatePresence>
               {generatedImages.map((image, index) => (
                 <motion.div
                   key={image.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: index * 0.1 }}
                   className="relative group"
                 >
-                  <Card className={`overflow-hidden transition-all ${
-                    image.status === 'approved' ? 'ring-2 ring-green-500' :
-                    image.status === 'rejected' ? 'ring-2 ring-red-500' : 
-                    image.status === 'generating' ? 'ring-2 ring-primary animate-pulse' : ''
-                  }`}>
-                    {/* Image Preview Area */}
-                    <div className="aspect-square bg-muted relative">
-                      {image.status === 'generating' || image.status === 'uploading' ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-primary/5 to-primary/10">
-                          <div className="relative">
-                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                            <div className="absolute inset-0 w-10 h-10 bg-primary/10 rounded-full animate-ping" />
-                          </div>
-                          <div className="text-center px-4">
-                            <p className="text-sm font-medium">
-                              {image.status === 'uploading' ? 'Uploading...' : 'Generating...'}
-                            </p>
-                            {image.model && (
-                              <p className="text-xs text-muted-foreground">{image.model}</p>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Card 
+                        className="cursor-pointer hover:border-primary/50 transition-all overflow-hidden"
+                        onClick={() => setSelectedImage(image)}
+                      >
+                        {/* Image Preview */}
+                        <div className="aspect-square bg-muted relative">
+                          {image.type === 'color_palette' && image.colorData ? (
+                            <div className="w-full h-full grid grid-cols-3">
+                              <div style={{ backgroundColor: image.colorData.primary }} />
+                              <div style={{ backgroundColor: image.colorData.secondary }} />
+                              <div style={{ backgroundColor: image.colorData.accent }} />
+                            </div>
+                          ) : image.imageUrl ? (
+                            <img
+                              src={image.imageUrl}
+                              alt={image.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              {getTypeIcon(image.type)}
+                            </div>
+                          )}
+                          
+                          {/* Status Badge */}
+                          <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${getStatusColor(image.status)}`} />
+                          
+                          {/* Approval Badges */}
+                          <div className="absolute bottom-2 left-2 flex gap-1">
+                            {image.ceoApproved && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0">
+                                <Crown className="w-3 h-3" />
+                              </Badge>
+                            )}
+                            {image.userApproved && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0">
+                                <User className="w-3 h-3" />
+                              </Badge>
                             )}
                           </div>
-                        </div>
-                      ) : image.status === 'pending' ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/50">
-                          <Clock className="w-8 h-8 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">Waiting...</span>
-                        </div>
-                      ) : image.type === 'color_palette' && image.colorData ? (
-                        <div className="absolute inset-0 flex items-center justify-center p-4">
-                          <div className="flex gap-2 w-full">
-                            <div 
-                              className="flex-1 h-20 rounded-lg shadow-inner" 
-                              style={{ backgroundColor: image.colorData.primary }}
-                            />
-                            <div 
-                              className="flex-1 h-20 rounded-lg shadow-inner" 
-                              style={{ backgroundColor: image.colorData.secondary }}
-                            />
-                            <div 
-                              className="flex-1 h-20 rounded-lg shadow-inner" 
-                              style={{ backgroundColor: image.colorData.accent }}
-                            />
+
+                          {/* Hover overlay */}
+                          <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Maximize2 className="w-6 h-6" />
                           </div>
                         </div>
-                      ) : image.imageUrl ? (
-                        <motion.img 
-                          initial={{ opacity: 0, filter: 'blur(10px)' }}
-                          animate={{ opacity: 1, filter: 'blur(0px)' }}
-                          transition={{ duration: 0.5 }}
-                          src={image.imageUrl} 
-                          alt={image.name}
-                          className="w-full h-full object-contain p-4"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="p-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+
+                        {/* Asset Info */}
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-2 mb-1">
                             {getTypeIcon(image.type)}
+                            <span className="text-sm font-medium truncate">{image.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {getStatusIcon(image.status)}
+                            <span className="capitalize">{image.status === 'review' ? 'Pending Review' : image.status}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          {getTypeIcon(image.type)}
+                          {image.name}
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      <div className="space-y-4">
+                        {/* Large Image Preview */}
+                        <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                          {image.type === 'color_palette' && image.colorData ? (
+                            <div className="w-full h-full grid grid-cols-3">
+                              <div style={{ backgroundColor: image.colorData.primary }} className="flex items-end justify-center pb-4">
+                                <span className="bg-background/80 px-2 py-1 rounded text-xs">{image.colorData.primary}</span>
+                              </div>
+                              <div style={{ backgroundColor: image.colorData.secondary }} className="flex items-end justify-center pb-4">
+                                <span className="bg-background/80 px-2 py-1 rounded text-xs">{image.colorData.secondary}</span>
+                              </div>
+                              <div style={{ backgroundColor: image.colorData.accent }} className="flex items-end justify-center pb-4">
+                                <span className="bg-background/80 px-2 py-1 rounded text-xs">{image.colorData.accent}</span>
+                              </div>
+                            </div>
+                          ) : image.imageUrl ? (
+                            <img
+                              src={image.imageUrl}
+                              alt={image.name}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Loader2 className="w-8 h-8 animate-spin" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CEO Comment */}
+                        {ceoReviewComments[image.id] && (
+                          <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Crown className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">CEO Feedback</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{ceoReviewComments[image.id]}</p>
+                          </div>
+                        )}
+
+                        {/* Asset Details */}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Status:</span>
+                            <Badge className={`ml-2 ${getStatusColor(image.status)}`}>
+                              {image.status === 'review' ? 'Pending Review' : image.status}
+                            </Badge>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Model:</span>
+                            <span className="ml-2">{image.model || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">CEO Approved:</span>
+                            <span className="ml-2">{image.ceoApproved ? '✓' : '✗'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Your Approval:</span>
+                            <span className="ml-2">{image.userApproved ? '✓' : '✗'}</span>
                           </div>
                         </div>
-                      )}
 
-                      {/* Status Badge */}
-                      <div className="absolute top-2 right-2">
-                        <Badge className={`${getStatusColor(image.status)} text-white text-xs gap-1`}>
-                          {getStatusIcon(image.status)}
-                          {image.status === 'generating' ? 'Generating' :
-                           image.status === 'uploading' ? 'Uploading' :
-                           image.status === 'pending' ? 'Waiting' :
-                           image.status === 'pending_review' ? 'Review' :
-                           image.status === 'approved' ? 'Approved' : 'Redo'}
-                        </Badge>
-                      </div>
-
-                      {/* Model Badge */}
-                      {image.model && image.status === 'pending_review' && (
-                        <div className="absolute top-2 left-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {image.model}
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Hover Actions */}
-                      {image.status !== 'generating' && image.status !== 'pending' && image.status !== 'uploading' && (
-                        <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="secondary">
-                                <Maximize2 className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl" aria-describedby={undefined}>
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                  {image.name}
-                                  {image.model && (
-                                    <Badge variant="outline" className="text-xs font-normal">
-                                      {image.model}
-                                    </Badge>
-                                  )}
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-                                {image.imageUrl ? (
-                                  <img src={image.imageUrl} alt={image.name} className="max-w-full max-h-full object-contain" />
-                                ) : image.type === 'color_palette' && image.colorData ? (
-                                  <div className="flex gap-4 w-full p-8">
-                                    <div className="flex-1 flex flex-col items-center gap-2">
-                                      <div 
-                                        className="w-full h-32 rounded-lg shadow-lg" 
-                                        style={{ backgroundColor: image.colorData.primary }}
-                                      />
-                                      <span className="text-sm font-mono">{image.colorData.primary}</span>
-                                      <span className="text-xs text-muted-foreground">Primary</span>
-                                    </div>
-                                    <div className="flex-1 flex flex-col items-center gap-2">
-                                      <div 
-                                        className="w-full h-32 rounded-lg shadow-lg" 
-                                        style={{ backgroundColor: image.colorData.secondary }}
-                                      />
-                                      <span className="text-sm font-mono">{image.colorData.secondary}</span>
-                                      <span className="text-xs text-muted-foreground">Secondary</span>
-                                    </div>
-                                    <div className="flex-1 flex flex-col items-center gap-2">
-                                      <div 
-                                        className="w-full h-32 rounded-lg shadow-lg" 
-                                        style={{ backgroundColor: image.colorData.accent }}
-                                      />
-                                      <span className="text-sm font-mono">{image.colorData.accent}</span>
-                                      <span className="text-xs text-muted-foreground">Accent</span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="p-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-                                    {getTypeIcon(image.type)}
-                                  </div>
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          {!image.userApproved && (
+                            <Button
+                              onClick={() => handleApprove(image, 'user')}
+                              className="flex-1 gap-2"
+                            >
+                              <ThumbsUp className="w-4 h-4" />
+                              Approve
+                            </Button>
+                          )}
+                          {image.userApproved && (
+                            <Button variant="outline" className="flex-1 gap-2" disabled>
+                              <CheckCircle2 className="w-4 h-4" />
+                              Approved
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            onClick={() => handleRegenerate(image)}
+                            className="gap-2"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            Regenerate
+                          </Button>
                           {image.imageUrl && (
-                            <Button size="sm" variant="secondary" asChild>
-                              <a href={image.imageUrl} download={`${image.name}.png`}>
+                            <Button
+                              variant="outline"
+                              asChild
+                            >
+                              <a href={image.imageUrl} download={`${image.name}.png`} target="_blank">
                                 <Download className="w-4 h-4" />
                               </a>
                             </Button>
                           )}
                         </div>
-                      )}
-                    </div>
-
-                    {/* Asset Info */}
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        {getTypeIcon(image.type)}
-                        <span className="font-medium text-sm truncate">{image.name}</span>
                       </div>
-
-                      {/* Approval Status */}
-                      {image.status === 'pending_review' && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Crown className="w-3 h-3 text-primary" />
-                            <span>CEO:</span>
-                            {image.ceoApproved ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : isCeoReviewing ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                            ) : (
-                              <span className="text-muted-foreground">Pending</span>
-                            )}
-                          </div>
-                          {/* CEO Comment */}
-                          {ceoReviewComments[image.id] && (
-                            <p className="text-xs text-muted-foreground italic pl-5 line-clamp-2">
-                              "{ceoReviewComments[image.id].slice(0, 100)}..."
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 text-xs">
-                            <User className="w-3 h-3" />
-                            <span>You:</span>
-                            {image.userApproved ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <span className="text-muted-foreground">Pending</span>
-                            )}
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 mt-3">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="flex-1 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleApprove(image, 'user')}
-                              disabled={image.userApproved}
-                            >
-                              <ThumbsUp className="w-3 h-3" />
-                              Approve
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="flex-1 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                setSelectedImage(image);
-                              }}
-                            >
-                              <ThumbsDown className="w-3 h-3" />
-                              Redo
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rejected State */}
-                      {image.status === 'rejected' && (
-                        <div className="space-y-2">
-                          <p className="text-xs text-red-500">{image.feedback || 'Marked for regeneration'}</p>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="w-full gap-1"
-                            onClick={() => handleRegenerate(image)}
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                    </DialogContent>
+                  </Dialog>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
+        )}
 
-          {/* Empty State */}
-          {generatedImages.length === 0 && !isGenerating && (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="p-4 rounded-full bg-primary/10 mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">No Assets Generated Yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Click "Generate Assets" to create your brand visuals with AI
-              </p>
-              <Button onClick={startGeneration} className="gap-2">
-                <Sparkles className="w-4 h-4" />
-                Generate Assets
-              </Button>
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Feedback Dialog */}
-        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-          <DialogContent aria-describedby={undefined}>
-            <DialogHeader>
-              <DialogTitle>Request Changes for {selectedImage?.name}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Describe what changes you'd like to see..."
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                rows={4}
-              />
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setSelectedImage(null)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={() => {
-                    if (selectedImage) {
-                      handleReject(selectedImage);
-                      setSelectedImage(null);
-                    }
-                  }}
-                >
-                  Submit Feedback
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Empty State */}
+        {generatedImages.length === 0 && !isGenerating && (
+          <div className="text-center py-12">
+            <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="text-lg font-medium mb-2">No assets generated yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Click "Generate Assets" to create logos, icons, and banners for your brand
+            </p>
+            <Button onClick={startGeneration} className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              Generate Brand Assets
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

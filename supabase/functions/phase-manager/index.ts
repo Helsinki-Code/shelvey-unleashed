@@ -34,7 +34,8 @@ serve(async (req) => {
         }
 
         const allDeliverables = phase.phase_deliverables || [];
-        const approvedCount = allDeliverables.filter((d: any) => d.status === 'approved').length;
+        // User-only gating: count deliverables where user_approved = true
+        const approvedCount = allDeliverables.filter((d: any) => d.user_approved === true).length;
         const totalCount = allDeliverables.length;
         const isComplete = totalCount > 0 && approvedCount === totalCount;
 
@@ -63,18 +64,17 @@ serve(async (req) => {
           throw new Error('No active phase found');
         }
 
-        // Check completion - both ceo_approved and user_approved must be true
+        // Check completion - USER-ONLY GATING: only user_approved must be true
         const { data: deliverables } = await supabase
           .from('phase_deliverables')
           .select('status, ceo_approved, user_approved')
           .eq('phase_id', activePhase.id);
 
-        const allApproved = deliverables?.every((d: any) => 
-          d.status === 'approved' && d.ceo_approved === true && d.user_approved === true
-        );
+        // User-only approval gating - CEO is advisory only
+        const allApproved = deliverables?.every((d: any) => d.user_approved === true);
 
         if (!allApproved) {
-          throw new Error('All deliverables must be approved before advancing');
+          throw new Error('All deliverables must be approved by you before advancing');
         }
 
         // Complete current phase
@@ -87,7 +87,6 @@ serve(async (req) => {
           .eq('id', activePhase.id);
 
         // BACKEND PROCESS: Trigger Phase Manager to compile consolidated report
-        // This happens automatically after phase approval - not visible to user
         console.log('[PHASE-MANAGER] Triggering consolidated report generation...');
         try {
           await fetch(`${supabaseUrl}/functions/v1/phase-consolidated-report`, {
@@ -217,7 +216,8 @@ serve(async (req) => {
 
         const phaseProgress = allPhases?.map((p: any) => {
           const delivs = p.phase_deliverables || [];
-          const approved = delivs.filter((d: any) => d.status === 'approved').length;
+          // User-only gating for progress calculation
+          const approved = delivs.filter((d: any) => d.user_approved === true).length;
           return {
             phaseNumber: p.phase_number,
             phaseName: p.phase_name,
