@@ -12,15 +12,89 @@ interface AssetConfig {
   name: string;
   tool: string;
   model: string;
+  usesPreviousImage?: boolean; // Chain from previous generated image
 }
 
+// Order matters: logo first, then others use logo as reference for consistency
 const ASSETS_TO_GENERATE: AssetConfig[] = [
+  { id: 'palette-1', type: 'color_palette', name: 'Color Palette', tool: 'generate_color_palette', model: 'AI Generated' },
   { id: 'logo-1', type: 'logo', name: 'Primary Logo', tool: 'generate_logo', model: 'Seedream 4.5' },
-  { id: 'logo-2', type: 'logo', name: 'Logo Variant', tool: 'generate_logo', model: 'Seedream 4.5' },
-  { id: 'icon-1', type: 'icon', name: 'App Icon', tool: 'generate_image', model: 'Seedream 4.5' },
+  { id: 'logo-2', type: 'logo', name: 'Logo Variant', tool: 'image_to_image', model: 'Ideogram Remix', usesPreviousImage: true },
+  { id: 'icon-1', type: 'icon', name: 'App Icon', tool: 'image_to_image', model: 'Ideogram Remix', usesPreviousImage: true },
   { id: 'banner-1', type: 'banner', name: 'Social Banner', tool: 'generate_social_banner', model: 'Ideogram 2.0' },
-  { id: 'palette-1', type: 'color_palette', name: 'Color Palette', tool: 'generate_color_palette', model: 'AI Analysis' },
 ];
+
+// Generate a unique color palette using AI based on brand context
+function generateUniqueColorPalette(brandName: string, industry: string): { primary: string; secondary: string; accent: string } {
+  // Industry-based color themes with randomization
+  const industryPalettes: Record<string, Array<{ primary: string; secondary: string; accent: string }>> = {
+    technology: [
+      { primary: '#3B82F6', secondary: '#1E40AF', accent: '#60A5FA' },
+      { primary: '#6366F1', secondary: '#4338CA', accent: '#A5B4FC' },
+      { primary: '#0EA5E9', secondary: '#0369A1', accent: '#7DD3FC' },
+      { primary: '#8B5CF6', secondary: '#6D28D9', accent: '#C4B5FD' },
+    ],
+    finance: [
+      { primary: '#059669', secondary: '#047857', accent: '#34D399' },
+      { primary: '#0F766E', secondary: '#115E59', accent: '#5EEAD4' },
+      { primary: '#1D4ED8', secondary: '#1E3A8A', accent: '#93C5FD' },
+      { primary: '#0891B2', secondary: '#155E75', accent: '#67E8F9' },
+    ],
+    health: [
+      { primary: '#10B981', secondary: '#059669', accent: '#6EE7B7' },
+      { primary: '#14B8A6', secondary: '#0D9488', accent: '#5EEAD4' },
+      { primary: '#22C55E', secondary: '#16A34A', accent: '#86EFAC' },
+      { primary: '#06B6D4', secondary: '#0891B2', accent: '#67E8F9' },
+    ],
+    creative: [
+      { primary: '#EC4899', secondary: '#BE185D', accent: '#F9A8D4' },
+      { primary: '#F43F5E', secondary: '#E11D48', accent: '#FDA4AF' },
+      { primary: '#A855F7', secondary: '#7C3AED', accent: '#D8B4FE' },
+      { primary: '#F97316', secondary: '#EA580C', accent: '#FDBA74' },
+    ],
+    retail: [
+      { primary: '#EF4444', secondary: '#DC2626', accent: '#FCA5A5' },
+      { primary: '#F59E0B', secondary: '#D97706', accent: '#FCD34D' },
+      { primary: '#8B5CF6', secondary: '#7C3AED', accent: '#C4B5FD' },
+      { primary: '#06B6D4', secondary: '#0891B2', accent: '#67E8F9' },
+    ],
+    education: [
+      { primary: '#3B82F6', secondary: '#2563EB', accent: '#93C5FD' },
+      { primary: '#6366F1', secondary: '#4F46E5', accent: '#A5B4FC' },
+      { primary: '#14B8A6', secondary: '#0D9488', accent: '#5EEAD4' },
+      { primary: '#8B5CF6', secondary: '#7C3AED', accent: '#C4B5FD' },
+    ],
+    food: [
+      { primary: '#F97316', secondary: '#EA580C', accent: '#FDBA74' },
+      { primary: '#EF4444', secondary: '#DC2626', accent: '#FCA5A5' },
+      { primary: '#84CC16', secondary: '#65A30D', accent: '#BEF264' },
+      { primary: '#F59E0B', secondary: '#D97706', accent: '#FCD34D' },
+    ],
+    business: [
+      { primary: '#3B82F6', secondary: '#1E40AF', accent: '#93C5FD' },
+      { primary: '#1E293B', secondary: '#0F172A', accent: '#64748B' },
+      { primary: '#0EA5E9', secondary: '#0284C7', accent: '#7DD3FC' },
+      { primary: '#6366F1', secondary: '#4338CA', accent: '#A5B4FC' },
+    ],
+  };
+
+  // Get palette options for industry or default to business
+  const lowerIndustry = industry.toLowerCase();
+  let palettes = industryPalettes.business;
+  for (const [key, val] of Object.entries(industryPalettes)) {
+    if (lowerIndustry.includes(key)) {
+      palettes = val;
+      break;
+    }
+  }
+
+  // Use brand name hash + timestamp for unique selection
+  const hash = brandName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const timeVariation = Date.now() % 1000;
+  const index = (hash + timeVariation) % palettes.length;
+
+  return palettes[index];
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -116,11 +190,13 @@ serve(async (req) => {
         });
       }
 
-      // Extract colors
-      let primaryColor = '#10B981';
-      let secondaryColor = '#059669';
-      let accentColor = '#34D399';
+      // Generate unique color palette for this brand (instead of hardcoded defaults)
+      const generatedPalette = generateUniqueColorPalette(brandName, industry);
+      let primaryColor = generatedPalette.primary;
+      let secondaryColor = generatedPalette.secondary;
+      let accentColor = generatedPalette.accent;
 
+      // Override with any existing approved palette if available
       const palette = brandContext.colorPalette as Record<string, unknown> | undefined;
       if (palette) {
         if (typeof palette.primary === 'string' && palette.primary.startsWith('#')) {
@@ -133,6 +209,16 @@ serve(async (req) => {
           accentColor = palette.accent;
         }
       }
+
+      await sendEvent({
+        type: 'palette_generated',
+        message: `Generated unique color palette: ${primaryColor}, ${secondaryColor}, ${accentColor}`,
+        colors: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
+        timestamp: new Date().toISOString(),
+      });
+
+      // Track generated images for chaining
+      let primaryLogoUrl: string | null = null;
 
       const generatedAssets: Array<{
         id: string;
@@ -207,7 +293,26 @@ serve(async (req) => {
           const style = (brandContext.brandStrategy as Record<string, unknown>)?.brand_personality || 'modern and professional';
           
           let toolArgs: Record<string, unknown> = {};
-          if (asset.tool === 'generate_logo') {
+          let toolToUse = asset.tool;
+
+          // Handle image-to-image chaining for brand consistency
+          if (asset.usesPreviousImage && primaryLogoUrl) {
+            toolToUse = 'image_to_image';
+            
+            if (asset.type === 'logo') {
+              toolArgs = {
+                imageUrl: primaryLogoUrl,
+                prompt: `Create a variant of this logo for "${brandName}". Same style and colors but with a fresh twist. Maintain brand identity. Clean vector style.`,
+                strength: 0.7,
+              };
+            } else if (asset.type === 'icon') {
+              toolArgs = {
+                imageUrl: primaryLogoUrl,
+                prompt: `Create a square app icon based on this logo for "${brandName}". Simplified, centered, suitable for mobile app icon. Same colors and style. 1024x1024 square format.`,
+                strength: 0.6,
+              };
+            }
+          } else if (asset.tool === 'generate_logo') {
             toolArgs = {
               brandName,
               industry,
@@ -222,12 +327,22 @@ serve(async (req) => {
               numImages: 1,
             };
           } else if (asset.tool === 'generate_social_banner') {
-            toolArgs = {
-              brandName,
-              platform: 'linkedin_banner',
-              style: `${style}, gradient from ${primaryColor} to ${secondaryColor}`,
-              colors: [primaryColor, secondaryColor, accentColor],
-            };
+            // Use primary logo if available for banner consistency
+            if (primaryLogoUrl) {
+              toolArgs = {
+                brandName,
+                platform: 'linkedin_banner',
+                style: `${style}, gradient from ${primaryColor} to ${secondaryColor}, incorporating elements from the brand logo`,
+                colors: [primaryColor, secondaryColor, accentColor],
+              };
+            } else {
+              toolArgs = {
+                brandName,
+                platform: 'linkedin_banner',
+                style: `${style}, gradient from ${primaryColor} to ${secondaryColor}`,
+                colors: [primaryColor, secondaryColor, accentColor],
+              };
+            }
           }
 
           const response = await fetch(`${supabaseUrl}/functions/v1/mcp-falai`, {
@@ -237,7 +352,7 @@ serve(async (req) => {
               'Authorization': `Bearer ${supabaseKey}`,
             },
             body: JSON.stringify({
-              tool: asset.tool,
+              tool: toolToUse,
               arguments: toolArgs,
               credentials: {
                 FAL_KEY: falKey,
@@ -259,14 +374,16 @@ serve(async (req) => {
 
             let imageUrl: string | null = null;
             if (result.success) {
-              if (asset.tool === 'generate_logo') {
+              if (toolToUse === 'generate_logo') {
                 imageUrl = result.data?.logos?.[0]?.url || null;
-              } else if (asset.tool === 'generate_social_banner') {
+              } else if (toolToUse === 'generate_social_banner') {
                 imageUrl = result.data?.banners?.[0]?.url || null;
-              } else if (asset.tool === 'generate_image') {
+              } else if (toolToUse === 'generate_image') {
                 imageUrl = result.data?.images?.[0]?.url || null;
-              } else if (asset.tool === 'generate_brand_assets') {
+              } else if (toolToUse === 'generate_brand_assets') {
                 imageUrl = result.data?.assets?.[0]?.url || null;
+              } else if (toolToUse === 'image_to_image') {
+                imageUrl = result.data?.images?.[0]?.url || null;
               }
 
               // Upload to storage for a permanent public URL
@@ -310,6 +427,11 @@ serve(async (req) => {
             }
 
             if (imageUrl) {
+              // Track primary logo for chaining to subsequent assets
+              if (asset.id === 'logo-1' && asset.type === 'logo') {
+                primaryLogoUrl = imageUrl;
+              }
+
               generatedAssets.push({
                 id: asset.id,
                 type: asset.type,
