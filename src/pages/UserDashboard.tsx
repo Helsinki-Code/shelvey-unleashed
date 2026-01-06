@@ -260,23 +260,7 @@ const UserDashboard = () => {
           </Card>
         </motion.div>
 
-        {/* Content based on section */}
-        {section === 'home' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="max-w-6xl mx-auto"
-          >
-            <UserProjects />
-          </motion.div>
-        )}
-
-        {section === 'projects' && (
-          <div className="max-w-6xl mx-auto">
-            <UserProjects />
-          </div>
-        )}
+        {/* Content based on section - Projects accessible via sidebar */}
       </main>
 
       {/* Floating CEO Chat Button + Sheet */}
