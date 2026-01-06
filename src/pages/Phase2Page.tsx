@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Palette, Image, Type, Sparkles, Loader2, Bot, CheckCircle2, Clock, Eye, Play, MessageSquare, Camera, Layers, PaintBucket, Crown } from 'lucide-react';
+import { ArrowLeft, Palette, Image, Type, Sparkles, Loader2, Bot, CheckCircle2, Clock, Eye, Play, MessageSquare, Camera, Layers, PaintBucket, Crown, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
 import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
+import { ImageGenerationStudio } from '@/components/ImageGenerationStudio';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
@@ -63,7 +64,7 @@ const Phase2Page = () => {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
-  const [activeTab, setActiveTab] = useState('agents');
+  const [activeTab, setActiveTab] = useState('studio');
   const [showAgentChat, setShowAgentChat] = useState(false);
 
   useEffect(() => {
@@ -264,6 +265,10 @@ const Phase2Page = () => {
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
+              <TabsTrigger value="studio" className="gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Image Studio
+              </TabsTrigger>
               <TabsTrigger value="agent" className="gap-2">
                 <Bot className="w-4 h-4" />
                 Brand Agent
@@ -277,6 +282,16 @@ const Phase2Page = () => {
                 Live Activity
               </TabsTrigger>
             </TabsList>
+
+            {/* Image Generation Studio Tab - Primary Focus */}
+            <TabsContent value="studio">
+              <ImageGenerationStudio
+                projectId={projectId!}
+                phaseId={phase?.id}
+                agentName={PHASE_AGENT.name}
+                onAssetApproved={() => fetchData()}
+              />
+            </TabsContent>
 
             {/* Single Agent Tab with Live Work Preview */}
             <TabsContent value="agent">
