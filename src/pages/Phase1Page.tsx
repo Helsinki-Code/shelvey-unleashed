@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare, Camera, Link2, Sparkles, Play, Image, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Search, TrendingUp, Users, Target, Loader2, Bot, CheckCircle2, Clock, Eye, Download, ExternalLink, MessageSquare, Camera, Link2, Sparkles, Play, Image, RefreshCw, AlertTriangle, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
 import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
+import { DeepResearchViewer } from '@/components/DeepResearchViewer';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
@@ -301,6 +302,10 @@ const Phase1Page = () => {
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
+              <TabsTrigger value="deep-research" className="gap-2">
+                <Globe className="w-4 h-4" />
+                Deep Research
+              </TabsTrigger>
               <TabsTrigger value="agent" className="gap-2">
                 <Bot className="w-4 h-4" />
                 Research Agent
@@ -314,6 +319,72 @@ const Phase1Page = () => {
                 Live Activity ({activities.length})
               </TabsTrigger>
             </TabsList>
+
+            {/* Deep Research Tab - NEW */}
+            <TabsContent value="deep-research">
+              <div className="space-y-6">
+                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-primary" />
+                          OpenAI Deep Research
+                        </CardTitle>
+                        <CardDescription>
+                          AI-powered research using o4-mini-deep-research with real-time web search and code analysis
+                        </CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Powered by OpenAI
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      {[
+                        { type: 'market_analysis', label: 'Market Analysis', icon: TrendingUp },
+                        { type: 'competitor_analysis', label: 'Competitor Analysis', icon: Users },
+                        { type: 'trend_forecast', label: 'Trend Forecast', icon: Sparkles },
+                        { type: 'target_customer', label: 'Target Customer', icon: Target },
+                      ].map(({ type, label, icon: Icon }) => (
+                        <Button
+                          key={type}
+                          variant="outline"
+                          className="h-auto py-4 flex flex-col gap-2"
+                          onClick={() => {
+                            const deliverable = deliverables.find(d => d.deliverable_type === type || d.name.toLowerCase().includes(type.replace('_', ' ')));
+                            setSelectedDeliverable(deliverable || null);
+                          }}
+                        >
+                          <Icon className="w-5 h-5 text-primary" />
+                          <span className="text-sm">{label}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Deep Research Viewer for selected deliverable or first one */}
+                <DeepResearchViewer
+                  projectId={projectId!}
+                  phaseId={phase?.id}
+                  deliverableId={selectedDeliverable?.id || deliverables[0]?.id}
+                  taskType={selectedDeliverable?.deliverable_type || 'market_analysis'}
+                  projectContext={{
+                    name: project?.name,
+                    industry: project?.industry,
+                    description: project?.description,
+                    target_market: project?.target_market,
+                  }}
+                  onComplete={(result) => {
+                    fetchData();
+                    toast.success('Research saved to deliverable!');
+                  }}
+                />
+              </div>
+            </TabsContent>
 
             {/* Single Agent Tab with Live Work Preview */}
             <TabsContent value="agent">

@@ -329,3 +329,6 @@ verify_jwt = false
 
 [functions.pod-automation-agent]
 verify_jwt = false
+
+[functions.deep-research-agent]
+verify_jwt = false
