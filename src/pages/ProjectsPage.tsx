@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Bot, Folder, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,17 @@ interface Project {
 
 const ProjectsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCEOCreation, setShowCEOCreation] = useState(false);
+
+  useEffect(() => {
+    if (location.pathname === '/projects/new') {
+      setShowCEOCreation(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (user) {
@@ -92,7 +99,17 @@ const ProjectsPage = () => {
 
   const handleProjectCreated = () => {
     setShowCEOCreation(false);
+    if (location.pathname === '/projects/new') {
+      navigate('/projects', { replace: true });
+    }
     fetchProjects();
+  };
+
+  const handleCloseCEOCreation = () => {
+    setShowCEOCreation(false);
+    if (location.pathname === '/projects/new') {
+      navigate('/projects', { replace: true });
+    }
   };
 
   return (
@@ -262,7 +279,7 @@ const ProjectsPage = () => {
       {/* CEO Project Creation Modal */}
       <ProjectCreationCEOChat
         open={showCEOCreation}
-        onClose={() => setShowCEOCreation(false)}
+        onClose={handleCloseCEOCreation}
         onProjectCreated={handleProjectCreated}
       />
     </div>
