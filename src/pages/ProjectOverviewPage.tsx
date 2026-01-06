@@ -72,10 +72,18 @@ const ProjectOverviewPage = () => {
   const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
 
   useEffect(() => {
-    if (projectId && user) {
-      fetchProject();
-      fetchPhases();
+    if (!projectId || !user) return;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(projectId);
+    if (!isUuid) {
+      toast.error('Invalid project link');
+      setIsLoading(false);
+      navigate('/projects', { replace: true });
+      return;
     }
+
+    fetchProject();
+    fetchPhases();
   }, [projectId, user]);
 
   // Show onboarding dialog for newly created projects - trigger when project loads
@@ -206,29 +214,33 @@ const ProjectOverviewPage = () => {
   };
 
   const deleteProject = async () => {
-    if (!project || deleteConfirmName !== project.name) {
+    if (!project || !user) return;
+    if (deleteConfirmName !== project.name) {
       toast.error('Project name does not match');
       return;
     }
-    
+
     setIsDeleting(true);
     try {
-      // Delete phases first
-      await supabase
-        .from('business_phases')
-        .delete()
-        .eq('project_id', project.id);
+      const { data: session } = await supabase.auth.getSession();
 
-      // Delete the project
-      const { error } = await supabase
-        .from('business_projects')
-        .delete()
-        .eq('id', project.id);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-project`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.session?.access_token}`,
+          },
+          body: JSON.stringify({ projectId: project.id }),
+        }
+      );
 
-      if (error) throw error;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || 'Delete failed');
 
       toast.success('Project deleted successfully');
-      navigate('/projects');
+      navigate('/projects', { replace: true });
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete project');
