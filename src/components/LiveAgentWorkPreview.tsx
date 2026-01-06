@@ -22,6 +22,20 @@ interface LiveAgentWorkPreviewProps {
   className?: string;
 }
 
+const asString = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+
+const extractScreenshotUrl = (metadata: any): string | undefined =>
+  asString(metadata?.screenshotUrl) ||
+  asString(metadata?.screenshot_url) ||
+  asString(metadata?.screenshot) ||
+  asString(metadata?.imageUrl) ||
+  asString(metadata?.image_url);
+
+const extractUrl = (metadata: any): string | undefined =>
+  asString(metadata?.url) ||
+  asString(metadata?.sourceUrl) ||
+  asString(metadata?.source_url);
+
 export function LiveAgentWorkPreview({ agentId, agentName, projectId, className }: LiveAgentWorkPreviewProps) {
   const [workSteps, setWorkSteps] = useState<WorkStep[]>([]);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
@@ -38,23 +52,26 @@ export function LiveAgentWorkPreview({ agentId, agentName, projectId, className 
         .limit(10);
 
       if (data) {
-        const steps: WorkStep[] = data.map(a => ({
-          id: a.id,
-          action: a.action,
-          status: a.status,
-          timestamp: a.created_at,
-          screenshotUrl: (a.metadata as any)?.screenshotUrl,
-          url: (a.metadata as any)?.url,
-        }));
+        const steps: WorkStep[] = data.map((a: any) => {
+          const metadata = (a.metadata || {}) as any;
+          return {
+            id: a.id,
+            action: a.action,
+            status: a.status,
+            timestamp: a.created_at,
+            screenshotUrl: extractScreenshotUrl(metadata),
+            url: extractUrl(metadata),
+          };
+        });
         setWorkSteps(steps);
-        
-        const inProgress = data.find(a => a.status === 'in_progress');
+
+        const inProgress = data.find((a: any) => a.status === 'in_progress' || a.status === 'working');
         setCurrentAction(inProgress?.action || null);
-        
-        // Find latest screenshot
-        const withScreenshot = data.find(a => (a.metadata as any)?.screenshotUrl);
+
+        // Find latest screenshot (if any)
+        const withScreenshot = data.find((a: any) => extractScreenshotUrl(a.metadata));
         if (withScreenshot) {
-          setLatestScreenshot((withScreenshot.metadata as any).screenshotUrl);
+          setLatestScreenshot(extractScreenshotUrl(withScreenshot.metadata) || null);
         }
       }
     };
@@ -75,24 +92,29 @@ export function LiveAgentWorkPreview({ agentId, agentName, projectId, className 
         (payload) => {
           const newActivity = payload.new as any;
           const metadata = newActivity.metadata || {};
-          
-          setWorkSteps(prev => [{
-            id: newActivity.id,
-            action: newActivity.action,
-            status: newActivity.status,
-            timestamp: newActivity.created_at,
-            screenshotUrl: metadata.screenshotUrl,
-            url: metadata.url,
-          }, ...prev.slice(0, 9)]);
-          
-          if (newActivity.status === 'in_progress') {
+          const screenshotUrl = extractScreenshotUrl(metadata);
+          const url = extractUrl(metadata);
+
+          setWorkSteps((prev) => [
+            {
+              id: newActivity.id,
+              action: newActivity.action,
+              status: newActivity.status,
+              timestamp: newActivity.created_at,
+              screenshotUrl,
+              url,
+            },
+            ...prev.slice(0, 9),
+          ]);
+
+          if (newActivity.status === 'in_progress' || newActivity.status === 'working') {
             setCurrentAction(newActivity.action);
           } else if (newActivity.status === 'completed') {
             setCurrentAction(null);
           }
-          
-          if (metadata.screenshotUrl) {
-            setLatestScreenshot(metadata.screenshotUrl);
+
+          if (screenshotUrl) {
+            setLatestScreenshot(screenshotUrl);
           }
         }
       )

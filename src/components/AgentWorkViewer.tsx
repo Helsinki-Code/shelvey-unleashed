@@ -53,16 +53,31 @@ export const AgentWorkViewer = ({ deliverable, onBack }: AgentWorkViewerProps) =
   const screenshots = deliverable.screenshots || [];
   const content = deliverable.generated_content || {};
 
-  const renderContentWithCitations = (text: string) => {
+  const renderContentWithCitations = (value: unknown) => {
+    if (value === null || value === undefined) return null;
+
+    const text =
+      typeof value === 'string'
+        ? value
+        : typeof value === 'number' || typeof value === 'boolean'
+          ? String(value)
+          : (() => {
+              try {
+                return JSON.stringify(value, null, 2);
+              } catch {
+                return String(value);
+              }
+            })();
+
     if (!text) return null;
-    
+
     // Replace [1], [2], etc. with clickable citation links
     const parts = text.split(/(\[\d+\])/g);
     return parts.map((part, index) => {
       const match = part.match(/\[(\d+)\]/);
       if (match) {
         const citationId = parseInt(match[1]);
-        const citation = citations.find(c => c.id === citationId);
+        const citation = citations.find((c) => c.id === citationId);
         if (citation) {
           return (
             <a

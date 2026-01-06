@@ -111,12 +111,19 @@ export const ImageGenerationStudio = ({
     const fetchExistingAssets = async () => {
       if (!phaseId) return;
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('phase_deliverables')
         .select('generated_content, status, ceo_approved, user_approved')
         .eq('phase_id', phaseId)
         .eq('deliverable_type', 'brand_assets')
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[ImageGenerationStudio] Failed to load existing brand assets:', error);
+        return;
+      }
 
       if (data?.generated_content) {
         const content = data.generated_content as Record<string, unknown>;
