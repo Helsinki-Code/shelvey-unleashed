@@ -14,7 +14,10 @@ import {
   Check,
   Wand2,
   Layers,
-  Zap
+  Zap,
+  Edit,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,6 +25,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ReactCodePreview } from './ReactCodePreview';
@@ -41,6 +46,7 @@ interface V0WebsiteBuilderProps {
     headingFont?: string;
     bodyFont?: string;
   };
+  approvedSpecs?: any;
   onWebsiteGenerated?: (code: string, websiteId: string) => void;
   existingWebsite?: {
     id: string;
@@ -57,6 +63,7 @@ export const V0WebsiteBuilder = ({
   projectId, 
   project, 
   branding,
+  approvedSpecs,
   onWebsiteGenerated,
   existingWebsite 
 }: V0WebsiteBuilderProps) => {
@@ -78,6 +85,12 @@ export const V0WebsiteBuilder = ({
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Dynamic conversation state
+  const [editMode, setEditMode] = useState(false);
+  const [editSection, setEditSection] = useState('');
+  const [editChanges, setEditChanges] = useState('');
+  const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string }[]>([]);
 
   useEffect(() => {
     if (existingWebsite?.html_content) {
@@ -123,6 +136,7 @@ export const V0WebsiteBuilder = ({
             industry: project.industry,
             description: project.description,
             branding,
+            approvedSpecs,
             prompt: prompt || undefined,
           }),
           signal: abortControllerRef.current.signal,
@@ -272,6 +286,122 @@ export const V0WebsiteBuilder = ({
   const handleCancel = () => {
     abortControllerRef.current?.abort();
   };
+
+  const handleEditSection = async () => {
+    if (!editChanges.trim() || !generatedCode) return;
+    
+    setIsGenerating(true);
+    resetState();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      abortControllerRef.current = new AbortController();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-website-generator`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            projectId,
+            businessName: project.name,
+            industry: project.industry,
+            description: project.description,
+            branding,
+            approvedSpecs,
+            editMode: {
+              section: editSection || 'website',
+              changes: editChanges,
+              existingCode: generatedCode,
+            },
+          }),
+          signal: abortControllerRef.current.signal,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Edit failed');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullCode = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim() || line.startsWith(':')) continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+            
+            switch (event.type) {
+              case 'start':
+              case 'connected':
+                setCurrentMessage(event.message);
+                break;
+              case 'code_chunk':
+                fullCode += event.content;
+                setStreamingCode(fullCode);
+                break;
+              case 'complete':
+                setProgress(100);
+                setCurrentMessage('Changes applied!');
+                setGeneratedCode(event.code);
+                await saveWebsite(event.code);
+                toast.success('Website updated successfully!');
+                setEditChanges('');
+                setEditMode(false);
+                // Add to conversation history
+                setConversationHistory(prev => [
+                  ...prev,
+                  { role: 'user', content: `Change ${editSection}: ${editChanges}` },
+                  { role: 'assistant', content: 'Changes applied successfully' }
+                ]);
+                break;
+              case 'error':
+                throw new Error(event.message);
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.info('Edit cancelled');
+      } else {
+        console.error('Edit error:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to edit website');
+      }
+    } finally {
+      setIsGenerating(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const sectionOptions = [
+    'Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer', 'Colors', 'Typography', 'Layout', 'Animations'
+  ];
 
   return (
     <div className="space-y-6">
@@ -448,6 +578,97 @@ export const V0WebsiteBuilder = ({
         </Card>
       )}
 
+      {/* Dynamic Conversation / Edit Mode */}
+      {generatedCode && !isGenerating && (
+        <Card className="border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Edit Your Website
+              <Badge variant="secondary" className="text-xs">Dynamic Updates</Badge>
+            </CardTitle>
+            <CardDescription>
+              Describe changes you want and the AI will update your website instantly
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Conversation History */}
+            {conversationHistory.length > 0 && (
+              <ScrollArea className="h-32 rounded-lg border bg-muted/30 p-3">
+                <div className="space-y-2">
+                  {conversationHistory.map((msg, i) => (
+                    <div key={i} className={`text-sm ${msg.role === 'user' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      <span className="font-medium">{msg.role === 'user' ? 'You: ' : 'AI: '}</span>
+                      {msg.content}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+
+            {/* Section Selector */}
+            <div className="flex items-center gap-3">
+              <Select value={editSection} onValueChange={setEditSection}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionOptions.map(section => (
+                    <SelectItem key={section} value={section.toLowerCase()}>
+                      {section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">or describe general changes</span>
+            </div>
+
+            {/* Edit Input */}
+            <div className="flex gap-2">
+              <Textarea
+                value={editChanges}
+                onChange={(e) => setEditChanges(e.target.value)}
+                placeholder={editSection 
+                  ? `Describe changes to the ${editSection} section...`
+                  : "Describe the changes you want to make to your website..."}
+                className="min-h-[80px] flex-1"
+              />
+            </div>
+
+            <Button 
+              onClick={handleEditSection} 
+              disabled={!editChanges.trim() || isGenerating}
+              className="w-full gap-2"
+            >
+              <Send className="w-4 h-4" />
+              Apply Changes
+            </Button>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2">
+              <p className="text-xs text-muted-foreground w-full">Quick actions:</p>
+              {[
+                'Make the hero more bold',
+                'Change colors to be darker',
+                'Add more animations',
+                'Make CTA buttons larger',
+                'Improve mobile layout'
+              ].map((action, i) => (
+                <Button 
+                  key={i}
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs"
+                  onClick={() => setEditChanges(action)}
+                >
+                  {action}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Empty State */}
       {!streamingCode && !generatedCode && !isGenerating && (
         <Card>
@@ -458,7 +679,9 @@ export const V0WebsiteBuilder = ({
               </div>
               <h3 className="text-lg font-semibold">Ready to Generate</h3>
               <p className="text-muted-foreground">
-                Enter a description above and click "Generate Website" to watch v0 build your site in real-time with React components, Tailwind CSS, and Framer Motion animations.
+                {approvedSpecs 
+                  ? "Your specifications are ready! Click 'Generate Website' to create your unique website."
+                  : "Enter a description above and click 'Generate Website' to watch v0 build your site in real-time with React components, Tailwind CSS, and Framer Motion animations."}
               </p>
             </div>
           </CardContent>
