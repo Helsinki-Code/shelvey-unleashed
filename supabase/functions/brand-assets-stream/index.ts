@@ -16,8 +16,8 @@ interface AssetConfig {
 
 const ASSETS_TO_GENERATE: AssetConfig[] = [
   { id: 'logo-1', type: 'logo', name: 'Primary Logo', tool: 'generate_logo', model: 'Seedream 4.5' },
-  { id: 'logo-2', type: 'logo', name: 'Logo Variant', tool: 'generate_logo', model: 'Ideogram 2.0' },
-  { id: 'icon-1', type: 'icon', name: 'App Icon', tool: 'generate_brand_assets', model: 'Seedream 4.5' },
+  { id: 'logo-2', type: 'logo', name: 'Logo Variant', tool: 'generate_logo', model: 'Seedream 4.5' },
+  { id: 'icon-1', type: 'icon', name: 'App Icon', tool: 'generate_image', model: 'Seedream 4.5' },
   { id: 'banner-1', type: 'banner', name: 'Social Banner', tool: 'generate_social_banner', model: 'Ideogram 2.0' },
   { id: 'palette-1', type: 'color_palette', name: 'Color Palette', tool: 'generate_color_palette', model: 'AI Analysis' },
 ];
@@ -40,6 +40,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const falKey = Deno.env.get('FAL_KEY') || '';
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Create a TransformStream for SSE
@@ -55,6 +56,15 @@ serve(async (req) => {
   // Start the generation process in the background
   (async () => {
     try {
+      if (!falKey) {
+        await sendEvent({
+          type: 'error',
+          message: 'Missing FAL_KEY configuration in backend',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       // Send start event
       await sendEvent({
         type: 'start',
@@ -188,21 +198,21 @@ serve(async (req) => {
               brandName,
               industry,
               style: `${style}, using primary color ${primaryColor}`,
-              colors: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
+              colors: [primaryColor, secondaryColor, accentColor],
             };
-          } else if (asset.tool === 'generate_brand_assets') {
+          } else if (asset.tool === 'generate_image') {
             toolArgs = {
-              type: 'icon',
-              brandName,
-              industry,
-              style: `Mobile app icon, ${style}, using ${primaryColor} as main color`,
+              prompt: `A clean, modern app icon for "${brandName}" (${industry}). Minimal, professional, centered, flat vector look, no text. Use brand colors ${primaryColor}, ${secondaryColor}, ${accentColor}.`,
+              width: 1024,
+              height: 1024,
+              numImages: 1,
             };
           } else if (asset.tool === 'generate_social_banner') {
             toolArgs = {
               brandName,
-              industry,
+              platform: 'linkedin_banner',
               style: `${style}, gradient from ${primaryColor} to ${secondaryColor}`,
-              platform: 'linkedin',
+              colors: [primaryColor, secondaryColor, accentColor],
             };
           }
 
@@ -215,6 +225,9 @@ serve(async (req) => {
             body: JSON.stringify({
               tool: asset.tool,
               arguments: toolArgs,
+              credentials: {
+                FAL_KEY: falKey,
+              },
             }),
           });
 
@@ -231,45 +244,54 @@ serve(async (req) => {
             });
 
             let imageUrl: string | null = null;
-            if (result.success && result.data?.images?.[0]?.url) {
-              imageUrl = result.data.images[0].url;
+            if (result.success) {
+              if (asset.tool === 'generate_logo') {
+                imageUrl = result.data?.logos?.[0]?.url || null;
+              } else if (asset.tool === 'generate_social_banner') {
+                imageUrl = result.data?.banners?.[0]?.url || null;
+              } else if (asset.tool === 'generate_image') {
+                imageUrl = result.data?.images?.[0]?.url || null;
+              } else if (asset.tool === 'generate_brand_assets') {
+                imageUrl = result.data?.assets?.[0]?.url || null;
+              }
 
-              // Upload to Supabase storage for permanent URL
-              await sendEvent({
-                type: 'uploading',
-                assetId: asset.id,
-                name: asset.name,
-                message: `Uploading ${asset.name} to storage...`,
-                timestamp: new Date().toISOString(),
-              });
+              // Upload to storage for a permanent public URL
+              if (imageUrl) {
+                await sendEvent({
+                  type: 'uploading',
+                  assetId: asset.id,
+                  name: asset.name,
+                  message: `Uploading ${asset.name} to storage...`,
+                  timestamp: new Date().toISOString(),
+                });
 
-              try {
-                if (!imageUrl) throw new Error('No image URL');
-                const imageResponse = await fetch(imageUrl);
-                if (imageResponse.ok) {
-                  const imageBlob = await imageResponse.blob();
-                  const fileName = `${projectId}/${asset.id}-${Date.now()}.png`;
-                  
-                  const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('agent-work-media')
-                    .upload(fileName, imageBlob, {
-                      contentType: 'image/png',
-                      upsert: true,
-                    });
+                try {
+                  const imageResponse = await fetch(imageUrl);
+                  if (imageResponse.ok) {
+                    const imageBlob = await imageResponse.blob();
+                    const fileName = `${projectId}/${asset.id}-${Date.now()}.png`;
 
-                  if (!uploadError && uploadData) {
-                    const { data: publicUrl } = supabase.storage
+                    const { data: uploadData, error: uploadError } = await supabase.storage
                       .from('agent-work-media')
-                      .getPublicUrl(fileName);
-                    
-                    if (publicUrl) {
-                      imageUrl = publicUrl.publicUrl;
+                      .upload(fileName, imageBlob, {
+                        contentType: 'image/png',
+                        upsert: true,
+                      });
+
+                    if (!uploadError && uploadData) {
+                      const { data: publicUrl } = supabase.storage
+                        .from('agent-work-media')
+                        .getPublicUrl(fileName);
+
+                      if (publicUrl?.publicUrl) {
+                        imageUrl = publicUrl.publicUrl;
+                      }
                     }
                   }
+                } catch (uploadErr) {
+                  console.error('Upload error:', uploadErr);
+                  // keep original URL if upload fails
                 }
-              } catch (uploadErr) {
-                console.error('Upload error:', uploadErr);
-                // Keep the original Fal.ai URL if upload fails
               }
             }
 
@@ -281,6 +303,25 @@ serve(async (req) => {
                 imageUrl,
                 model: asset.model,
               });
+
+              // Log work step so the Agent Work preview can display it
+              try {
+                await supabase.from('agent_activity_logs').insert({
+                  agent_id: 'brand-agent',
+                  agent_name: 'Brand Agent',
+                  action: `Generated ${asset.name}`,
+                  status: 'completed',
+                  metadata: {
+                    projectId,
+                    phaseId,
+                    assetId: asset.id,
+                    assetType: asset.type,
+                    screenshotUrl: imageUrl,
+                  },
+                });
+              } catch (logErr) {
+                console.error('Failed to log agent activity:', logErr);
+              }
             }
 
             // Send completion event for this asset
@@ -345,30 +386,67 @@ serve(async (req) => {
 
         const generatedContent = {
           assets: generatedAssets,
-          primaryLogo: generatedAssets.find(a => a.type === 'logo'),
-          appIcon: generatedAssets.find(a => a.type === 'icon'),
-          socialBanner: generatedAssets.find(a => a.type === 'banner'),
+          primaryLogo: generatedAssets.find((a) => a.type === 'logo') || null,
+          appIcon: generatedAssets.find((a) => a.type === 'icon') || null,
+          socialBanner: generatedAssets.find((a) => a.type === 'banner') || null,
           generatedAt: new Date().toISOString(),
           assetCount: generatedAssets.length,
         };
 
-        await supabase
+        // Ensure a dedicated 'brand_assets' deliverable exists
+        const { data: existingRows } = await supabase
           .from('phase_deliverables')
-          .update({
-            generated_content: generatedContent,
-            status: 'review',
-            updated_at: new Date().toISOString(),
-          })
+          .select('id')
           .eq('phase_id', phaseId)
-          .eq('deliverable_type', 'brand_assets');
+          .eq('deliverable_type', 'brand_assets')
+          .limit(1);
 
-        // Log activity
+        const existing = existingRows?.[0];
+
+        if (existing?.id) {
+          await supabase
+            .from('phase_deliverables')
+            .update({
+              generated_content: generatedContent,
+              status: 'review',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+        } else {
+          const { data: phaseRow } = await supabase
+            .from('business_phases')
+            .select('user_id')
+            .eq('id', phaseId)
+            .single();
+
+          if (phaseRow?.user_id) {
+            await supabase.from('phase_deliverables').insert({
+              phase_id: phaseId,
+              user_id: phaseRow.user_id,
+              name: 'Brand Assets',
+              deliverable_type: 'brand_assets',
+              description: 'Generated logos, icons, and social banners',
+              generated_content: generatedContent,
+              status: 'review',
+            });
+          }
+        }
+
+        // Log summary activity
         await supabase.from('agent_activity_logs').insert({
-          agent_id: 'visual-design',
-          agent_name: 'Visual Design Agent',
+          agent_id: 'brand-agent',
+          agent_name: 'Brand Agent',
           action: `Generated ${generatedAssets.length} brand assets with real-time streaming`,
           status: 'completed',
-          metadata: { projectId, phaseId, assetCount: generatedAssets.length },
+          metadata: {
+            projectId,
+            phaseId,
+            assetCount: generatedAssets.length,
+            screenshotUrl:
+              generatedAssets.find((a) => a.type === 'logo')?.imageUrl ||
+              generatedAssets[0]?.imageUrl ||
+              null,
+          },
         });
       }
 
