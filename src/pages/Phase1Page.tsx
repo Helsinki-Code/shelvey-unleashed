@@ -14,6 +14,7 @@ import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { AgentWorkViewer } from '@/components/AgentWorkViewer';
 import { DeliverableCard } from '@/components/DeliverableCard';
+import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
@@ -314,9 +315,10 @@ const Phase1Page = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Single Agent Tab */}
+            {/* Single Agent Tab with Live Work Preview */}
             <TabsContent value="agent">
-              <div className="max-w-2xl">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Agent Info Card */}
                 <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -372,6 +374,13 @@ const Phase1Page = () => {
                     </Button>
                   </CardContent>
                 </Card>
+
+                {/* Live Work Preview Window */}
+                <LiveAgentWorkPreview
+                  agentId={PHASE_AGENT.id}
+                  agentName={PHASE_AGENT.name}
+                  projectId={projectId!}
+                />
               </div>
             </TabsContent>
 
