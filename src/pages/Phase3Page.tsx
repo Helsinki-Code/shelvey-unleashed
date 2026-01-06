@@ -131,6 +131,7 @@ const Phase3Page = () => {
         .eq('phase_id', brandingPhase.id)
         .eq('deliverable_type', 'brand_assets')
         .eq('user_approved', true)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
