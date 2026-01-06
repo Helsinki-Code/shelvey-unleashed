@@ -41,12 +41,16 @@ export const ProceedToNextPhaseButton = ({
     setIsProceeding(true);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+
       // Call phase-manager to advance to next phase
       const { data, error } = await supabase.functions.invoke('phase-manager', {
         body: {
           action: 'advance_phase',
           projectId,
           currentPhaseNumber,
+          userId,
         },
       });
 

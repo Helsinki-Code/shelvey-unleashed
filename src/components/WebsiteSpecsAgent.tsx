@@ -179,17 +179,25 @@ export const WebsiteSpecsAgent = ({
         .from('phase_deliverables')
         .select('*')
         .eq('phase_id', phase2.id)
-        .eq('user_approved', true)
-        .eq('ceo_approved', true);
+        .eq('deliverable_type', 'brand_assets')
+        .eq('user_approved', true);
 
       if (deliverables?.length) {
-        const brandAssets = deliverables.find(d => d.deliverable_type === 'brand_assets');
+        const brandAssets = deliverables[0];
         const content = brandAssets?.generated_content as any;
+        const assets = Array.isArray(content?.assets) ? content.assets : [];
+
+        const paletteAsset = assets.find((a: any) => a.type === 'color_palette');
+        const palette = paletteAsset?.colorData || content?.colorPalette || content?.colors;
+
+        const logoAsset = assets.find((a: any) => a.type === 'logo');
+        const logoUrl = logoAsset?.imageUrl || logoAsset?.url;
+
         setPhase2Data({
-          logo: content?.assets?.find((a: any) => a.type === 'logo')?.url,
-          colors: content?.colorPalette || content?.colors,
+          logo: logoUrl,
+          colors: palette,
           typography: content?.typography,
-          brandVoice: content?.brandVoice
+          brandVoice: content?.brandVoice,
         });
       }
     }

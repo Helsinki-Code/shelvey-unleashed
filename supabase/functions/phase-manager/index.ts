@@ -16,8 +16,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, projectId, phaseId, userId } = await req.json();
-
+    const { action, projectId, phaseId, userId, currentPhaseNumber } = await req.json();
     let result: any = {};
 
     switch (action) {
@@ -52,18 +51,35 @@ serve(async (req) => {
         break;
 
       case 'advance_phase':
-        // Get current active phase
-        const { data: activePhase } = await supabase
-          .from('business_phases')
-          .select('*')
-          .eq('project_id', projectId)
-          .eq('status', 'active')
-          .single();
+         // Get current phase (prefer the phase number sent by the client; fall back to status=active)
+         let activePhase: any = null;
 
-        if (!activePhase) {
-          throw new Error('No active phase found');
-        }
+         if (typeof currentPhaseNumber === 'number') {
+           const { data: byNumber } = await supabase
+             .from('business_phases')
+             .select('*')
+             .eq('project_id', projectId)
+             .eq('phase_number', currentPhaseNumber)
+             .limit(1)
+             .maybeSingle();
+           activePhase = byNumber;
+         }
 
+         if (!activePhase) {
+           const { data: byStatus } = await supabase
+             .from('business_phases')
+             .select('*')
+             .eq('project_id', projectId)
+             .eq('status', 'active')
+             .order('phase_number', { ascending: false })
+             .limit(1)
+             .maybeSingle();
+           activePhase = byStatus;
+         }
+
+         if (!activePhase) {
+           throw new Error('No active phase found');
+         }
         // Check completion - USER-ONLY GATING: only user_approved must be true
         const { data: deliverables } = await supabase
           .from('phase_deliverables')
