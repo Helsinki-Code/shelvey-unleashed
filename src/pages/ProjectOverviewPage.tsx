@@ -91,10 +91,8 @@ const ProjectOverviewPage = () => {
   useEffect(() => {
     if (isNewProjectRef.current && project) {
       setShowOnboardingDialog(true);
-      setAutoOpenCEOChat(true);
       // Clear the state so it doesn't show again on refresh
       window.history.replaceState({}, document.title);
-      isNewProjectRef.current = false;
     }
   }, [project]);
 
@@ -571,7 +569,13 @@ const ProjectOverviewPage = () => {
       {project && (
         <CEOOnboardingDialog
           open={showOnboardingDialog}
-          onClose={() => setShowOnboardingDialog(false)}
+          onClose={() => {
+            setShowOnboardingDialog(false);
+            if (isNewProjectRef.current) {
+              setAutoOpenCEOChat(true);
+              isNewProjectRef.current = false;
+            }
+          }}
           projectId={project.id}
           projectName={project.name}
           projectDescription={typeof project.description === 'string' ? project.description : ''}

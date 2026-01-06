@@ -129,16 +129,17 @@ const ProjectsPage = () => {
 
       if (projectError) throw projectError;
 
-      // Initialize phases (non-blocking if it fails)
-      await supabase.functions
-        .invoke('coo-coordinator', {
-          body: {
-            action: 'initialize_project',
-            projectId: project.id,
-            userId: sessionData.session.user.id,
-          },
-        })
-        .catch((e) => console.warn('Phase initialization error:', e));
+      // Initialize phases (required)
+      const { data: initData, error: initError } = await supabase.functions.invoke('coo-coordinator', {
+        body: {
+          action: 'initialize_project',
+          projectId: project.id,
+          userId: sessionData.session.user.id,
+        },
+      });
+
+      if (initError) throw initError;
+      if ((initData as any)?.error) throw new Error((initData as any).error);
 
       toast.success('Project created');
       setShowCreateDialog(false);
