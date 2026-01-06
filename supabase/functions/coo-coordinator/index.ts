@@ -309,53 +309,52 @@ serve(async (req) => {
 });
 
 function getPhaseDeliverables(phaseNumber: number, phaseId: string, teamId: string | undefined, userId: string) {
+  // Keep this in sync with the app's intended phase deliverables.
+  // IMPORTANT: Phase 2 is a SINGLE "brand_assets" deliverable with granular per-asset approvals.
   const deliverablesByPhase: Record<number, Array<{ name: string; type: string; description: string }>> = {
     1: [
-      { name: 'Market Analysis Report', type: 'report', description: 'Comprehensive market size, growth, and opportunity analysis' },
-      { name: 'Competitor Landscape', type: 'analysis', description: 'Detailed analysis of top competitors and their strategies' },
-      { name: 'Target Customer Profiles', type: 'document', description: 'Ideal customer personas with demographics and behaviors' },
-      { name: 'Trend Forecast', type: 'report', description: 'Industry trends and future predictions' }
+      { name: 'Market Analysis', type: 'analysis', description: 'Comprehensive market research and opportunity assessment' },
+      { name: 'Competitor Report', type: 'report', description: 'Analysis of direct and indirect competitors' },
+      { name: 'Trend Forecast', type: 'report', description: 'Industry trends and future predictions' },
+      { name: 'Target Audience Profile', type: 'document', description: 'Detailed customer personas and segments' },
     ],
     2: [
-      { name: 'Brand Strategy Document', type: 'document', description: 'Core brand values, positioning, and differentiation' },
-      { name: 'Logo & Visual Identity', type: 'design', description: 'Logo, color palette, typography, and visual elements' },
-      { name: 'Brand Guidelines', type: 'document', description: 'Comprehensive brand usage guidelines' },
-      { name: 'Brand Voice & Messaging', type: 'document', description: 'Tone, voice, and key messaging framework' }
+      { name: 'Brand Assets', type: 'brand_assets', description: 'Generated logos, icons, color palette, and social banners' },
     ],
     3: [
-      { name: 'Technical Architecture', type: 'document', description: 'System architecture and technology stack decisions' },
-      { name: 'Landing Page', type: 'website', description: 'Professional landing page for the business' },
-      { name: 'Product MVP', type: 'code', description: 'Minimum viable product implementation' },
-      { name: 'QA Test Report', type: 'report', description: 'Quality assurance testing results' }
+      { name: 'Website Design', type: 'design', description: 'UI/UX design for main website' },
+      { name: 'Website Development', type: 'code', description: 'Fully functional responsive website' },
+      { name: 'Payment Integration', type: 'code', description: 'Stripe payment processing setup' },
+      { name: 'Analytics Setup', type: 'configuration', description: 'Google Analytics and tracking setup' },
     ],
     4: [
-      { name: 'Content Strategy', type: 'document', description: 'Content pillars, topics, and publishing schedule' },
-      { name: 'Website Copy', type: 'content', description: 'All website copy and microcopy' },
-      { name: 'Blog Articles', type: 'content', description: 'Initial blog posts for launch' },
-      { name: 'SEO Optimization Report', type: 'report', description: 'Keyword research and on-page SEO implementation' }
+      { name: 'Website Copy', type: 'content', description: 'All website text content' },
+      { name: 'Blog Posts', type: 'content', description: 'Initial blog content for SEO' },
+      { name: 'Email Templates', type: 'content', description: 'Welcome, nurture, and promotional emails' },
+      { name: 'Social Media Content', type: 'content', description: 'Initial social media posts and calendar' },
     ],
     5: [
       { name: 'Marketing Strategy', type: 'document', description: 'Go-to-market strategy and channel plan' },
       { name: 'Social Media Campaigns', type: 'campaign', description: 'Launch campaigns for all social platforms' },
       { name: 'Ad Creatives', type: 'design', description: 'Paid advertising creative assets' },
-      { name: 'Influencer Partnerships', type: 'partnerships', description: 'Influencer outreach and partnership agreements' }
+      { name: 'Influencer Partnerships', type: 'partnerships', description: 'Influencer outreach and partnership agreements' },
     ],
     6: [
       { name: 'Sales Playbook', type: 'document', description: 'Sales process, scripts, and objection handling' },
       { name: 'Lead Pipeline', type: 'data', description: 'Qualified leads and pipeline management' },
+      { name: 'Revenue Report', type: 'report', description: 'Revenue tracking and growth metrics' },
       { name: 'Customer Onboarding', type: 'process', description: 'Customer onboarding process and materials' },
-      { name: 'Revenue Report', type: 'report', description: 'Revenue tracking and growth metrics' }
-    ]
+    ],
   };
 
   const deliverables = deliverablesByPhase[phaseNumber] || [];
-  return deliverables.map(d => ({
+  return deliverables.map((d) => ({
     phase_id: phaseId,
     name: d.name,
     description: d.description,
     deliverable_type: d.type,
     assigned_team_id: teamId,
     user_id: userId,
-    status: 'pending'
+    status: 'pending',
   }));
 }
