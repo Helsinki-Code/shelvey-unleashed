@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { CEOOnboardingDialog } from '@/components/CEOOnboardingDialog';
+import { AnimatedPhaseTimeline } from '@/components/AnimatedPhaseTimeline';
 import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,12 +30,22 @@ interface Project {
   ceo_reviewed_at: string | null;
 }
 
+interface Phase {
+  id: string;
+  phase_number: number;
+  phase_name: string;
+  status: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 const ProjectOverviewPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
+  const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -43,6 +54,7 @@ const ProjectOverviewPage = () => {
   useEffect(() => {
     if (projectId && user) {
       fetchProject();
+      fetchPhases();
     }
   }, [projectId, user]);
 
@@ -73,6 +85,23 @@ const ProjectOverviewPage = () => {
     setProject(data);
     setIsLoading(false);
   };
+
+  const fetchPhases = async () => {
+    const { data, error } = await supabase
+      .from('business_phases')
+      .select('id, phase_number, phase_name, status, started_at, completed_at')
+      .eq('project_id', projectId)
+      .order('phase_number', { ascending: true });
+
+    if (!error && data) {
+      setPhases(data);
+    }
+  };
+
+  // Calculate current phase
+  const currentPhase = phases.find(p => p.status === 'active')?.phase_number || 
+                       (phases.find(p => p.status === 'completed') ? 
+                        Math.max(...phases.filter(p => p.status === 'completed').map(p => p.phase_number)) + 1 : 1);
 
   const requestCEOReview = async () => {
     if (!project || !user) return;
@@ -255,6 +284,34 @@ const ProjectOverviewPage = () => {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Phase Timeline */}
+          {phases.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <Card className="mb-6 overflow-hidden">
+                <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-primary" />
+                    Project Phases
+                  </CardTitle>
+                  <CardDescription>
+                    Click on any active or completed phase to navigate directly
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AnimatedPhaseTimeline 
+                    phases={phases} 
+                    projectId={project.id} 
+                    currentPhase={currentPhase} 
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Approval Section */}
           <motion.div
