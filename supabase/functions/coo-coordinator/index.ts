@@ -47,6 +47,8 @@ serve(async (req) => {
     
     const { action, projectId, userId, directive, phaseNumber, teamId, deliverableId } = await req.json();
 
+    console.log('[coo-coordinator]', { action, projectId, userId, phaseNumber, teamId, deliverableId });
+
     // Update COO agent status to active
     await supabase
       .from('team_members')
