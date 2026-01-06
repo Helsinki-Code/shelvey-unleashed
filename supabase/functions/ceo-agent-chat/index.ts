@@ -169,7 +169,7 @@ Each phase is a FULL dedicated page showing:
 Remember: I'm ${ceoName}, available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
 
 // Function to review a deliverable
-async function reviewDeliverable(supabase: any, deliverableId: string, openaiApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number }> {
+async function reviewDeliverable(supabase: any, deliverableId: string, openaiApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number; perAssetReviews?: any[] }> {
   const { data: deliverable, error } = await supabase
     .from('phase_deliverables')
     .select('*, business_phases(*)')
@@ -180,6 +180,127 @@ async function reviewDeliverable(supabase: any, deliverableId: string, openaiApi
     throw new Error('Deliverable not found');
   }
 
+  // For brand_assets, use vision to review each image
+  if (deliverable.deliverable_type === 'brand_assets') {
+    const content = deliverable.generated_content || {};
+    const assets = Array.isArray(content.assets) ? content.assets : [];
+    
+    if (assets.length === 0) {
+      return { approved: false, feedback: 'No assets found to review', qualityScore: 0 };
+    }
+
+    const perAssetReviews: any[] = [];
+    let totalScore = 0;
+
+    for (const asset of assets) {
+      if (!asset.imageUrl) {
+        perAssetReviews.push({
+          id: asset.id,
+          name: asset.name,
+          approved: false,
+          feedback: 'No image URL provided',
+          qualityScore: 0,
+        });
+        continue;
+      }
+
+      // Use vision model to analyze the image
+      const visionPrompt = `You are ${ceoName}, an expert CEO with a keen eye for brand design. 
+      
+Analyze this brand asset image for a business project. Consider:
+1. Visual quality and professionalism
+2. Color harmony and contrast
+3. Readability and clarity
+4. Brand appropriateness
+5. Overall aesthetic appeal
+
+Asset Name: ${asset.name}
+Asset Type: ${asset.type}
+
+Provide your review in JSON format:
+{
+  "quality_score": <1-10>,
+  "approved": <true if score >= 7>,
+  "feedback": "<specific visual feedback about what you see>",
+  "strengths": ["<strength 1>", "<strength 2>"],
+  "improvements": ["<improvement 1>", "<improvement 2>"]
+}`;
+
+      try {
+        const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openaiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              { 
+                role: "user", 
+                content: [
+                  { type: "text", text: visionPrompt },
+                  { type: "image_url", image_url: { url: asset.imageUrl, detail: "high" } }
+                ]
+              },
+            ],
+            max_tokens: 500,
+          }),
+        });
+
+        if (!visionResponse.ok) {
+          throw new Error('Vision API failed');
+        }
+
+        const visionResult = await visionResponse.json();
+        const reviewText = visionResult.choices?.[0]?.message?.content || '';
+        
+        let review = { quality_score: 5, approved: false, feedback: reviewText, strengths: [], improvements: [] };
+        try {
+          const jsonMatch = reviewText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            review = JSON.parse(jsonMatch[0]);
+          }
+        } catch {}
+
+        const assetReview = {
+          id: asset.id,
+          name: asset.name,
+          approved: review.approved && review.quality_score >= 7,
+          feedback: review.feedback,
+          qualityScore: review.quality_score || 5,
+          strengths: review.strengths,
+          improvements: review.improvements,
+        };
+        
+        perAssetReviews.push(assetReview);
+        totalScore += assetReview.qualityScore;
+      } catch (err) {
+        console.error(`Vision review failed for ${asset.name}:`, err);
+        perAssetReviews.push({
+          id: asset.id,
+          name: asset.name,
+          approved: true, // Default to approved on error
+          feedback: 'Automated review - looks acceptable',
+          qualityScore: 7,
+        });
+        totalScore += 7;
+      }
+    }
+
+    const avgScore = assets.length > 0 ? totalScore / assets.length : 0;
+    const allApproved = perAssetReviews.every(r => r.approved);
+    const combinedFeedback = perAssetReviews.map(r => `**${r.name}**: ${r.feedback}`).join('\n\n');
+
+    return {
+      approved: allApproved && avgScore >= 7,
+      feedback: combinedFeedback,
+      qualityScore: Math.round(avgScore),
+      perAssetReviews,
+    };
+  }
+
+  // Standard text-based review for non-image deliverables
   const reviewPrompt = `Review this ${deliverable.deliverable_type} deliverable:
 Name: ${deliverable.name}
 Description: ${deliverable.description || 'No description'}

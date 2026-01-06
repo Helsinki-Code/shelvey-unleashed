@@ -159,7 +159,8 @@ What would you like to do?
 
       toast.success('Project created successfully!');
       onProjectCreated();
-      navigate(`/projects/${data.id}/overview`);
+      // Navigate with state to trigger CEO onboarding dialog
+      navigate(`/projects/${data.id}/overview`, { state: { newProject: true } });
     } catch (error) {
       console.error('Create project error:', error);
       toast.error('Failed to create project');

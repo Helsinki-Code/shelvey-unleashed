@@ -66,13 +66,15 @@ interface ImageGenerationStudioProps {
   phaseId?: string;
   agentName: string;
   onAssetApproved?: (asset: GeneratedImage) => void;
+  triggerGenerationRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 export const ImageGenerationStudio = ({ 
   projectId, 
   phaseId,
   agentName,
-  onAssetApproved 
+  onAssetApproved,
+  triggerGenerationRef,
 }: ImageGenerationStudioProps) => {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -167,6 +169,18 @@ export const ImageGenerationStudio = ({
 
     fetchExistingAssets();
   }, [phaseId]);
+
+  // Expose startGeneration to parent via ref
+  useEffect(() => {
+    if (triggerGenerationRef) {
+      triggerGenerationRef.current = startGeneration;
+    }
+    return () => {
+      if (triggerGenerationRef) {
+        triggerGenerationRef.current = null;
+      }
+    };
+  }, [triggerGenerationRef]);
 
   // Cleanup on unmount
   useEffect(() => {
