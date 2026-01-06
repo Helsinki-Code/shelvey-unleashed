@@ -2,9 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText, Layers, Palette } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText, Layers, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
@@ -52,6 +64,8 @@ const ProjectOverviewPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   
   // Check if this is a new project from navigation state BEFORE any async operations
   const isNewProjectRef = useRef(location.state?.newProject === true);
@@ -191,6 +205,39 @@ const ProjectOverviewPage = () => {
     }
   };
 
+  const deleteProject = async () => {
+    if (!project || deleteConfirmName !== project.name) {
+      toast.error('Project name does not match');
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      // Delete phases first
+      await supabase
+        .from('business_phases')
+        .delete()
+        .eq('project_id', project.id);
+
+      // Delete the project
+      const { error } = await supabase
+        .from('business_projects')
+        .delete()
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      toast.success('Project deleted successfully');
+      navigate('/projects');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete project');
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmName('');
+    }
+  };
+
   const bothApproved = project?.ceo_approved && project?.user_approved;
 
   if (isLoading) {
@@ -213,15 +260,58 @@ const ProjectOverviewPage = () => {
 
       <main className="flex-1 p-6 ml-64">
         <div className="max-w-4xl mx-auto">
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/projects')}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Projects
-          </Button>
+          {/* Back Button and Delete */}
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/projects')}
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Projects
+            </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Project
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-3">
+                    <p>This action cannot be undone. This will permanently delete the project and all associated data.</p>
+                    <p className="font-medium">Type <span className="text-foreground font-bold">"{project.name}"</span> to confirm:</p>
+                    <Input
+                      value={deleteConfirmName}
+                      onChange={(e) => setDeleteConfirmName(e.target.value)}
+                      placeholder="Enter project name"
+                      className="mt-2"
+                    />
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteConfirmName('')}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={deleteProject}
+                    disabled={deleteConfirmName !== project.name || isDeleting}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Project'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
 
           {/* Project Header */}
           <motion.div
