@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +19,14 @@ interface V0GenerationRequest {
     headingFont?: string;
     bodyFont?: string;
   };
+  approvedSpecs?: any;
   prompt?: string;
   conversationId?: string;
+  editMode?: {
+    section: string;
+    changes: string;
+    existingCode: string;
+  };
 }
 
 serve(async (req) => {
@@ -41,45 +48,122 @@ serve(async (req) => {
     }
 
     const body: V0GenerationRequest = await req.json();
-    const { projectId, businessName, industry, description, branding, prompt } = body;
+    const { projectId, businessName, industry, description, branding, approvedSpecs, prompt, editMode } = body;
 
-    // Build the enhanced prompt for v0
-    const enhancedPrompt = `
-Create a modern, professional landing page for a business with the following details:
+    // Build sections from approved specs or use defaults
+    const sections = approvedSpecs?.pages?.[0]?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer'];
+    
+    // Build copy instructions from approved specs
+    let copyInstructions = '';
+    if (approvedSpecs?.copyContent) {
+      const copy = approvedSpecs.copyContent;
+      copyInstructions = `
+EXACT COPY TO USE:
+Hero:
+- Headline: "${copy.hero?.headline || ''}"
+- Subheadline: "${copy.hero?.subheadline || ''}"
+- CTA Button: "${copy.hero?.cta || 'Get Started'}"
+
+Features:
+- Title: "${copy.features?.title || ''}"
+${copy.features?.items?.map((f: any, i: number) => `- Feature ${i+1}: "${f.title}" - ${f.description}`).join('\n') || ''}
+
+About:
+- Title: "${copy.about?.title || ''}"
+- Content: "${copy.about?.content || ''}"
+
+CTA Section:
+- Title: "${copy.cta?.title || ''}"
+- Description: "${copy.cta?.description || ''}"
+- Button: "${copy.cta?.buttonText || 'Start Now'}"
+
+Footer:
+- Tagline: "${copy.footer?.tagline || ''}"
+- Copyright: "${copy.footer?.copyright || `© ${new Date().getFullYear()} ${businessName}`}"
+`;
+    }
+
+    // Build style instructions from approved specs
+    let styleInstructions = '';
+    if (approvedSpecs?.globalStyles) {
+      const styles = approvedSpecs.globalStyles;
+      styleInstructions = `
+DESIGN TOKENS:
+- Primary Color: ${styles.primaryColor || branding?.primaryColor || 'professional blue'}
+- Secondary Color: ${styles.secondaryColor || branding?.secondaryColor || 'complementary'}
+- Accent Color: ${styles.accentColor || branding?.accentColor || 'for CTAs'}
+- Heading Font: ${styles.headingFont || branding?.headingFont || 'modern sans-serif'}
+- Body Font: ${styles.bodyFont || branding?.bodyFont || 'readable sans-serif'}
+- Border Radius: ${styles.borderRadius || 'rounded-lg'}
+- Spacing: ${styles.spacing || 'comfortable'}
+`;
+    } else if (branding) {
+      styleInstructions = `
+Brand Guidelines:
+- Primary Color: ${branding.primaryColor || 'professional blue'}
+- Secondary Color: ${branding.secondaryColor || 'complementary color'}
+- Accent Color: ${branding.accentColor || 'for CTAs and highlights'}
+- Heading Font: ${branding.headingFont || 'modern sans-serif'}
+- Body Font: ${branding.bodyFont || 'readable sans-serif'}
+`;
+    }
+
+    // Build the enhanced prompt - handle edit mode vs full generation
+    let enhancedPrompt = '';
+    
+    if (editMode) {
+      enhancedPrompt = `
+I have an existing React website component. I need you to modify ONLY the "${editMode.section}" section based on these changes:
+
+CHANGES REQUESTED: ${editMode.changes}
+
+EXISTING CODE:
+\`\`\`tsx
+${editMode.existingCode}
+\`\`\`
+
+${styleInstructions}
+
+Requirements:
+1. Keep all other sections EXACTLY the same
+2. Only modify the ${editMode.section} section as requested
+3. Maintain the same imports and component structure
+4. Use the existing styling patterns
+5. Output the COMPLETE component code with the modification
+
+Output only the React component code, no explanations.
+`.trim();
+    } else {
+      enhancedPrompt = `
+Create a modern, professional, UNIQUE landing page for:
 
 Business Name: ${businessName}
 Industry: ${industry}
 Description: ${description}
 
-${branding ? `
-Brand Guidelines:
-- Primary Color: ${branding.primaryColor || 'use a professional blue'}
-- Secondary Color: ${branding.secondaryColor || 'complementary color'}
-- Accent Color: ${branding.accentColor || 'for CTAs and highlights'}
-- Heading Font: ${branding.headingFont || 'modern sans-serif'}
-- Body Font: ${branding.bodyFont || 'readable sans-serif'}
-` : ''}
+${styleInstructions}
+
+${copyInstructions}
 
 ${prompt ? `Additional Requirements: ${prompt}` : ''}
 
+SECTIONS TO INCLUDE: ${sections.join(', ')}
+
 Requirements:
 1. Create a complete, production-ready React component with TypeScript
-2. Use Tailwind CSS for all styling
+2. Use Tailwind CSS for all styling - use the exact colors provided
 3. Include Framer Motion animations for smooth interactions
 4. Make it fully responsive (mobile-first)
-5. Include these sections:
-   - Hero section with compelling headline and CTA
-   - Features/Services section
-   - About/Why Us section
-   - Testimonials or Social Proof
-   - Contact/CTA section
-   - Footer
-6. Use modern design patterns and beautiful gradients
-7. Ensure excellent accessibility (proper contrast, semantic HTML)
-8. Add hover states and micro-interactions
+5. Create a UNIQUE, MODERN, ATTRACTIVE design - avoid generic patterns
+6. Use the EXACT copy provided above - do not make up different text
+7. Include beautiful gradients, shadows, and micro-interactions
+8. Ensure excellent accessibility (proper contrast, semantic HTML)
+9. Add hover states and smooth transitions
+10. Make it stand out - be creative with layout and visual effects
 
 Output only the React component code, no explanations.
 `.trim();
+    }
 
     const stream = new ReadableStream({
       async start(controller) {

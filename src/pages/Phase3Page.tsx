@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Code, Globe, Server, Loader2, Bot, CheckCircle2, Eye, MessageSquare, Rocket, RefreshCw, ExternalLink, Settings, Shield, Link2, Copy, Play, Terminal, Layers, Sparkles } from 'lucide-react';
+import { ArrowLeft, Code, Globe, Server, Loader2, Bot, CheckCircle2, Eye, MessageSquare, Rocket, RefreshCw, ExternalLink, Settings, Shield, Link2, Copy, Play, Terminal, Layers, Sparkles, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
 import { V0WebsiteBuilder } from '@/components/V0WebsiteBuilder';
+import { WebsiteSpecsAgent } from '@/components/WebsiteSpecsAgent';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -53,7 +54,7 @@ const Phase3Page = () => {
   const [project, setProject] = useState<any>(null);
   const [phase, setPhase] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('v0-builder');
+  const [activeTab, setActiveTab] = useState('specs');
   const [chatAgent, setChatAgent] = useState<{ id: string; name: string; role: string; icon: any; color: string; bgColor: string; description: string } | null>(null);
   
   // Website generation state
@@ -70,6 +71,10 @@ const Phase3Page = () => {
   const [subdomainInput, setSubdomainInput] = useState('');
   const [deploymentStatus, setDeploymentStatus] = useState<'idle' | 'deploying' | 'success' | 'error'>('idle');
   const [deploymentMessage, setDeploymentMessage] = useState('');
+
+  // Website specs approval state
+  const [specsApproved, setSpecsApproved] = useState(false);
+  const [approvedSpecs, setApprovedSpecs] = useState<any>(null);
 
   useEffect(() => {
     if (projectId && user) {
@@ -93,7 +98,23 @@ const Phase3Page = () => {
       .eq('phase_number', 3)
       .single();
 
-    if (phaseData) setPhase(phaseData);
+    if (phaseData) {
+      setPhase(phaseData);
+      
+      // Check if specs are already approved
+      const { data: specsDeliverable } = await supabase
+        .from('phase_deliverables')
+        .select('*')
+        .eq('phase_id', phaseData.id)
+        .eq('deliverable_type', 'website_specs')
+        .maybeSingle();
+
+      if (specsDeliverable?.ceo_approved && specsDeliverable?.user_approved) {
+        setSpecsApproved(true);
+        setApprovedSpecs((specsDeliverable.generated_content as any)?.specs);
+        setActiveTab('v0-builder');
+      }
+    }
 
     // Fetch branding from Phase 2
     const { data: brandingPhase } = await supabase
@@ -108,17 +129,20 @@ const Phase3Page = () => {
         .from('phase_deliverables')
         .select('*')
         .eq('phase_id', brandingPhase.id)
-        .eq('deliverable_type', 'design')
+        .eq('deliverable_type', 'brand_assets')
         .eq('user_approved', true)
+        .eq('ceo_approved', true)
         .limit(1)
         .maybeSingle();
 
       if (brandDeliverables?.generated_content) {
         const content = brandDeliverables.generated_content as any;
+        const colorPalette = content.colorPalette || content.colors;
         setBranding({
-          primaryColor: content.colors?.primary,
-          secondaryColor: content.colors?.secondary,
-          accentColor: content.colors?.accent,
+          primaryColor: colorPalette?.primary || colorPalette?.[0]?.hex,
+          secondaryColor: colorPalette?.secondary || colorPalette?.[1]?.hex,
+          accentColor: colorPalette?.accent || colorPalette?.[2]?.hex,
+          logo: content.assets?.find((a: any) => a.type === 'logo')?.url,
           headingFont: content.typography?.headingFont,
           bodyFont: content.typography?.bodyFont,
         });
@@ -140,6 +164,13 @@ const Phase3Page = () => {
     }
 
     setIsLoading(false);
+  };
+
+  const handleSpecsApproved = (specs: any) => {
+    setApprovedSpecs(specs);
+    setSpecsApproved(true);
+    setActiveTab('v0-builder');
+    toast.success('Specifications approved! You can now generate your website.');
   };
 
   const isPhaseFullyApproved = () => {
@@ -494,9 +525,15 @@ const Phase3Page = () => {
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
-              <TabsTrigger value="v0-builder" className="gap-2">
+              <TabsTrigger value="specs" className="gap-2">
+                <FileText className="w-4 h-4" />
+                Website Specs
+                {specsApproved && <CheckCircle2 className="w-3 h-3 text-green-500" />}
+              </TabsTrigger>
+              <TabsTrigger value="v0-builder" className="gap-2" disabled={!specsApproved}>
                 <Sparkles className="w-4 h-4" />
                 AI Website Builder
+                {!specsApproved && <Badge variant="outline" className="text-xs ml-1">Locked</Badge>}
               </TabsTrigger>
               <TabsTrigger value="preview" className="gap-2">
                 <Eye className="w-4 h-4" />
@@ -512,9 +549,37 @@ const Phase3Page = () => {
               </TabsTrigger>
             </TabsList>
 
+            {/* Website Specs Agent Tab */}
+            <TabsContent value="specs">
+              {project && phase && (
+                <WebsiteSpecsAgent
+                  projectId={projectId!}
+                  phaseId={phase.id}
+                  project={{
+                    name: project.name,
+                    industry: project.industry || 'General',
+                    description: project.description || '',
+                  }}
+                  onSpecsApproved={handleSpecsApproved}
+                />
+              )}
+            </TabsContent>
+
             {/* V0 Website Builder Tab */}
             <TabsContent value="v0-builder">
-              {project && (
+              {!specsApproved ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      Complete the Website Specifications step first to unlock the AI Website Builder
+                    </p>
+                    <Button onClick={() => setActiveTab('specs')} variant="outline">
+                      Go to Website Specs
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : project && (
                 <V0WebsiteBuilder
                   projectId={projectId!}
                   project={{
@@ -523,6 +588,7 @@ const Phase3Page = () => {
                     description: project.description || '',
                   }}
                   branding={branding}
+                  approvedSpecs={approvedSpecs}
                   existingWebsite={generatedWebsite ? {
                     id: generatedWebsite.id,
                     html_content: generatedWebsite.html_content,
@@ -530,7 +596,6 @@ const Phase3Page = () => {
                   onWebsiteGenerated={(code, websiteId) => {
                     setGeneratedCode(code);
                     if (!generatedWebsite) {
-                      // Refetch to get the new website
                       fetchData();
                     } else {
                       setGeneratedWebsite(prev => prev ? { ...prev, html_content: code } : null);
