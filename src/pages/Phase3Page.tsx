@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Code, Globe, Server, Loader2, Bot, CheckCircle2, Eye, MessageSquare, Rocket, RefreshCw, ExternalLink, Settings, Shield, Link2, Copy, Play, Terminal, Layers } from 'lucide-react';
+import { ArrowLeft, Code, Globe, Server, Loader2, Bot, CheckCircle2, Eye, MessageSquare, Rocket, RefreshCw, ExternalLink, Settings, Shield, Link2, Copy, Play, Terminal, Layers, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
+import { V0WebsiteBuilder } from '@/components/V0WebsiteBuilder';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -52,7 +53,7 @@ const Phase3Page = () => {
   const [project, setProject] = useState<any>(null);
   const [phase, setPhase] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('generate');
+  const [activeTab, setActiveTab] = useState('v0-builder');
   const [chatAgent, setChatAgent] = useState<{ id: string; name: string; role: string; icon: any; color: string; bgColor: string; description: string } | null>(null);
   
   // Website generation state
@@ -61,6 +62,9 @@ const Phase3Page = () => {
   const [generatedWebsite, setGeneratedWebsite] = useState<GeneratedWebsite | null>(null);
   const [generationLogs, setGenerationLogs] = useState<string[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  
+  // Branding state from Phase 2
+  const [branding, setBranding] = useState<any>(null);
   
   // Subdomain deployment state
   const [subdomainInput, setSubdomainInput] = useState('');
@@ -90,6 +94,36 @@ const Phase3Page = () => {
       .single();
 
     if (phaseData) setPhase(phaseData);
+
+    // Fetch branding from Phase 2
+    const { data: brandingPhase } = await supabase
+      .from('business_phases')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('phase_number', 2)
+      .single();
+
+    if (brandingPhase) {
+      const { data: brandDeliverables } = await supabase
+        .from('phase_deliverables')
+        .select('*')
+        .eq('phase_id', brandingPhase.id)
+        .eq('deliverable_type', 'design')
+        .eq('user_approved', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (brandDeliverables?.generated_content) {
+        const content = brandDeliverables.generated_content as any;
+        setBranding({
+          primaryColor: content.colors?.primary,
+          secondaryColor: content.colors?.secondary,
+          accentColor: content.colors?.accent,
+          headingFont: content.typography?.headingFont,
+          bodyFont: content.typography?.bodyFont,
+        });
+      }
+    }
 
     // Check for existing generated website
     const { data: websiteData } = await supabase
@@ -460,9 +494,9 @@ const Phase3Page = () => {
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
-              <TabsTrigger value="generate" className="gap-2">
-                <Code className="w-4 h-4" />
-                Generate Website
+              <TabsTrigger value="v0-builder" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                AI Website Builder
               </TabsTrigger>
               <TabsTrigger value="preview" className="gap-2">
                 <Eye className="w-4 h-4" />
@@ -478,109 +512,32 @@ const Phase3Page = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Generate Website Tab */}
-            <TabsContent value="generate">
-              <div className="grid grid-cols-2 gap-6">
-                {/* Generation Controls */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Rocket className="w-5 h-5 text-primary" />
-                      Real-Time Website Generation
-                    </CardTitle>
-                    <CardDescription>
-                      Generate a production-grade React website using AI and your approved branding
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 bg-muted/50 rounded-lg space-y-2 text-sm">
-                      <p className="font-medium">Generation will use:</p>
-                      <ul className="space-y-1 text-muted-foreground">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          21st.dev MCP for React components
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          shadcn/ui component library
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          Tailwind CSS for styling
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          Framer Motion for animations
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          Your Phase 2 approved branding
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={handleGenerateWebsite}
-                        disabled={isGenerating}
-                        className="flex-1 gap-2"
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4" />
-                        )}
-                        {isGenerating ? 'Generating...' : 'Generate Website'}
-                      </Button>
-                      {generatedWebsite && (
-                        <Button
-                          variant="outline"
-                          onClick={handleRegenerateWebsite}
-                          disabled={isGenerating}
-                          className="gap-2"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Regenerate
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Generation Logs */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Terminal className="w-5 h-5" />
-                      Generation Console
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-zinc-950 rounded-lg p-4 h-64 overflow-y-auto font-mono text-sm">
-                      {generationLogs.length > 0 ? (
-                        generationLogs.map((log, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="text-zinc-300 mb-1"
-                          >
-                            {log}
-                          </motion.div>
-                        ))
-                      ) : (
-                        <p className="text-zinc-500">Waiting for generation to start...</p>
-                      )}
-                      {isGenerating && (
-                        <div className="flex items-center gap-2 text-green-400 mt-2">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Processing...</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* V0 Website Builder Tab */}
+            <TabsContent value="v0-builder">
+              {project && (
+                <V0WebsiteBuilder
+                  projectId={projectId!}
+                  project={{
+                    name: project.name,
+                    industry: project.industry || 'General',
+                    description: project.description || '',
+                  }}
+                  branding={branding}
+                  existingWebsite={generatedWebsite ? {
+                    id: generatedWebsite.id,
+                    html_content: generatedWebsite.html_content,
+                  } : null}
+                  onWebsiteGenerated={(code, websiteId) => {
+                    setGeneratedCode(code);
+                    if (!generatedWebsite) {
+                      // Refetch to get the new website
+                      fetchData();
+                    } else {
+                      setGeneratedWebsite(prev => prev ? { ...prev, html_content: code } : null);
+                    }
+                  }}
+                />
+              )}
             </TabsContent>
 
             {/* Live Preview Tab */}
