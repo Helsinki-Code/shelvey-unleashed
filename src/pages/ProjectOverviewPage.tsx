@@ -70,6 +70,7 @@ const ProjectOverviewPage = () => {
   // Check if this is a new project from navigation state BEFORE any async operations
   const isNewProjectRef = useRef(location.state?.newProject === true);
   const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
+  const [autoOpenCEOChat, setAutoOpenCEOChat] = useState(false);
 
   useEffect(() => {
     if (!projectId || !user) return;
@@ -90,6 +91,7 @@ const ProjectOverviewPage = () => {
   useEffect(() => {
     if (isNewProjectRef.current && project) {
       setShowOnboardingDialog(true);
+      setAutoOpenCEOChat(true);
       // Clear the state so it doesn't show again on refresh
       window.history.replaceState({}, document.title);
       isNewProjectRef.current = false;
@@ -563,7 +565,7 @@ const ProjectOverviewPage = () => {
         </div>
       </main>
 
-      <CEOChatSheet />
+      <CEOChatSheet currentPage={`/projects/${project.id}/overview`} defaultOpen={autoOpenCEOChat} />
 
       {/* CEO Onboarding Dialog for new projects */}
       {project && (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bot, Send, Loader2, Sparkles, Upload, X, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,11 +42,8 @@ export const ProjectCreationCEOChat = ({ open, onClose, onProjectCreated }: Proj
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [projectProposal, setProjectProposal] = useState<{
-    name: string;
-    industry: string;
-    description: string;
-  } | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftIndustry, setDraftIndustry] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   // Reset state when dialog opens
@@ -54,7 +51,7 @@ export const ProjectCreationCEOChat = ({ open, onClose, onProjectCreated }: Proj
     setMessages([
       {
         role: 'assistant',
-        content: `Hello! I'm ${ceoName}, and I'm excited to help you create a new business project! 🚀
+        content: `Hello! I'm ${ceoName}, and I'm excited to help you create a new business project!
 
 Tell me about your business idea - what problem are you solving? Who is it for?
 
@@ -63,17 +60,18 @@ Feel free to upload any existing logos, documents, or reference materials you'd 
     ]);
     setInput('');
     setUploadedFiles([]);
-    setProjectProposal(null);
+    setDraftName('');
+    setDraftIndustry('');
   };
 
-  // Initialize messages when dialog opens
-  useState(() => {
-    if (open && messages.length === 0) {
+  // Initialize / reset whenever the dialog is opened
+  useEffect(() => {
+    if (open) {
       resetState();
     }
-  });
+  }, [open]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !user) return;
 
@@ -208,18 +206,17 @@ Feel free to upload any existing logos, documents, or reference materials you'd 
         }
       }
 
-      // Check if CEO is proposing a project (after enough conversation)
-      if (messages.length >= 4 && assistantMessage.toLowerCase().includes('project name:')) {
-        const nameMatch = assistantMessage.match(/project name:\s*([^\n]+)/i);
-        const industryMatch = assistantMessage.match(/industry:\s*([^\n]+)/i);
-        
-        if (nameMatch) {
-          setProjectProposal({
-            name: nameMatch[1].trim().replace(/[*"]/g, ''),
-            industry: industryMatch ? industryMatch[1].trim().replace(/[*"]/g, '') : 'E-commerce',
-            description: userMessage,
-          });
-        }
+      // Try to prefill project fields if CEO suggests them
+      const nameMatch =
+        assistantMessage.match(/project name\s*[:\-]\s*([^\n]+)/i) ||
+        assistantMessage.match(/\bname\s*[:\-]\s*([^\n]+)/i);
+      const industryMatch = assistantMessage.match(/industry\s*[:\-]\s*([^\n]+)/i);
+
+      if (nameMatch && !draftName.trim()) {
+        setDraftName(nameMatch[1].trim().replace(/[*"]/g, ''));
+      }
+      if (industryMatch && !draftIndustry.trim()) {
+        setDraftIndustry(industryMatch[1].trim().replace(/[*"]/g, ''));
       }
 
     } catch (error) {
@@ -231,13 +228,17 @@ Feel free to upload any existing logos, documents, or reference materials you'd 
   };
 
   const createProject = async () => {
-    if (!projectProposal || !user) return;
+    if (!user) return;
+    if (!draftName.trim()) {
+      toast.error('Please enter a project name');
+      return;
+    }
+
     setIsCreating(true);
 
     try {
-      // Build metadata with uploaded assets
-      const uploadedAssets = uploadedFiles.length > 0 
-        ? uploadedFiles.map(f => ({
+      const uploadedAssets = uploadedFiles.length
+        ? uploadedFiles.map((f) => ({
             type: f.type,
             url: f.url,
             filename: f.name,
@@ -245,23 +246,26 @@ Feel free to upload any existing logos, documents, or reference materials you'd 
           }))
         : null;
 
+      const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+
       const { data, error } = await supabase
         .from('business_projects')
-        .insert([{
-          user_id: user.id,
-          name: projectProposal.name,
-          description: projectProposal.description,
-          industry: projectProposal.industry,
-          target_market: 'General consumers',
-          status: 'active',
-          business_model: uploadedAssets ? { uploaded_assets: uploadedAssets } : null,
-        }])
+        .insert([
+          {
+            user_id: user.id,
+            name: draftName.trim(),
+            description: lastUserMessage || null,
+            industry: draftIndustry.trim() || null,
+            target_market: 'General consumers',
+            status: 'active',
+            business_model: uploadedAssets ? { uploaded_assets: uploadedAssets } : null,
+          },
+        ])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Move uploaded files to project folder
       if (uploadedFiles.length > 0 && data) {
         for (const file of uploadedFiles) {
           const newPath = `${user.id}/${data.id}/${file.name}`;
@@ -360,30 +364,49 @@ Feel free to upload any existing logos, documents, or reference materials you'd 
           </div>
         )}
 
-        {/* Project Proposal */}
-        {projectProposal && (
-          <Card className="p-4 bg-primary/5 border-primary/20">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="font-medium">{ceoName}'s Project Proposal</span>
+        {/* Project Details + Create */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="font-medium">Project details</span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Project name</p>
+              <Input
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="e.g. Acme Fitness"
+              />
             </div>
-            <div className="text-sm space-y-1 mb-3">
-              <p><strong>Name:</strong> {projectProposal.name}</p>
-              <p><strong>Industry:</strong> {projectProposal.industry}</p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Industry (optional)</p>
+              <Input
+                value={draftIndustry}
+                onChange={(e) => setDraftIndustry(e.target.value)}
+                placeholder="e.g. E-commerce"
+              />
             </div>
-            <Button onClick={createProject} disabled={isCreating} className="w-full">
+          </div>
+
+          <div className="mt-4">
+            <Button onClick={createProject} disabled={isCreating || !draftName.trim()} className="w-full">
               {isCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
-                'Create This Project'
+                'Create Project'
               )}
             </Button>
-          </Card>
-        )}
+          </div>
 
+          <p className="text-xs text-muted-foreground mt-2">
+            Tip: you can keep chatting—this button just saves the project when you're ready.
+          </p>
+        </Card>
         {/* Input */}
         <div className="flex gap-2 pt-4 border-t">
           <input

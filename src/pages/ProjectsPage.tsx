@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Bot, Folder, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Bot, Folder, ArrowRight, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
-import { ProjectCreationCEOChat } from '@/components/ProjectCreationCEOChat';
 import { PageHeader } from '@/components/PageHeader';
 import { PhaseProgressIndicator } from '@/components/PhaseProgressIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Project {
   id: string;
@@ -31,17 +32,14 @@ interface Project {
 
 const ProjectsPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCEOCreation, setShowCEOCreation] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === '/projects/new') {
-      setShowCEOCreation(true);
-    }
-  }, [location.pathname]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectIndustry, setNewProjectIndustry] = useState('');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -72,8 +70,8 @@ const ProjectsPage = () => {
           .eq('project_id', project.id)
           .order('phase_number');
 
-        const activePhase = phases?.find(p => p.status === 'active')?.phase_number || 1;
-        const completedPhases = phases?.filter(p => p.status === 'completed').length || 0;
+        const activePhase = phases?.find((p) => p.status === 'active')?.phase_number || 1;
+        const completedPhases = phases?.filter((p) => p.status === 'completed').length || 0;
         const progress = Math.round((completedPhases / 6) * 100);
 
         return {
@@ -90,25 +88,69 @@ const ProjectsPage = () => {
 
   const getStatusColor = (status: string | null) => {
     switch (status) {
-      case 'active': return 'bg-primary/20 text-primary';
-      case 'completed': return 'bg-green-500/20 text-green-500';
-      case 'paused': return 'bg-yellow-500/20 text-yellow-500';
-      default: return 'bg-muted text-muted-foreground';
+      case 'active':
+        return 'bg-primary/20 text-primary';
+      case 'completed':
+        return 'bg-green-500/20 text-green-500';
+      case 'paused':
+        return 'bg-yellow-500/20 text-yellow-500';
+      default:
+        return 'bg-muted text-muted-foreground';
     }
   };
 
-  const handleProjectCreated = () => {
-    setShowCEOCreation(false);
-    if (location.pathname === '/projects/new') {
-      navigate('/projects', { replace: true });
+  const createProject = async () => {
+    if (!user) return;
+    if (!newProjectName.trim()) {
+      toast.error('Please enter a project name');
+      return;
     }
-    fetchProjects();
-  };
 
-  const handleCloseCEOCreation = () => {
-    setShowCEOCreation(false);
-    if (location.pathname === '/projects/new') {
-      navigate('/projects', { replace: true });
+    setIsCreatingProject(true);
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.user) {
+        toast.error('Please sign in to create a project');
+        return;
+      }
+
+      const { data: project, error: projectError } = await supabase
+        .from('business_projects')
+        .insert({
+          user_id: sessionData.session.user.id,
+          name: newProjectName.trim(),
+          industry: newProjectIndustry.trim() || null,
+          stage: 'research',
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Initialize phases (non-blocking if it fails)
+      await supabase.functions
+        .invoke('coo-coordinator', {
+          body: {
+            action: 'initialize_project',
+            projectId: project.id,
+            userId: sessionData.session.user.id,
+          },
+        })
+        .catch((e) => console.warn('Phase initialization error:', e));
+
+      toast.success('Project created');
+      setShowCreateDialog(false);
+      setNewProjectName('');
+      setNewProjectIndustry('');
+      fetchProjects();
+      navigate(`/projects/${project.id}/overview`, { state: { newProject: true } });
+    } catch (error: any) {
+      console.error('Create project error:', error);
+      toast.error(error?.message || 'Failed to create project');
+    } finally {
+      setIsCreatingProject(false);
     }
   };
 
@@ -135,15 +177,11 @@ const ProjectsPage = () => {
           
           {/* Action buttons */}
           <div className="flex gap-3 mb-8">
-            <Button
-              variant="outline"
-              onClick={() => setShowCEOCreation(true)}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={() => setShowCreateDialog(true)} className="gap-2">
               <Bot className="w-4 h-4" />
-              Create with CEO
+              Start Project
             </Button>
-            <Button onClick={() => navigate('/projects/new')} className="gap-2">
+            <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
               <Plus className="w-4 h-4" />
               New Project
             </Button>
@@ -169,15 +207,11 @@ const ProjectsPage = () => {
                   or create a project directly.
                 </p>
                 <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCEOCreation(true)}
-                    className="gap-2"
-                  >
+                  <Button variant="outline" onClick={() => setShowCreateDialog(true)} className="gap-2">
                     <Bot className="w-4 h-4" />
-                    Chat with CEO
+                    Start Project
                   </Button>
-                  <Button onClick={() => navigate('/projects/new')} className="gap-2">
+                  <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Create Project
                   </Button>
@@ -274,14 +308,53 @@ const ProjectsPage = () => {
       </main>
 
       {/* CEO Chat Sheet */}
-      <CEOChatSheet />
+      <CEOChatSheet currentPage="/projects" />
 
-      {/* CEO Project Creation Modal */}
-      <ProjectCreationCEOChat
-        open={showCEOCreation}
-        onClose={handleCloseCEOCreation}
-        onProjectCreated={handleProjectCreated}
-      />
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new project</DialogTitle>
+            <DialogDescription>
+              Create your project first—then your CEO chat will help you refine it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Project name</p>
+              <Input
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="e.g. Acme Fitness"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Industry (optional)</p>
+              <Input
+                value={newProjectIndustry}
+                onChange={(e) => setNewProjectIndustry(e.target.value)}
+                placeholder="e.g. E-commerce"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createProject} disabled={isCreatingProject || !newProjectName.trim()}>
+              {isCreatingProject ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
