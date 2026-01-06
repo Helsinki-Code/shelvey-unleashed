@@ -131,18 +131,24 @@ const Phase3Page = () => {
         .eq('phase_id', brandingPhase.id)
         .eq('deliverable_type', 'brand_assets')
         .eq('user_approved', true)
-        .eq('ceo_approved', true)
         .limit(1)
         .maybeSingle();
 
       if (brandDeliverables?.generated_content) {
         const content = brandDeliverables.generated_content as any;
-        const colorPalette = content.colorPalette || content.colors;
+        const assets = Array.isArray(content.assets) ? content.assets : [];
+
+        const paletteAsset = assets.find((a: any) => a.type === 'color_palette');
+        const palette = paletteAsset?.colorData || content.colorPalette || content.colors;
+
+        const logoAsset = assets.find((a: any) => a.type === 'logo');
+        const logoUrl = logoAsset?.imageUrl || logoAsset?.url;
+
         setBranding({
-          primaryColor: colorPalette?.primary || colorPalette?.[0]?.hex,
-          secondaryColor: colorPalette?.secondary || colorPalette?.[1]?.hex,
-          accentColor: colorPalette?.accent || colorPalette?.[2]?.hex,
-          logo: content.assets?.find((a: any) => a.type === 'logo')?.url,
+          primaryColor: palette?.primary || palette?.[0]?.hex || palette?.[0],
+          secondaryColor: palette?.secondary || palette?.[1]?.hex || palette?.[1],
+          accentColor: palette?.accent || palette?.[2]?.hex || palette?.[2],
+          logo: logoUrl,
           headingFont: content.typography?.headingFont,
           bodyFont: content.typography?.bodyFont,
         });

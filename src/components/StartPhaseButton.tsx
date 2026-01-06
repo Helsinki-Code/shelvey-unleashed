@@ -29,12 +29,20 @@ export const StartPhaseButton = ({
     try {
       // For Phase 2, trigger image generation directly
       if (phaseNumber === 2 && triggerImageGeneration) {
-        // Update phase status to active
-        await supabase
-          .from('business_phases')
-          .update({ status: 'active', started_at: new Date().toISOString() })
-          .eq('project_id', projectId)
-          .eq('phase_number', phaseNumber);
+        // Activate phase (server-side) then start generation
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+
+        const { error: activateError } = await supabase.functions.invoke('coo-coordinator', {
+          body: {
+            action: 'activate_phase',
+            projectId,
+            phaseNumber,
+            userId,
+          },
+        });
+
+        if (activateError) throw activateError;
 
         toast.success('Phase 2 activated! Starting image generation...');
         triggerImageGeneration();
