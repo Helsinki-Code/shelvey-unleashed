@@ -139,7 +139,7 @@ export const WebsiteSpecsAgent = ({
   };
 
   const fetchApprovedDeliverables = async () => {
-    // Fetch Phase 1 approved deliverables (market research, business model)
+    // Phase 1: approved deliverables
     const { data: phase1 } = await supabase
       .from('business_phases')
       .select('id')
@@ -152,21 +152,53 @@ export const WebsiteSpecsAgent = ({
         .from('phase_deliverables')
         .select('*')
         .eq('phase_id', phase1.id)
-        .eq('user_approved', true)
-        .eq('ceo_approved', true);
+        .eq('user_approved', true);
 
       if (deliverables?.length) {
-        const research = deliverables.find(d => d.deliverable_type === 'research');
+        const byName = (needle: string) =>
+          deliverables.find((d: any) => (d.name || '').toLowerCase().includes(needle));
+
+        const market = byName('market');
+        const competitors = byName('competitor');
+        const audience = byName('audience');
+        const trends = byName('trend');
+
+        const marketContent = (market?.generated_content ?? market?.content) as any;
+        const competitorContent = (competitors?.generated_content ?? competitors?.content) as any;
+        const audienceContent = (audience?.generated_content ?? audience?.content) as any;
+        const trendsContent = (trends?.generated_content ?? trends?.content) as any;
+
+        const competitorNames =
+          competitorContent?.top_competitors?.map((c: any) => (typeof c === 'string' ? c : c?.name)).filter(Boolean) ??
+          competitorContent?.competitors ??
+          competitorContent?.topCompetitors;
+
+        const targetAudience =
+          audienceContent?.primary_persona ??
+          audienceContent?.targetAudience ??
+          audienceContent?.persona ??
+          audienceContent;
+
+        const uniqueValue =
+          marketContent?.uniqueValueProposition ??
+          marketContent?.unique_value_proposition ??
+          marketContent?.value_proposition ??
+          marketContent?.executive_summary ??
+          marketContent?.summary;
+
         setPhase1Data({
-          marketResearch: research?.generated_content,
-          targetAudience: (research?.generated_content as any)?.targetAudience,
-          competitors: (research?.generated_content as any)?.competitors,
-          uniqueValue: (research?.generated_content as any)?.uniqueValueProposition
+          targetAudience,
+          competitors: competitorNames,
+          uniqueValue,
+          marketAnalysis: marketContent,
+          competitorReport: competitorContent,
+          targetAudienceProfile: audienceContent,
+          trendForecast: trendsContent,
         });
       }
     }
 
-    // Fetch Phase 2 approved deliverables (brand assets)
+    // Phase 2: approved brand assets (latest)
     const { data: phase2 } = await supabase
       .from('business_phases')
       .select('id')
@@ -175,16 +207,18 @@ export const WebsiteSpecsAgent = ({
       .single();
 
     if (phase2) {
-      const { data: deliverables } = await supabase
+      const { data: brandAssets } = await supabase
         .from('phase_deliverables')
         .select('*')
         .eq('phase_id', phase2.id)
         .eq('deliverable_type', 'brand_assets')
-        .eq('user_approved', true);
+        .eq('user_approved', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (deliverables?.length) {
-        const brandAssets = deliverables[0];
-        const content = brandAssets?.generated_content as any;
+      if (brandAssets?.generated_content) {
+        const content = brandAssets.generated_content as any;
         const assets = Array.isArray(content?.assets) ? content.assets : [];
 
         const paletteAsset = assets.find((a: any) => a.type === 'color_palette');
@@ -292,36 +326,58 @@ export const WebsiteSpecsAgent = ({
     if (!existingDeliverable) return;
 
     try {
-      const updateField = approvedBy === 'ceo' ? 'ceo_approved' : 'user_approved';
-      
-      const { error } = await supabase
-        .from('phase_deliverables')
-        .update({
-          [updateField]: approved,
-          feedback: approved ? null : feedbackInput || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingDeliverable.id);
+      const feedback = feedbackInput.trim();
 
+      // If asking for revisions, require at least some feedback.
+      if (!approved && !feedback) {
+        toast.error('Please add feedback before requesting revisions');
+        return;
+      }
+
+      const body: any = { deliverableId: existingDeliverable.id };
+
+      if (approved) {
+        if (approvedBy === 'user') {
+          body.action = 'user_approve';
+          if (feedback) body.feedback = feedback;
+        } else {
+          // Manual CEO approval (server-side) so RLS never blocks the UI.
+          body.approver = 'ceo';
+        }
+      } else {
+        if (approvedBy === 'user') {
+          body.action = 'user_reject';
+          body.feedback = feedback;
+        } else {
+          // Legacy path supports CEO revision requests with feedback.
+          body.approver = 'ceo';
+          body.approved = false;
+          body.feedback = feedback;
+        }
+      }
+
+      const { data, error } = await supabase.functions.invoke('approve-deliverable', { body });
       if (error) throw error;
 
-      setExistingDeliverable((prev: any) => ({ ...prev, [updateField]: approved }));
-      
+      // Refresh deliverable state
+      await fetchExistingSpecs();
+
       if (approved) {
-        toast.success(`${approvedBy === 'ceo' ? 'CEO' : 'User'} approved the specifications!`);
-        
-        // Check if both approved
-        const otherField = approvedBy === 'ceo' ? 'user_approved' : 'ceo_approved';
-        if (existingDeliverable[otherField] && specs) {
+        toast.success(`${approvedBy === 'ceo' ? 'CEO' : 'You'} approved the specifications!`);
+
+        const fullyApproved = data?.fullyApproved === true || (existingDeliverable.ceo_approved && existingDeliverable.user_approved);
+        if (fullyApproved && specs) {
+          setFeedbackInput('');
           onSpecsApproved(specs);
         }
       } else {
         toast.info('Feedback submitted. Regenerating with changes...');
+        setFeedbackInput('');
         await generateSpecs();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Approval error:', error);
-      toast.error('Failed to submit approval');
+      toast.error(error?.message || 'Failed to submit approval');
     }
   };
 
@@ -330,26 +386,23 @@ export const WebsiteSpecsAgent = ({
 
     setIsSubmittingFeedback(true);
     try {
-      // Update deliverable with feedback
-      await supabase
-        .from('phase_deliverables')
-        .update({
-          feedback: feedbackInput,
-          feedback_history: [
-            ...(existingDeliverable.feedback_history || []),
-            { feedback: feedbackInput, timestamp: new Date().toISOString() }
-          ],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingDeliverable.id);
+      const { error } = await supabase.functions.invoke('approve-deliverable', {
+        body: {
+          deliverableId: existingDeliverable.id,
+          action: 'user_reject',
+          feedback: feedbackInput.trim(),
+        },
+      });
+
+      if (error) throw error;
 
       setFeedbackInput('');
-      toast.success('Feedback submitted!');
-      
-      // Regenerate with feedback
+      toast.success('Feedback submitted! Regenerating...');
+
       await generateSpecs();
-    } catch (error) {
-      toast.error('Failed to submit feedback');
+    } catch (error: any) {
+      console.error('Feedback submit error:', error);
+      toast.error(error?.message || 'Failed to submit feedback');
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -431,7 +484,7 @@ export const WebsiteSpecsAgent = ({
               onClick={generateSpecs} 
               className="w-full gap-2" 
               size="lg"
-              disabled={!phase1Data && !phase2Data}
+              disabled={!phase1Data || !phase2Data}
             >
               <Sparkles className="w-4 h-4" />
               Generate Website Specifications
