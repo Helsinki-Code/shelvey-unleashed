@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Image, 
@@ -15,7 +15,11 @@ import {
   User,
   Palette,
   Type,
-  Layers
+  Layers,
+  Zap,
+  Clock,
+  Server,
+  Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,12 +36,29 @@ interface GeneratedImage {
   type: 'logo' | 'icon' | 'banner' | 'color_palette' | 'typography';
   name: string;
   imageUrl?: string;
-  status: 'generating' | 'pending_review' | 'approved' | 'rejected';
+  status: 'pending' | 'generating' | 'uploading' | 'pending_review' | 'approved' | 'rejected';
   progress: number;
   ceoApproved?: boolean;
   userApproved?: boolean;
   feedback?: string;
   generatedAt?: string;
+  model?: string;
+  colorData?: { primary: string; secondary: string; accent: string };
+}
+
+interface StreamEvent {
+  type: string;
+  assetId?: string;
+  name?: string;
+  message?: string;
+  model?: string;
+  imageUrl?: string;
+  colorData?: { primary: string; secondary: string; accent: string };
+  progress?: number;
+  currentIndex?: number;
+  totalAssets?: number;
+  success?: boolean;
+  timestamp?: string;
 }
 
 interface ImageGenerationStudioProps {
@@ -55,51 +76,35 @@ export const ImageGenerationStudio = ({
 }: ImageGenerationStudioProps) => {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentGeneratingIndex, setCurrentGeneratingIndex] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
-  const [generationProgress, setGenerationProgress] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [currentStatus, setCurrentStatus] = useState('');
+  const [currentModel, setCurrentModel] = useState('');
+  const [streamEvents, setStreamEvents] = useState<StreamEvent[]>([]);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simulate real-time image generation streaming
+  // Timer for elapsed time
   useEffect(() => {
-    if (isGenerating && currentGeneratingIndex !== null) {
-      const interval = setInterval(() => {
-        setGenerationProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            // Mark current image as generated
-            setGeneratedImages(images => 
-              images.map((img, idx) => 
-                idx === currentGeneratingIndex 
-                  ? { ...img, status: 'pending_review' as const, progress: 100 }
-                  : img
-              )
-            );
-            // Move to next image or finish
-            if (currentGeneratingIndex < generatedImages.length - 1) {
-              setCurrentGeneratingIndex(currentGeneratingIndex + 1);
-              setGenerationProgress(0);
-            } else {
-              setIsGenerating(false);
-              setCurrentGeneratingIndex(null);
-            }
-            return 0;
-          }
-          // Update current image progress
-          setGeneratedImages(images =>
-            images.map((img, idx) =>
-              idx === currentGeneratingIndex
-                ? { ...img, progress: prev + 5 }
-                : img
-            )
-          );
-          return prev + 5;
-        });
-      }, 200);
-
-      return () => clearInterval(interval);
+    if (isGenerating) {
+      setElapsedTime(0);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
-  }, [isGenerating, currentGeneratingIndex, generatedImages.length]);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isGenerating]);
 
   // Fetch existing brand assets from deliverables
   useEffect(() => {
@@ -114,31 +119,34 @@ export const ImageGenerationStudio = ({
         .single();
 
       if (data?.generated_content) {
-        const content = data.generated_content as any;
+        const content = data.generated_content as Record<string, unknown>;
         const assets: GeneratedImage[] = [];
         
-        if (content.primaryLogo) {
+        if (content.primaryLogo && typeof content.primaryLogo === 'object') {
+          const logo = content.primaryLogo as Record<string, unknown>;
           assets.push({
             id: 'logo-primary',
             type: 'logo',
             name: 'Primary Logo',
-            imageUrl: content.primaryLogo.imageUrl,
+            imageUrl: logo.imageUrl as string,
             status: data.ceo_approved && data.user_approved ? 'approved' : 'pending_review',
             progress: 100,
             ceoApproved: data.ceo_approved || false,
-            userApproved: data.user_approved || false
+            userApproved: data.user_approved || false,
+            model: logo.model as string,
           });
         }
         
-        if (content.assets) {
-          content.assets.forEach((asset: any, idx: number) => {
+        if (Array.isArray(content.assets)) {
+          content.assets.forEach((asset: Record<string, unknown>, idx: number) => {
             assets.push({
               id: `asset-${idx}`,
-              type: asset.type || 'icon',
-              name: asset.name || `Asset ${idx + 1}`,
-              imageUrl: asset.imageUrl,
+              type: (asset.type as GeneratedImage['type']) || 'icon',
+              name: (asset.name as string) || `Asset ${idx + 1}`,
+              imageUrl: asset.imageUrl as string,
               status: 'pending_review',
-              progress: 100
+              progress: 100,
+              model: asset.model as string,
             });
           });
         }
@@ -152,38 +160,148 @@ export const ImageGenerationStudio = ({
     fetchExistingAssets();
   }, [phaseId]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
   const startGeneration = async () => {
     setIsGenerating(true);
-    setGenerationProgress(0);
+    setOverallProgress(0);
+    setCurrentStatus('Connecting to generation service...');
+    setStreamEvents([]);
     
-    // Initialize the assets to be generated
-    const assetsToGenerate: GeneratedImage[] = [
-      { id: 'logo-1', type: 'logo', name: 'Primary Logo', status: 'generating', progress: 0 },
-      { id: 'logo-2', type: 'logo', name: 'Logo Variant', status: 'generating', progress: 0 },
-      { id: 'icon-1', type: 'icon', name: 'App Icon', status: 'generating', progress: 0 },
-      { id: 'banner-1', type: 'banner', name: 'Social Banner', status: 'generating', progress: 0 },
-      { id: 'palette-1', type: 'color_palette', name: 'Color Palette', status: 'generating', progress: 0 },
+    // Initialize assets as pending
+    const initialAssets: GeneratedImage[] = [
+      { id: 'logo-1', type: 'logo', name: 'Primary Logo', status: 'pending', progress: 0 },
+      { id: 'logo-2', type: 'logo', name: 'Logo Variant', status: 'pending', progress: 0 },
+      { id: 'icon-1', type: 'icon', name: 'App Icon', status: 'pending', progress: 0 },
+      { id: 'banner-1', type: 'banner', name: 'Social Banner', status: 'pending', progress: 0 },
+      { id: 'palette-1', type: 'color_palette', name: 'Color Palette', status: 'pending', progress: 0 },
     ];
-    
-    setGeneratedImages(assetsToGenerate);
-    setCurrentGeneratingIndex(0);
+    setGeneratedImages(initialAssets);
 
-    // Call the actual generation endpoint
+    // Get Supabase URL from the client
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const streamUrl = `${supabaseUrl}/functions/v1/brand-assets-stream?projectId=${projectId}${phaseId ? `&phaseId=${phaseId}` : ''}`;
+
     try {
-      const { data, error } = await supabase.functions.invoke('brand-assets-generator', {
-        body: { 
-          projectId, 
-          phaseId,
-          action: 'generate-brand-assets'
-        }
-      });
+      const eventSource = new EventSource(streamUrl);
+      eventSourceRef.current = eventSource;
 
-      if (error) {
-        console.error('Generation error:', error);
-        toast.error('Failed to start asset generation');
-      }
-    } catch (err) {
-      console.error('Generation error:', err);
+      eventSource.onmessage = (event) => {
+        try {
+          const data: StreamEvent = JSON.parse(event.data);
+          setStreamEvents(prev => [...prev.slice(-20), data]); // Keep last 20 events
+
+          switch (data.type) {
+            case 'start':
+              setCurrentStatus(data.message || 'Starting generation...');
+              break;
+
+            case 'context_loaded':
+            case 'brand_context_loaded':
+              setCurrentStatus(data.message || 'Loading brand context...');
+              break;
+
+            case 'generating':
+              setCurrentStatus(data.message || `Generating ${data.name}...`);
+              setCurrentModel(data.model || '');
+              setOverallProgress(data.progress || 0);
+              
+              // Update specific asset to generating
+              setGeneratedImages(prev => prev.map(img =>
+                img.id === data.assetId
+                  ? { ...img, status: 'generating' as const, model: data.model }
+                  : img
+              ));
+              break;
+
+            case 'api_call':
+              setCurrentStatus(data.message || 'Calling AI API...');
+              break;
+
+            case 'api_response':
+              setCurrentStatus(data.message || 'Processing response...');
+              break;
+
+            case 'uploading':
+              setCurrentStatus(data.message || 'Uploading to storage...');
+              setGeneratedImages(prev => prev.map(img =>
+                img.id === data.assetId
+                  ? { ...img, status: 'uploading' as const }
+                  : img
+              ));
+              break;
+
+            case 'asset_complete':
+              setOverallProgress(data.progress || 0);
+              setCurrentStatus(data.message || `${data.name} complete!`);
+              
+              setGeneratedImages(prev => prev.map(img =>
+                img.id === data.assetId
+                  ? {
+                      ...img,
+                      status: 'pending_review' as const,
+                      progress: 100,
+                      imageUrl: data.imageUrl,
+                      colorData: data.colorData,
+                      model: data.model,
+                      generatedAt: data.timestamp,
+                    }
+                  : img
+              ));
+              break;
+
+            case 'asset_error':
+              setGeneratedImages(prev => prev.map(img =>
+                img.id === data.assetId
+                  ? { ...img, status: 'rejected' as const, feedback: data.message }
+                  : img
+              ));
+              break;
+
+            case 'saving':
+              setCurrentStatus(data.message || 'Saving to database...');
+              break;
+
+            case 'complete':
+              setIsGenerating(false);
+              setOverallProgress(100);
+              setCurrentStatus('All assets generated!');
+              setCurrentModel('');
+              eventSource.close();
+              toast.success('Brand assets generated successfully!');
+              break;
+
+            case 'error':
+              setIsGenerating(false);
+              setCurrentStatus(`Error: ${data.message}`);
+              eventSource.close();
+              toast.error(data.message || 'Generation failed');
+              break;
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE event:', e);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE Error:', error);
+        setIsGenerating(false);
+        setCurrentStatus('Connection error');
+        eventSource.close();
+        toast.error('Connection to generation service lost');
+      };
+
+    } catch (error) {
+      console.error('Failed to start generation:', error);
+      setIsGenerating(false);
+      toast.error('Failed to start generation');
     }
   };
 
@@ -202,7 +320,6 @@ export const ImageGenerationStudio = ({
 
     toast.success(`${approver === 'ceo' ? 'CEO' : 'You'} approved ${image.name}`);
 
-    // Update in database
     if (phaseId) {
       await supabase
         .from('phase_deliverables')
@@ -219,7 +336,7 @@ export const ImageGenerationStudio = ({
     }
   };
 
-  const handleReject = async (image: GeneratedImage, approver: 'ceo' | 'user') => {
+  const handleReject = async (image: GeneratedImage) => {
     setGeneratedImages(images =>
       images.map(img =>
         img.id === image.id
@@ -233,28 +350,32 @@ export const ImageGenerationStudio = ({
   };
 
   const handleRegenerate = async (image: GeneratedImage) => {
-    setGeneratedImages(images =>
-      images.map(img =>
-        img.id === image.id
-          ? { ...img, status: 'generating' as const, progress: 0, ceoApproved: false, userApproved: false }
-          : img
-      )
-    );
-
-    // Simulate regeneration
-    const idx = generatedImages.findIndex(img => img.id === image.id);
-    if (idx !== -1) {
-      setCurrentGeneratingIndex(idx);
-      setIsGenerating(true);
-      setGenerationProgress(0);
-    }
-
+    // For now, trigger a full regeneration
     toast.info(`Regenerating ${image.name}...`);
+    startGeneration();
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'generating': return <Loader2 className="w-4 h-4 animate-spin" />;
+      case 'uploading': return <Upload className="w-4 h-4 animate-pulse" />;
+      case 'pending_review': return <Clock className="w-4 h-4" />;
+      case 'approved': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'rejected': return <XCircle className="w-4 h-4 text-red-500" />;
+      default: return <Clock className="w-4 h-4 text-muted-foreground" />;
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'generating': return 'bg-blue-500';
+      case 'uploading': return 'bg-purple-500';
       case 'pending_review': return 'bg-yellow-500';
       case 'approved': return 'bg-green-500';
       case 'rejected': return 'bg-red-500';
@@ -284,7 +405,7 @@ export const ImageGenerationStudio = ({
             <div>
               <CardTitle className="text-lg">Image Generation Studio</CardTitle>
               <CardDescription>
-                {agentName} is generating brand assets
+                {agentName} is generating brand assets with Fal.ai
               </CardDescription>
             </div>
           </div>
@@ -298,26 +419,86 @@ export const ImageGenerationStudio = ({
       </CardHeader>
 
       <CardContent>
-        {/* Generation Progress */}
-        {isGenerating && currentGeneratingIndex !== null && (
+        {/* Real-Time Generation Progress */}
+        {isGenerating && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg"
+            className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-4"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
-              <span className="font-medium">
-                Generating: {generatedImages[currentGeneratingIndex]?.name}
-              </span>
-              <Badge variant="secondary" className="ml-auto">
-                {currentGeneratingIndex + 1} / {generatedImages.length}
-              </Badge>
+            {/* Status Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  <div className="absolute inset-0 w-5 h-5 bg-primary/20 rounded-full animate-ping" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{currentStatus}</p>
+                  {currentModel && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Server className="w-3 h-3" />
+                      Model: {currentModel}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatTime(elapsedTime)}
+                </Badge>
+                <Badge variant="outline">
+                  {overallProgress}%
+                </Badge>
+              </div>
             </div>
-            <Progress value={generationProgress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              AI is creating your brand asset... {generationProgress}%
-            </p>
+
+            {/* Progress Bar */}
+            <Progress value={overallProgress} className="h-2" />
+
+            {/* Generation Timeline */}
+            <div className="grid grid-cols-5 gap-2">
+              {generatedImages.map((img, idx) => (
+                <div
+                  key={img.id}
+                  className={`p-2 rounded-md text-center transition-all ${
+                    img.status === 'generating' 
+                      ? 'bg-primary/20 ring-2 ring-primary' 
+                      : img.status === 'pending_review' 
+                        ? 'bg-green-500/20' 
+                        : img.status === 'uploading'
+                          ? 'bg-purple-500/20'
+                          : 'bg-muted/50'
+                  }`}
+                >
+                  <div className="flex justify-center mb-1">
+                    {getStatusIcon(img.status)}
+                  </div>
+                  <p className="text-xs truncate">{img.name}</p>
+                  {img.model && img.status !== 'pending' && (
+                    <p className="text-[10px] text-muted-foreground truncate">{img.model}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Live Event Log */}
+            <div className="bg-background/50 rounded-md p-2 max-h-24 overflow-y-auto">
+              <div className="space-y-1">
+                {streamEvents.slice(-5).map((event, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <Zap className="w-3 h-3 text-primary flex-shrink-0" />
+                    <span className="text-muted-foreground truncate">{event.message}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -331,23 +512,58 @@ export const ImageGenerationStudio = ({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.05 }}
                   className="relative group"
                 >
                   <Card className={`overflow-hidden transition-all ${
                     image.status === 'approved' ? 'ring-2 ring-green-500' :
-                    image.status === 'rejected' ? 'ring-2 ring-red-500' : ''
+                    image.status === 'rejected' ? 'ring-2 ring-red-500' : 
+                    image.status === 'generating' ? 'ring-2 ring-primary animate-pulse' : ''
                   }`}>
                     {/* Image Preview Area */}
                     <div className="aspect-square bg-muted relative">
-                      {image.status === 'generating' ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                          <Progress value={image.progress} className="w-3/4 h-1" />
-                          <span className="text-xs text-muted-foreground">{image.progress}%</span>
+                      {image.status === 'generating' || image.status === 'uploading' ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-primary/5 to-primary/10">
+                          <div className="relative">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                            <div className="absolute inset-0 w-10 h-10 bg-primary/10 rounded-full animate-ping" />
+                          </div>
+                          <div className="text-center px-4">
+                            <p className="text-sm font-medium">
+                              {image.status === 'uploading' ? 'Uploading...' : 'Generating...'}
+                            </p>
+                            {image.model && (
+                              <p className="text-xs text-muted-foreground">{image.model}</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : image.status === 'pending' ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/50">
+                          <Clock className="w-8 h-8 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Waiting...</span>
+                        </div>
+                      ) : image.type === 'color_palette' && image.colorData ? (
+                        <div className="absolute inset-0 flex items-center justify-center p-4">
+                          <div className="flex gap-2 w-full">
+                            <div 
+                              className="flex-1 h-20 rounded-lg shadow-inner" 
+                              style={{ backgroundColor: image.colorData.primary }}
+                            />
+                            <div 
+                              className="flex-1 h-20 rounded-lg shadow-inner" 
+                              style={{ backgroundColor: image.colorData.secondary }}
+                            />
+                            <div 
+                              className="flex-1 h-20 rounded-lg shadow-inner" 
+                              style={{ backgroundColor: image.colorData.accent }}
+                            />
+                          </div>
                         </div>
                       ) : image.imageUrl ? (
-                        <img 
+                        <motion.img 
+                          initial={{ opacity: 0, filter: 'blur(10px)' }}
+                          animate={{ opacity: 1, filter: 'blur(0px)' }}
+                          transition={{ duration: 0.5 }}
                           src={image.imageUrl} 
                           alt={image.name}
                           className="w-full h-full object-contain p-4"
@@ -362,15 +578,27 @@ export const ImageGenerationStudio = ({
 
                       {/* Status Badge */}
                       <div className="absolute top-2 right-2">
-                        <Badge className={`${getStatusColor(image.status)} text-white text-xs`}>
-                          {image.status === 'generating' ? 'Generating...' :
+                        <Badge className={`${getStatusColor(image.status)} text-white text-xs gap-1`}>
+                          {getStatusIcon(image.status)}
+                          {image.status === 'generating' ? 'Generating' :
+                           image.status === 'uploading' ? 'Uploading' :
+                           image.status === 'pending' ? 'Waiting' :
                            image.status === 'pending_review' ? 'Review' :
                            image.status === 'approved' ? 'Approved' : 'Redo'}
                         </Badge>
                       </div>
 
+                      {/* Model Badge */}
+                      {image.model && image.status === 'pending_review' && (
+                        <div className="absolute top-2 left-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {image.model}
+                          </Badge>
+                        </div>
+                      )}
+
                       {/* Hover Actions */}
-                      {image.status !== 'generating' && (
+                      {image.status !== 'generating' && image.status !== 'pending' && image.status !== 'uploading' && (
                         <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <Dialog>
                             <DialogTrigger asChild>
@@ -380,11 +608,45 @@ export const ImageGenerationStudio = ({
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl">
                               <DialogHeader>
-                                <DialogTitle>{image.name}</DialogTitle>
+                                <DialogTitle className="flex items-center gap-2">
+                                  {image.name}
+                                  {image.model && (
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      {image.model}
+                                    </Badge>
+                                  )}
+                                </DialogTitle>
                               </DialogHeader>
                               <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
                                 {image.imageUrl ? (
                                   <img src={image.imageUrl} alt={image.name} className="max-w-full max-h-full object-contain" />
+                                ) : image.type === 'color_palette' && image.colorData ? (
+                                  <div className="flex gap-4 w-full p-8">
+                                    <div className="flex-1 flex flex-col items-center gap-2">
+                                      <div 
+                                        className="w-full h-32 rounded-lg shadow-lg" 
+                                        style={{ backgroundColor: image.colorData.primary }}
+                                      />
+                                      <span className="text-sm font-mono">{image.colorData.primary}</span>
+                                      <span className="text-xs text-muted-foreground">Primary</span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center gap-2">
+                                      <div 
+                                        className="w-full h-32 rounded-lg shadow-lg" 
+                                        style={{ backgroundColor: image.colorData.secondary }}
+                                      />
+                                      <span className="text-sm font-mono">{image.colorData.secondary}</span>
+                                      <span className="text-xs text-muted-foreground">Secondary</span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center gap-2">
+                                      <div 
+                                        className="w-full h-32 rounded-lg shadow-lg" 
+                                        style={{ backgroundColor: image.colorData.accent }}
+                                      />
+                                      <span className="text-sm font-mono">{image.colorData.accent}</span>
+                                      <span className="text-xs text-muted-foreground">Accent</span>
+                                    </div>
+                                  </div>
                                 ) : (
                                   <div className="p-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
                                     {getTypeIcon(image.type)}
@@ -460,29 +722,14 @@ export const ImageGenerationStudio = ({
                         </div>
                       )}
 
-                      {/* Approved State */}
-                      {image.status === 'approved' && (
-                        <div className="flex items-center gap-2 text-green-600 text-sm">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Fully Approved</span>
-                        </div>
-                      )}
-
                       {/* Rejected State */}
                       {image.status === 'rejected' && (
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-red-600 text-sm">
-                            <XCircle className="w-4 h-4" />
-                            <span>Marked for Redo</span>
-                          </div>
-                          {image.feedback && (
-                            <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                              {image.feedback}
-                            </p>
-                          )}
+                          <p className="text-xs text-red-500">{image.feedback || 'Marked for regeneration'}</p>
                           <Button 
                             size="sm" 
-                            className="w-full gap-2"
+                            variant="outline"
+                            className="w-full gap-1"
                             onClick={() => handleRegenerate(image)}
                           >
                             <RefreshCw className="w-3 h-3" />
@@ -496,6 +743,23 @@ export const ImageGenerationStudio = ({
               ))}
             </AnimatePresence>
           </div>
+
+          {/* Empty State */}
+          {generatedImages.length === 0 && !isGenerating && (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="p-4 rounded-full bg-primary/10 mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-2">No Assets Generated Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Click "Generate Assets" to create your brand visuals with AI
+              </p>
+              <Button onClick={startGeneration} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Generate Assets
+              </Button>
+            </div>
+          )}
         </ScrollArea>
 
         {/* Feedback Dialog */}
@@ -518,32 +782,17 @@ export const ImageGenerationStudio = ({
                 <Button 
                   onClick={() => {
                     if (selectedImage) {
-                      handleReject(selectedImage, 'user');
+                      handleReject(selectedImage);
                       setSelectedImage(null);
                     }
                   }}
-                  className="gap-2"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  Request Regeneration
+                  Submit Feedback
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Empty State */}
-        {generatedImages.length === 0 && !isGenerating && (
-          <div className="text-center py-12">
-            <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="font-semibold mb-2">Ready to Generate Brand Assets</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Click the button above to start generating logos, icons, and other brand assets
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
