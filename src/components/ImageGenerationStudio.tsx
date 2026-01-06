@@ -117,18 +117,19 @@ export const ImageGenerationStudio = ({
         .eq('phase_id', phaseId)
         .eq('deliverable_type', 'brand_assets')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
 
       if (error) {
         console.warn('[ImageGenerationStudio] Failed to load existing brand assets:', error);
         return;
       }
 
-      if (data?.generated_content) {
-        const content = data.generated_content as Record<string, unknown>;
+      const row = data?.[0] ?? null;
+
+      if (row?.generated_content) {
+        const content = row.generated_content as Record<string, unknown>;
         const assets: GeneratedImage[] = [];
-        
+
         if (content.primaryLogo && typeof content.primaryLogo === 'object') {
           const logo = content.primaryLogo as Record<string, unknown>;
           assets.push({
@@ -136,14 +137,14 @@ export const ImageGenerationStudio = ({
             type: 'logo',
             name: 'Primary Logo',
             imageUrl: logo.imageUrl as string,
-            status: data.ceo_approved && data.user_approved ? 'approved' : 'pending_review',
+            status: row.ceo_approved && row.user_approved ? 'approved' : 'pending_review',
             progress: 100,
-            ceoApproved: data.ceo_approved || false,
-            userApproved: data.user_approved || false,
+            ceoApproved: row.ceo_approved || false,
+            userApproved: row.user_approved || false,
             model: logo.model as string,
           });
         }
-        
+
         if (Array.isArray(content.assets)) {
           content.assets.forEach((asset: Record<string, unknown>, idx: number) => {
             assets.push({
