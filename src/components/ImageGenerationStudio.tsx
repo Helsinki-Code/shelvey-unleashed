@@ -323,14 +323,14 @@ export const ImageGenerationStudio = ({
     const fullyApproved = updatedCeoApproved && updatedUserApproved;
 
     // Update local state
-    setGeneratedImages(images =>
-      images.map(img =>
+    setGeneratedImages((images) =>
+      images.map((img) =>
         img.id === image.id
-          ? { 
-              ...img, 
+          ? {
+              ...img,
               ceoApproved: updatedCeoApproved,
               userApproved: updatedUserApproved,
-              status: fullyApproved ? 'approved' : img.status
+              status: fullyApproved ? 'approved' : img.status,
             }
           : img
       )
@@ -338,50 +338,78 @@ export const ImageGenerationStudio = ({
 
     toast.success(`${approver === 'ceo' ? 'CEO' : 'You'} approved ${image.name}`);
 
-    // Update the generated_content JSON to track individual asset approvals
+    // Persist approval on the Phase 2 brand_assets deliverable.
+    // IMPORTANT: Users should not write deliverable-level CEO flags.
     if (phaseId) {
-      // Fetch current deliverable
-      const { data: deliverable } = await supabase
-        .from('phase_deliverables')
-        .select('id, generated_content')
-        .eq('phase_id', phaseId)
-        .eq('deliverable_type', 'brand_assets')
-        .order('created_at', { ascending: false })
-        .limit(1);
+      try {
+        const { data: deliverables, error: fetchError } = await supabase
+          .from('phase_deliverables')
+          .select('id, generated_content, ceo_approved, user_approved')
+          .eq('phase_id', phaseId)
+          .eq('deliverable_type', 'brand_assets')
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-      const row = deliverable?.[0];
-      if (row) {
+        if (fetchError) throw fetchError;
+
+        const row = deliverables?.[0];
+        if (!row?.id) return;
+
         const content = (row.generated_content || {}) as Record<string, unknown>;
         const assets = Array.isArray(content.assets) ? [...content.assets] : [];
-        
-        // Find and update the specific asset
-        const assetIndex = assets.findIndex((a: Record<string, unknown>) => 
-          (a.id === image.id) || (a.name === image.name)
+
+        const assetIndex = assets.findIndex(
+          (a: Record<string, unknown>) => a?.id === image.id || a?.name === image.name
         );
-        
+
+        const nextAsset = {
+          id: image.id,
+          type: image.type,
+          name: image.name,
+          imageUrl: image.imageUrl,
+          model: image.model,
+          colorData: image.colorData,
+          ceoApproved: updatedCeoApproved,
+          userApproved: updatedUserApproved,
+        };
+
         if (assetIndex >= 0) {
-          assets[assetIndex] = {
-            ...assets[assetIndex],
-            ceoApproved: updatedCeoApproved,
-            userApproved: updatedUserApproved,
-          };
+          assets[assetIndex] = { ...(assets[assetIndex] as Record<string, unknown>), ...nextAsset };
+        } else {
+          assets.push(nextAsset);
         }
 
-        // Check if ALL assets are fully approved
-        const allAssetsApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => 
-          a.ceoApproved === true && a.userApproved === true
-        );
+        const allCeoApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => a.ceoApproved === true);
+        const allUserApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => a.userApproved === true);
+        const allFullyApproved =
+          assets.length > 0 &&
+          assets.every((a: Record<string, unknown>) => a.ceoApproved === true && a.userApproved === true);
 
-        await supabase
+        const updatePayload: Record<string, unknown> = {
+          generated_content: { ...content, assets },
+          status: allFullyApproved ? 'approved' : 'pending_review',
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only write the user's approval state from the user UI.
+        if (approver === 'user') {
+          updatePayload.user_approved = allUserApproved;
+        }
+
+        // If a CEO UI ever calls this, it can write CEO approval.
+        if (approver === 'ceo') {
+          updatePayload.ceo_approved = allCeoApproved;
+        }
+
+        const { error: updateError } = await supabase
           .from('phase_deliverables')
-          .update({
-            generated_content: { ...content, assets },
-            ceo_approved: allAssetsApproved,
-            user_approved: allAssetsApproved,
-            status: allAssetsApproved ? 'approved' : 'pending_review',
-            updated_at: new Date().toISOString()
-          })
+          .update(updatePayload)
           .eq('id', row.id);
+
+        if (updateError) throw updateError;
+      } catch (e: any) {
+        console.error('[ImageGenerationStudio] Failed to persist approval:', e);
+        toast.error(e?.message || 'Failed to save approval');
       }
     }
 
@@ -805,7 +833,7 @@ export const ImageGenerationStudio = ({
                                 <Maximize2 className="w-4 h-4" />
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
+                            <DialogContent className="max-w-2xl" aria-describedby={undefined}>
                               <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2">
                                   {image.name}
@@ -971,7 +999,7 @@ export const ImageGenerationStudio = ({
 
         {/* Feedback Dialog */}
         <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-          <DialogContent>
+          <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>Request Changes for {selectedImage?.name}</DialogTitle>
             </DialogHeader>
