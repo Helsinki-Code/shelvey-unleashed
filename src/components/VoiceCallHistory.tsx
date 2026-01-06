@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { useCEO } from '@/hooks/useCEO';
 import { format } from 'date-fns';
 
 interface VoiceCall {
@@ -19,6 +20,7 @@ interface VoiceCall {
 }
 
 const VoiceCallHistory: React.FC = () => {
+  const { ceoName } = useCEO();
   const [calls, setCalls] = useState<VoiceCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCall, setSelectedCall] = useState<VoiceCall | null>(null);
@@ -73,7 +75,7 @@ const VoiceCallHistory: React.FC = () => {
 
   const getAgentName = (agentId: string) => {
     const names: Record<string, string> = {
-      'ceo': 'ARIA (CEO)',
+      'ceo': ceoName,
       'sales': 'Sales Agent',
       'support': 'Support Agent',
       'research': 'Research Agent',

@@ -18,6 +18,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCEO } from '@/hooks/useCEO';
 import { toast } from 'sonner';
 
 interface WebsiteFeedbackPanelProps {
@@ -41,6 +42,7 @@ export const WebsiteFeedbackPanel = ({
   onUpdate,
   onHostingSetup 
 }: WebsiteFeedbackPanelProps) => {
+  const { ceoName } = useCEO();
   const [feedback, setFeedback] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isGettingCeoFeedback, setIsGettingCeoFeedback] = useState(false);
@@ -108,7 +110,7 @@ export const WebsiteFeedbackPanel = ({
 
       if (response.error) throw response.error;
 
-      toast.success(`${approver === 'ceo' ? 'CEO' : 'Your'} approval recorded!`);
+      toast.success(`${approver === 'ceo' ? ceoName : 'Your'} approval recorded!`);
       onUpdate();
     } catch (error: any) {
       toast.error(error.message || 'Failed to approve');
@@ -151,7 +153,7 @@ export const WebsiteFeedbackPanel = ({
             {website.ceo_approved && (
               <Badge className="bg-emerald-500/20 text-emerald-400">
                 <Bot className="h-3 w-3 mr-1" />
-                CEO ✓
+                {ceoName} ✓
               </Badge>
             )}
             {website.user_approved && (
@@ -303,7 +305,7 @@ export const WebsiteFeedbackPanel = ({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Bot className="h-5 w-5 text-primary" />
-                      <span className="font-medium">CEO Approval</span>
+                      <span className="font-medium">{ceoName}'s Approval</span>
                     </div>
                     {website.ceo_approved ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -317,7 +319,7 @@ export const WebsiteFeedbackPanel = ({
                     onClick={() => handleApprove('ceo')}
                     disabled={website.ceo_approved}
                   >
-                    {website.ceo_approved ? 'Approved' : 'Approve as CEO'}
+                    {website.ceo_approved ? 'Approved' : `Approve as ${ceoName}`}
                   </Button>
                 </Card>
 

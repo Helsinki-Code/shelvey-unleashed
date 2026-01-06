@@ -30,6 +30,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useCEO } from '@/hooks/useCEO';
 import { toast } from 'sonner';
 
 interface GeneratedImage {
@@ -77,6 +78,7 @@ export const ImageGenerationStudio = ({
   onAssetApproved,
   triggerGenerationRef,
 }: ImageGenerationStudioProps) => {
+  const { ceoName } = useCEO();
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCeoReviewing, setIsCeoReviewing] = useState(false);
@@ -386,7 +388,7 @@ export const ImageGenerationStudio = ({
       )
     );
 
-    toast.success(`${approver === 'ceo' ? 'CEO' : 'You'} approved ${image.name}`);
+    toast.success(`${approver === 'ceo' ? ceoName : 'You'} approved ${image.name}`);
 
     // Persist approval on the Phase 2 brand_assets deliverable
     if (phaseId) {

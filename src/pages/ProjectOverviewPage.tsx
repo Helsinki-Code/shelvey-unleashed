@@ -12,6 +12,7 @@ import { CEOOnboardingDialog } from '@/components/CEOOnboardingDialog';
 import { AnimatedPhaseTimeline } from '@/components/AnimatedPhaseTimeline';
 import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
+import { useCEO } from '@/hooks/useCEO';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -44,6 +45,7 @@ const ProjectOverviewPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { ceoName, ceoAvatarUrl } = useCEO();
   const [project, setProject] = useState<Project | null>(null);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -371,7 +373,7 @@ const ProjectOverviewPage = () => {
                             Requesting Review...
                           </>
                         ) : (
-                          'Request CEO Review'
+                          `Request ${ceoName}'s Review`
                         )}
                       </Button>
                     )}
@@ -386,7 +388,7 @@ const ProjectOverviewPage = () => {
                       <div>
                         <p className="font-semibold">Your Approval</p>
                         <p className="text-sm text-muted-foreground">
-                          {project.user_approved ? 'Approved' : project.ceo_approved ? 'Ready for your review' : 'Waiting for CEO'}
+                          {project.user_approved ? 'Approved' : project.ceo_approved ? 'Ready for your review' : `Waiting for ${ceoName}`}
                         </p>
                       </div>
                       {project.user_approved ? (

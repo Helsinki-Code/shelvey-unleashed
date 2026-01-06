@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { useCEO } from '@/hooks/useCEO';
 import shelveyLogo from '@/assets/shelvey-logo.png';
 
 interface NavItem {
@@ -36,6 +37,7 @@ export const DashboardSidebar = ({ onNavigate, activeSection }: DashboardSidebar
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { ceoName } = useCEO();
 
   const navGroups: NavGroup[] = [
     {
@@ -50,10 +52,10 @@ export const DashboardSidebar = ({ onNavigate, activeSection }: DashboardSidebar
         },
         { 
           id: 'ceo', 
-          label: 'Talk to CEO', 
+          label: `Talk to ${ceoName}`, 
           icon: MessageSquare, 
           onClick: () => onNavigate?.('ceo'),
-          helpText: 'Chat with your AI CEO to plan and execute business ideas'
+          helpText: `Chat with ${ceoName} to plan and execute business ideas`
         },
         { 
           id: 'voice', 

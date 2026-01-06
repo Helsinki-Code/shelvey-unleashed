@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
+import { CEOProvider } from "@/contexts/CEOContext";
 import Index from "./pages/Index";
 import AgentsPage from "./pages/AgentsPage";
 import PipelinePage from "./pages/PipelinePage";
@@ -69,10 +70,11 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+        <CEOProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
@@ -132,8 +134,9 @@ const App = () => (
               <Route path="/blog-empire" element={<BlogEmpirePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </CEOProvider>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>

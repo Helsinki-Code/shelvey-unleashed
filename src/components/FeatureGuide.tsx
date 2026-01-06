@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Briefcase, Users, Server, Globe, Building2,
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useCEO } from '@/hooks/useCEO';
 
 interface Feature {
   id: string;
@@ -21,17 +22,18 @@ interface Feature {
   category: 'core' | 'business' | 'team' | 'settings';
 }
 
-const FEATURES: Feature[] = [
+// Features array is static, ceoName will be injected at render time
+const createFeatures = (ceoName: string): Feature[] => [
   {
     id: 'ceo-chat',
-    title: 'CEO Agent Chat',
+    title: `${ceoName} Chat`,
     icon: MessageSquare,
-    shortDesc: 'Talk to your AI CEO to start and manage projects',
-    fullDesc: 'The CEO Agent is your primary point of contact. She can help you brainstorm ideas, create business plans, delegate work to other agents, and review all deliverables.',
+    shortDesc: `Talk to ${ceoName} to start and manage projects`,
+    fullDesc: `${ceoName} is your primary point of contact. ${ceoName} can help you brainstorm ideas, create business plans, delegate work to other agents, and review all deliverables.`,
     howToUse: [
-      'Go to Dashboard and click "Talk to CEO"',
+      `Go to Dashboard and click "Talk to ${ceoName}"`,
       'Type your business idea or question',
-      'The CEO will research, plan, and delegate tasks',
+      `${ceoName} will research, plan, and delegate tasks`,
       'You\'ll receive updates as work progresses'
     ],
     tips: [
@@ -209,12 +211,15 @@ interface FeatureGuideProps {
 }
 
 export const FeatureGuide = ({ isOpen, onClose }: FeatureGuideProps) => {
+  const { ceoName } = useCEO();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [filter, setFilter] = useState<string>('all');
 
+  const features = useMemo(() => createFeatures(ceoName), [ceoName]);
+
   const filteredFeatures = filter === 'all' 
-    ? FEATURES 
-    : FEATURES.filter(f => f.category === filter);
+    ? features 
+    : features.filter(f => f.category === filter);
 
   if (!isOpen) return null;
 

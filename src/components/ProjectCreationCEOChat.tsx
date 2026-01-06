@@ -1,18 +1,28 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Send, X, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Send, Loader2, Sparkles, Upload, X, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useCEO } from '@/hooks/useCEO';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  attachments?: UploadedFile[];
+}
+
+interface UploadedFile {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+  path: string;
 }
 
 interface ProjectCreationCEOChatProps {
@@ -24,29 +34,118 @@ interface ProjectCreationCEOChatProps {
 export const ProjectCreationCEOChat = ({ open, onClose, onProjectCreated }: ProjectCreationCEOChatProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: `Hello! I'm your CEO, and I'm excited to help you create a new business project! 🚀
-
-Tell me about your business idea, or if you're not sure yet, I can suggest some profitable opportunities based on current market trends.
-
-What would you like to do?
-• Describe your business idea
-• Get business suggestions from me
-• Explore trending markets`,
-    },
-  ]);
+  const { ceoName, ceoAvatarUrl } = useCEO();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [extractedProject, setExtractedProject] = useState<any>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [projectProposal, setProjectProposal] = useState<{
+    name: string;
+    industry: string;
+    description: string;
+  } | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Reset state when dialog opens
+  const resetState = () => {
+    setMessages([
+      {
+        role: 'assistant',
+        content: `Hello! I'm ${ceoName}, and I'm excited to help you create a new business project! 🚀
+
+Tell me about your business idea - what problem are you solving? Who is it for?
+
+Feel free to upload any existing logos, documents, or reference materials you'd like me to consider.`,
+      },
+    ]);
+    setInput('');
+    setUploadedFiles([]);
+    setProjectProposal(null);
+  };
+
+  // Initialize messages when dialog opens
+  useState(() => {
+    if (open && messages.length === 0) {
+      resetState();
+    }
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user) return;
+
+    setIsUploading(true);
+    const newFiles: UploadedFile[] = [];
+
+    for (const file of Array.from(files)) {
+      const isImage = file.type.startsWith('image/');
+      const timestamp = Date.now();
+      const path = `${user.id}/pending/${timestamp}/${file.name}`;
+
+      try {
+        const { error } = await supabase.storage
+          .from('project-assets')
+          .upload(path, file, { upsert: true });
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage
+          .from('project-assets')
+          .getPublicUrl(path);
+
+        newFiles.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          type: isImage ? 'image' : 'document',
+          path,
+        });
+
+        toast.success(`Uploaded ${file.name}`);
+      } catch (err) {
+        console.error('Upload error:', err);
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    setIsUploading(false);
+
+    // Add message acknowledging uploads
+    if (newFiles.length > 0) {
+      const fileNames = newFiles.map(f => f.name).join(', ');
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I see you've uploaded: ${fileNames}. I'll make sure our AI agents use ${newFiles.length === 1 ? 'this' : 'these'} in your project! ${newFiles.some(f => f.type === 'image') ? 'If any of these are logos, we\'ll use them as your primary brand asset.' : ''}`,
+        },
+      ]);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = async (file: UploadedFile) => {
+    try {
+      await supabase.storage.from('project-assets').remove([file.path]);
+      setUploadedFiles(prev => prev.filter(f => f.path !== file.path));
+      toast.success(`Removed ${file.name}`);
+    } catch (err) {
+      console.error('Remove error:', err);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !user) return;
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { role: 'user', content: userMessage, attachments: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined }]);
     setIsLoading(true);
 
     try {
@@ -66,6 +165,9 @@ What would you like to do?
               content: m.content,
             })),
             currentPage: '/projects/new',
+            context: {
+              uploadedAssets: uploadedFiles,
+            },
           }),
         }
       );
@@ -106,13 +208,17 @@ What would you like to do?
         }
       }
 
-      // Try to extract project details from conversation
-      if (assistantMessage.toLowerCase().includes('create') && 
-          (assistantMessage.toLowerCase().includes('project') || assistantMessage.toLowerCase().includes('business'))) {
-        // Attempt to extract project info
-        const projectInfo = extractProjectInfo(assistantMessage, userMessage);
-        if (projectInfo) {
-          setExtractedProject(projectInfo);
+      // Check if CEO is proposing a project (after enough conversation)
+      if (messages.length >= 4 && assistantMessage.toLowerCase().includes('project name:')) {
+        const nameMatch = assistantMessage.match(/project name:\s*([^\n]+)/i);
+        const industryMatch = assistantMessage.match(/industry:\s*([^\n]+)/i);
+        
+        if (nameMatch) {
+          setProjectProposal({
+            name: nameMatch[1].trim().replace(/[*"]/g, ''),
+            industry: industryMatch ? industryMatch[1].trim().replace(/[*"]/g, '') : 'E-commerce',
+            description: userMessage,
+          });
         }
       }
 
@@ -124,58 +230,72 @@ What would you like to do?
     }
   };
 
-  const extractProjectInfo = (aiMessage: string, userMessage: string): any => {
-    // Simple extraction - in production, use AI for this
-    const words = userMessage.split(' ');
-    const name = words.slice(0, 3).join(' ') || 'New Business Project';
-    
-    return {
-      name,
-      description: userMessage,
-      industry: 'E-commerce', // Default
-      target_market: 'General consumers',
-    };
-  };
-
   const createProject = async () => {
-    if (!extractedProject || !user) return;
-    setIsLoading(true);
+    if (!projectProposal || !user) return;
+    setIsCreating(true);
 
     try {
+      // Build metadata with uploaded assets
+      const uploadedAssets = uploadedFiles.length > 0 
+        ? uploadedFiles.map(f => ({
+            type: f.type,
+            url: f.url,
+            filename: f.name,
+            originalPath: f.path,
+          }))
+        : null;
+
       const { data, error } = await supabase
         .from('business_projects')
-        .insert({
+        .insert([{
           user_id: user.id,
-          name: extractedProject.name,
-          description: extractedProject.description,
-          industry: extractedProject.industry,
-          target_market: extractedProject.target_market,
+          name: projectProposal.name,
+          description: projectProposal.description,
+          industry: projectProposal.industry,
+          target_market: 'General consumers',
           status: 'active',
-        })
+          business_model: uploadedAssets ? { uploaded_assets: uploadedAssets } : null,
+        }])
         .select()
         .single();
 
       if (error) throw error;
 
+      // Move uploaded files to project folder
+      if (uploadedFiles.length > 0 && data) {
+        for (const file of uploadedFiles) {
+          const newPath = `${user.id}/${data.id}/${file.name}`;
+          try {
+            await supabase.storage.from('project-assets').move(file.path, newPath);
+          } catch (moveErr) {
+            console.warn('Failed to move file:', moveErr);
+          }
+        }
+      }
+
       toast.success('Project created successfully!');
       onProjectCreated();
-      // Navigate with state to trigger CEO onboarding dialog
+      onClose();
       navigate(`/projects/${data.id}/overview`, { state: { newProject: true } });
     } catch (error) {
       console.error('Create project error:', error);
       toast.error('Failed to create project');
     } finally {
-      setIsLoading(false);
+      setIsCreating(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); resetState(); } }}>
       <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-primary" />
-            Create Project with CEO
+            {ceoAvatarUrl ? (
+              <img src={ceoAvatarUrl} alt={ceoName} className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <Bot className="w-5 h-5 text-primary" />
+            )}
+            Create Project with {ceoName}
           </DialogTitle>
         </DialogHeader>
 
@@ -194,6 +314,16 @@ What would you like to do?
                   }`}
                 >
                   <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {message.attachments.map((att, i) => (
+                        <div key={i} className="flex items-center gap-1 text-xs bg-background/20 rounded px-2 py-1">
+                          {att.type === 'image' ? <ImageIcon className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                          {att.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -208,25 +338,47 @@ What would you like to do?
           </div>
         </ScrollArea>
 
-        {/* Extracted Project Preview */}
-        {extractedProject && (
+        {/* Uploaded Files Preview */}
+        {uploadedFiles.length > 0 && (
+          <div className="border-t pt-3">
+            <p className="text-xs text-muted-foreground mb-2">Uploaded files:</p>
+            <div className="flex flex-wrap gap-2">
+              {uploadedFiles.map((file, i) => (
+                <div key={i} className="flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5 text-sm">
+                  {file.type === 'image' ? (
+                    <img src={file.url} alt={file.name} className="w-6 h-6 rounded object-cover" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                  <span className="max-w-[100px] truncate">{file.name}</span>
+                  <button onClick={() => removeFile(file)} className="hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Project Proposal */}
+        {projectProposal && (
           <Card className="p-4 bg-primary/5 border-primary/20">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="font-medium">Project Ready to Create</span>
+              <span className="font-medium">{ceoName}'s Project Proposal</span>
             </div>
             <div className="text-sm space-y-1 mb-3">
-              <p><strong>Name:</strong> {extractedProject.name}</p>
-              <p><strong>Industry:</strong> {extractedProject.industry}</p>
+              <p><strong>Name:</strong> {projectProposal.name}</p>
+              <p><strong>Industry:</strong> {projectProposal.industry}</p>
             </div>
-            <Button onClick={createProject} disabled={isLoading} className="w-full">
-              {isLoading ? (
+            <Button onClick={createProject} disabled={isCreating} className="w-full">
+              {isCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
-                'Create Project'
+                'Create This Project'
               )}
             </Button>
           </Card>
@@ -234,12 +386,28 @@ What would you like to do?
 
         {/* Input */}
         <div className="flex gap-2 pt-4 border-t">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          </Button>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
             placeholder="Describe your business idea..."
-            className="min-h-[60px] resize-none"
+            className="min-h-[60px] resize-none flex-1"
             disabled={isLoading}
           />
           <Button onClick={sendMessage} disabled={isLoading || !input.trim()}>
