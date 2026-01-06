@@ -156,21 +156,40 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
       });
 
-      // Get project info
+      // Get project info including uploaded assets
       const { data: project } = await supabase
         .from('business_projects')
-        .select('name, industry')
+        .select('name, industry, business_model')
         .eq('id', projectId)
         .single();
 
       const brandName = project?.name || 'Brand';
       const industry = project?.industry || 'business';
+      
+      // Check for user-uploaded logo
+      let userUploadedLogoUrl: string | null = null;
+      if (project?.business_model && typeof project.business_model === 'object') {
+        const bm = project.business_model as Record<string, unknown>;
+        const uploadedAssets = bm.uploaded_assets as Array<{ type: string; url: string; filename: string }> | undefined;
+        if (uploadedAssets && Array.isArray(uploadedAssets)) {
+          const logoAsset = uploadedAssets.find(a => 
+            a.type === 'image' && 
+            (a.filename.toLowerCase().includes('logo') || uploadedAssets.length === 1)
+          );
+          if (logoAsset) {
+            userUploadedLogoUrl = logoAsset.url;
+          }
+        }
+      }
 
       await sendEvent({
         type: 'context_loaded',
-        message: `Loaded brand context for "${brandName}"`,
+        message: userUploadedLogoUrl 
+          ? `Loaded brand context for "${brandName}" with user-uploaded logo` 
+          : `Loaded brand context for "${brandName}"`,
         brandName,
         industry,
+        hasUploadedLogo: !!userUploadedLogoUrl,
         timestamp: new Date().toISOString(),
       });
 
@@ -187,8 +206,8 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
       });
 
-      // Track generated images for chaining
-      let primaryLogoUrl: string | null = null;
+      // Track generated images for chaining - use uploaded logo if available
+      let primaryLogoUrl: string | null = userUploadedLogoUrl;
 
       const generatedAssets: Array<{
         id: string;
@@ -245,6 +264,35 @@ serve(async (req) => {
             totalAssets: ASSETS_TO_GENERATE.length,
             progress: Math.round(((i + 1) / ASSETS_TO_GENERATE.length) * 100),
             message: `${asset.name} configured`,
+            timestamp: new Date().toISOString(),
+          });
+          continue;
+        }
+
+        // Skip primary logo generation if user uploaded one
+        if (asset.id === 'logo-1' && userUploadedLogoUrl) {
+          generatedAssets.push({
+            id: asset.id,
+            type: asset.type,
+            name: asset.name + ' (Uploaded)',
+            imageUrl: userUploadedLogoUrl,
+            model: 'User Upload',
+            ceoApproved: false,
+            userApproved: false,
+          });
+
+          await sendEvent({
+            type: 'asset_complete',
+            assetId: asset.id,
+            assetType: asset.type,
+            name: asset.name,
+            model: 'User Upload',
+            imageUrl: userUploadedLogoUrl,
+            currentIndex: i,
+            totalAssets: ASSETS_TO_GENERATE.length,
+            progress: Math.round(((i + 1) / ASSETS_TO_GENERATE.length) * 100),
+            message: `Using your uploaded logo!`,
+            success: true,
             timestamp: new Date().toISOString(),
           });
           continue;

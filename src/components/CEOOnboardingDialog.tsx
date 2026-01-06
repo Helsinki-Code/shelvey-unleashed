@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
+import { useCEO } from '@/hooks/useCEO';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -36,6 +37,7 @@ export const CEOOnboardingDialog = ({
   projectDescription,
 }: CEOOnboardingDialogProps) => {
   const { user } = useAuth();
+  const { ceoName, ceoAvatarUrl } = useCEO();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,11 +50,11 @@ export const CEOOnboardingDialog = ({
       setMessages([
         {
           role: 'assistant',
-          content: `Excellent! I'm thrilled to start working on "${projectName}" with you! 🎯\n\nBefore we dive into Phase 1, I'd like to ask you a few quick questions to ensure our AI agents can deliver the best results.\n\n${ONBOARDING_QUESTIONS[0]}`,
+          content: `Excellent! I'm ${ceoName}, and I'm thrilled to start working on "${projectName}" with you! 🎯\n\nBefore we dive into Phase 1, I'd like to ask you a few quick questions to ensure our AI agents can deliver the best results.\n\n${ONBOARDING_QUESTIONS[0]}`,
         },
       ]);
     }
-  }, [open, projectName, messages.length]);
+  }, [open, projectName, messages.length, ceoName]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading || !user) return;
@@ -119,8 +121,12 @@ export const CEOOnboardingDialog = ({
       <DialogContent className="max-w-xl h-[70vh] flex flex-col" aria-describedby="ceo-onboarding-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-primary" />
-            Quick Chat with Your CEO
+            {ceoAvatarUrl ? (
+              <img src={ceoAvatarUrl} alt={ceoName} className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <Bot className="w-5 h-5 text-primary" />
+            )}
+            Quick Chat with {ceoName}
           </DialogTitle>
           <DialogDescription id="ceo-onboarding-description">
             Answer a few questions to help your AI team understand your vision.
