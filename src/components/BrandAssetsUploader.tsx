@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, X, Image, FileText, Loader2, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, X, Image, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,9 +26,9 @@ export const BrandAssetsUploader = ({ projectId, userId }: BrandAssetsUploaderPr
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing assets on mount
-  useState(() => {
+  useEffect(() => {
     loadExistingAssets();
-  });
+  }, [projectId]);
 
   const loadExistingAssets = async () => {
     try {
