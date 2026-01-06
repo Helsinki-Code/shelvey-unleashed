@@ -50,8 +50,40 @@ serve(async (req) => {
     const body: V0GenerationRequest = await req.json();
     const { projectId, businessName, industry, description, branding, approvedSpecs, prompt, editMode } = body;
 
-    // Build sections from approved specs or use defaults
+// Build sections from approved specs or use defaults
     const sections = approvedSpecs?.pages?.[0]?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer'];
+    
+    // Extract brand assets from approved specs
+    const brandAssets = approvedSpecs?.brandAssets || {};
+    const logoUrl = brandAssets.logoUrl || branding?.logo;
+    const iconUrl = brandAssets.iconUrl;
+    const primaryColor = brandAssets.primaryColorHex || approvedSpecs?.globalStyles?.primaryColor || branding?.primaryColor;
+    const secondaryColor = brandAssets.secondaryColorHex || approvedSpecs?.globalStyles?.secondaryColor || branding?.secondaryColor;
+    const accentColor = brandAssets.accentColorHex || approvedSpecs?.globalStyles?.accentColor || branding?.accentColor;
+    
+    // Extract image generation prompts from specs
+    const imagePrompts = approvedSpecs?.imageGeneration || {};
+    const copyImagePrompts = approvedSpecs?.copyContent || {};
+    
+    // Build image generation instructions
+    let imageInstructions = '';
+    if (Object.keys(imagePrompts).length > 0 || logoUrl) {
+      imageInstructions = `
+BRAND ASSETS TO USE:
+${logoUrl ? `- Logo URL: ${logoUrl} (USE THIS as the actual logo image src)` : ''}
+${iconUrl ? `- Icon URL: ${iconUrl}` : ''}
+
+AI-GENERATED IMAGES (use these prompts with placeholder divs that describe the image):
+${imagePrompts.heroBackground ? `- Hero Background: "${imagePrompts.heroBackground}"` : ''}
+${copyImagePrompts.hero?.imagePrompt ? `- Hero Visual: "${copyImagePrompts.hero.imagePrompt}"` : ''}
+${imagePrompts.sectionBackgrounds?.features ? `- Features Background: "${imagePrompts.sectionBackgrounds.features}"` : ''}
+${imagePrompts.sectionBackgrounds?.testimonials ? `- Testimonials Background: "${imagePrompts.sectionBackgrounds.testimonials}"` : ''}
+${imagePrompts.sectionBackgrounds?.cta ? `- CTA Background: "${imagePrompts.sectionBackgrounds.cta}"` : ''}
+
+For each image placeholder, add a data-image-prompt attribute with the prompt for AI generation.
+Example: <div data-image-prompt="abstract 3D geometric shapes in ${primaryColor || 'brand color'}" className="..." />
+`;
+    }
     
     // Build copy instructions from approved specs
     let copyInstructions = '';
@@ -63,19 +95,28 @@ Hero:
 - Headline: "${copy.hero?.headline || ''}"
 - Subheadline: "${copy.hero?.subheadline || ''}"
 - CTA Button: "${copy.hero?.cta || 'Get Started'}"
+- Secondary CTA: "${copy.hero?.secondaryCta || 'Learn More'}"
 
 Features:
 - Title: "${copy.features?.title || ''}"
+- Subtitle: "${copy.features?.subtitle || ''}"
 ${copy.features?.items?.map((f: any, i: number) => `- Feature ${i+1}: "${f.title}" - ${f.description}`).join('\n') || ''}
 
 About:
 - Title: "${copy.about?.title || ''}"
-- Content: "${copy.about?.content || ''}"
+- Story: "${copy.about?.story || copy.about?.content || ''}"
+- Mission: "${copy.about?.mission || ''}"
+
+Services:
+${copy.services?.items?.map((s: any, i: number) => `- Service ${i+1}: "${s.name}" - ${s.description}`).join('\n') || ''}
+
+Testimonials:
+${copy.testimonials?.items?.map((t: any, i: number) => `- Testimonial ${i+1}: "${t.quote}" - ${t.author}, ${t.role} at ${t.company}`).join('\n') || ''}
 
 CTA Section:
-- Title: "${copy.cta?.title || ''}"
-- Description: "${copy.cta?.description || ''}"
-- Button: "${copy.cta?.buttonText || 'Start Now'}"
+- Title: "${copy.cta?.primary?.title || copy.cta?.title || ''}"
+- Description: "${copy.cta?.primary?.description || copy.cta?.description || ''}"
+- Button: "${copy.cta?.primary?.buttonText || copy.cta?.buttonText || 'Start Now'}"
 
 Footer:
 - Tagline: "${copy.footer?.tagline || ''}"
@@ -85,17 +126,27 @@ Footer:
 
     // Build style instructions from approved specs
     let styleInstructions = '';
-    if (approvedSpecs?.globalStyles) {
-      const styles = approvedSpecs.globalStyles;
+    if (approvedSpecs?.globalStyles || brandAssets.primaryColorHex) {
+      const styles = approvedSpecs?.globalStyles || {};
       styleInstructions = `
-DESIGN TOKENS:
-- Primary Color: ${styles.primaryColor || branding?.primaryColor || 'professional blue'}
-- Secondary Color: ${styles.secondaryColor || branding?.secondaryColor || 'complementary'}
-- Accent Color: ${styles.accentColor || branding?.accentColor || 'for CTAs'}
-- Heading Font: ${styles.headingFont || branding?.headingFont || 'modern sans-serif'}
-- Body Font: ${styles.bodyFont || branding?.bodyFont || 'readable sans-serif'}
+DESIGN TOKENS (USE EXACT HEX CODES):
+- Primary Color: ${primaryColor || 'professional blue'}
+- Secondary Color: ${secondaryColor || 'complementary'}
+- Accent Color: ${accentColor || 'for CTAs'}
+- Background Color: ${styles.backgroundColor || '#ffffff'}
+- Text Color: ${styles.textColor || '#1a1a1a'}
+- Heading Font: ${brandAssets.headingFont || styles.headingFont || branding?.headingFont || 'modern sans-serif'}
+- Body Font: ${brandAssets.bodyFont || styles.bodyFont || branding?.bodyFont || 'readable sans-serif'}
 - Border Radius: ${styles.borderRadius || 'rounded-lg'}
 - Spacing: ${styles.spacing || 'comfortable'}
+
+GRADIENTS:
+${styles.gradients ? `- Primary Gradient: ${styles.gradients.primary}` : ''}
+${styles.gradients ? `- Subtle Gradient: ${styles.gradients.subtle}` : ''}
+
+SHADOWS:
+${styles.shadows ? `- Soft: ${styles.shadows.soft}` : ''}
+${styles.shadows ? `- Medium: ${styles.shadows.medium}` : ''}
 `;
     } else if (branding) {
       styleInstructions = `
@@ -134,12 +185,14 @@ Requirements:
 Output only the React component code, no explanations.
 `.trim();
     } else {
-      enhancedPrompt = `
+enhancedPrompt = `
 Create a modern, professional, UNIQUE landing page for:
 
 Business Name: ${businessName}
 Industry: ${industry}
 Description: ${description}
+
+${imageInstructions}
 
 ${styleInstructions}
 
@@ -151,7 +204,7 @@ SECTIONS TO INCLUDE: ${sections.join(', ')}
 
 Requirements:
 1. Create a complete, production-ready React component with TypeScript
-2. Use Tailwind CSS for all styling - use the exact colors provided
+2. Use Tailwind CSS for all styling - use the EXACT hex color codes provided
 3. Include Framer Motion animations for smooth interactions
 4. Make it fully responsive (mobile-first)
 5. Create a UNIQUE, MODERN, ATTRACTIVE design - avoid generic patterns
@@ -160,6 +213,8 @@ Requirements:
 8. Ensure excellent accessibility (proper contrast, semantic HTML)
 9. Add hover states and smooth transitions
 10. Make it stand out - be creative with layout and visual effects
+11. USE THE LOGO URL PROVIDED - add an <img> tag with the logo src
+12. Add data-image-prompt attributes to image placeholders for AI generation
 
 Output only the React component code, no explanations.
 `.trim();
