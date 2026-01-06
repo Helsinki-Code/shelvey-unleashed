@@ -332,3 +332,6 @@ verify_jwt = false
 
 [functions.deep-research-agent]
 verify_jwt = false
+
+[functions.v0-website-generator]
+verify_jwt = false
