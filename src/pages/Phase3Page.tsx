@@ -40,13 +40,10 @@ interface GeneratedWebsite {
   user_approved: boolean | null;
 }
 
-const PHASE_3_AGENTS = [
-  { id: 'head-of-dev', name: 'Head of Development', icon: Terminal, color: 'text-primary', bgColor: 'bg-primary/10', role: 'Development Division Manager', isManager: true, description: 'Orchestrates all development activities and code generation' },
-  { id: 'frontend-dev', name: 'Frontend Developer Agent', icon: Layers, color: 'text-blue-500', bgColor: 'bg-blue-500/10', role: 'React/TypeScript Developer', description: 'Generates React components using 21st.dev and shadcn' },
-  { id: 'backend-dev', name: 'Backend Developer Agent', icon: Server, color: 'text-purple-500', bgColor: 'bg-purple-500/10', role: 'API & Backend Developer', description: 'Sets up APIs and backend infrastructure' },
-  { id: 'qa-agent', name: 'QA Testing Agent', icon: Shield, color: 'text-green-500', bgColor: 'bg-green-500/10', role: 'Quality Assurance', description: 'Tests websites using Computer Use for browser automation' },
-  { id: 'devops-agent', name: 'DevOps Agent', icon: Rocket, color: 'text-orange-500', bgColor: 'bg-orange-500/10', role: 'Deployment Specialist', description: 'Handles deployment to Vercel and Cloudflare' },
-];
+import { getPhaseAgent } from '@/lib/phase-agents';
+import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
+
+const PHASE_AGENT = getPhaseAgent(3)!
 
 const Phase3Page = () => {
   const { projectId } = useParams();
@@ -56,7 +53,7 @@ const Phase3Page = () => {
   const [phase, setPhase] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('generate');
-  const [chatAgent, setChatAgent] = useState<typeof PHASE_3_AGENTS[0] | null>(null);
+  const [chatAgent, setChatAgent] = useState<{ id: string; name: string; role: string; icon: any; color: string; bgColor: string; description: string } | null>(null);
   
   // Website generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -822,53 +819,74 @@ const Phase3Page = () => {
               )}
             </TabsContent>
 
-            {/* AI Team Tab */}
+            {/* Single Agent Tab with Live Work Preview */}
             <TabsContent value="agents">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {PHASE_3_AGENTS.map((agent, index) => {
-                  const Icon = agent.icon;
-                  
-                  return (
-                    <motion.div
-                      key={agent.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                {/* Agent Info Card */}
+                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                          <Code className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {PHASE_AGENT.name}
+                            <Badge variant="secondary" className="text-xs">Phase 3</Badge>
+                          </CardTitle>
+                          <CardDescription>{PHASE_AGENT.role}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-3 h-3 rounded-full ${
+                          isGenerating ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'
+                        }`} />
+                        <span className="text-xs font-medium">
+                          {isGenerating ? 'Working' : 'Standby'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">{PHASE_AGENT.description}</p>
+
+                    {isGenerating && (
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                        <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Currently Working On
+                        </p>
+                        <p className="text-sm">Generating website components...</p>
+                      </div>
+                    )}
+
+                    {/* Capabilities */}
+                    <div className="flex flex-wrap gap-1">
+                      {PHASE_AGENT.capabilities.slice(0, 6).map((cap) => (
+                        <Badge key={cap} variant="outline" className="text-xs">
+                          {cap}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <Button
+                      onClick={() => setChatAgent({ id: PHASE_AGENT.id, name: PHASE_AGENT.name, role: PHASE_AGENT.role, icon: Code, color: 'text-primary', bgColor: 'bg-primary/10', description: PHASE_AGENT.description })}
+                      className="w-full gap-2"
                     >
-                      <Card className={agent.isManager ? 'border-primary/50 ring-1 ring-primary/20' : ''}>
-                        <CardHeader className={`pb-3 ${agent.bgColor}`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`p-3 rounded-xl bg-background/80 ${agent.color}`}>
-                                <Icon className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                  {agent.name}
-                                  {agent.isManager && (
-                                    <Badge variant="secondary" className="text-xs">Manager</Badge>
-                                  )}
-                                </CardTitle>
-                                <CardDescription>{agent.role}</CardDescription>
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-4 space-y-4">
-                          <p className="text-sm text-muted-foreground">{agent.description}</p>
-                          <Button
-                            variant="default"
-                            onClick={() => setChatAgent(agent)}
-                            className="w-full gap-2"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                            Chat with {agent.isManager ? 'Manager' : 'Agent'}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
+                      <MessageSquare className="w-4 h-4" />
+                      Chat with {PHASE_AGENT.name}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Live Work Preview Window */}
+                <LiveAgentWorkPreview
+                  agentId={PHASE_AGENT.id}
+                  agentName={PHASE_AGENT.name}
+                  projectId={projectId!}
+                />
               </div>
             </TabsContent>
           </Tabs>
@@ -892,7 +910,6 @@ const Phase3Page = () => {
             agentId={chatAgent.id}
             agentName={chatAgent.name}
             agentRole={chatAgent.role}
-            isManager={chatAgent.isManager}
             projectId={projectId}
           />
         )}
