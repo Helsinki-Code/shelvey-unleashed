@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText, Layers } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText, Layers, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
 import { CEOOnboardingDialog } from '@/components/CEOOnboardingDialog';
 import { AnimatedPhaseTimeline } from '@/components/AnimatedPhaseTimeline';
+import { BrandAssetsUploader } from '@/components/BrandAssetsUploader';
 import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useCEO } from '@/hooks/useCEO';
@@ -317,6 +318,16 @@ const ProjectOverviewPage = () => {
               </Card>
             </motion.div>
           )}
+
+          {/* Brand Assets Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.17 }}
+            className="mb-6"
+          >
+            <BrandAssetsUploader projectId={project.id} userId={user?.id || ''} />
+          </motion.div>
 
           {/* Approval Section */}
           <motion.div
