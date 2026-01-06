@@ -140,6 +140,9 @@ serve(async (req) => {
         name: string;
         imageUrl: string;
         model: string;
+        ceoApproved: boolean;
+        userApproved: boolean;
+        colorData?: { primary: string; secondary: string; accent: string };
       }> = [];
 
       // Generate each asset
@@ -163,6 +166,17 @@ serve(async (req) => {
 
         // Color palette is text-based, not an image
         if (asset.type === 'color_palette') {
+          generatedAssets.push({
+            id: asset.id,
+            type: asset.type,
+            name: asset.name,
+            imageUrl: '',
+            model: asset.model,
+            ceoApproved: false,
+            userApproved: false,
+            colorData: { primary: primaryColor, secondary: secondaryColor, accent: accentColor },
+          });
+
           await sendEvent({
             type: 'asset_complete',
             assetId: asset.id,
@@ -302,6 +316,8 @@ serve(async (req) => {
                 name: asset.name,
                 imageUrl,
                 model: asset.model,
+                ceoApproved: false,
+                userApproved: false,
               });
 
               // Log work step so the Agent Work preview can display it

@@ -113,7 +113,7 @@ export const ImageGenerationStudio = ({
       
       const { data, error } = await supabase
         .from('phase_deliverables')
-        .select('generated_content, status, ceo_approved, user_approved')
+        .select('id, generated_content, status, ceo_approved, user_approved')
         .eq('phase_id', phaseId)
         .eq('deliverable_type', 'brand_assets')
         .order('created_at', { ascending: false })
@@ -130,31 +130,22 @@ export const ImageGenerationStudio = ({
         const content = row.generated_content as Record<string, unknown>;
         const assets: GeneratedImage[] = [];
 
-        if (content.primaryLogo && typeof content.primaryLogo === 'object') {
-          const logo = content.primaryLogo as Record<string, unknown>;
-          assets.push({
-            id: 'logo-primary',
-            type: 'logo',
-            name: 'Primary Logo',
-            imageUrl: logo.imageUrl as string,
-            status: row.ceo_approved && row.user_approved ? 'approved' : 'pending_review',
-            progress: 100,
-            ceoApproved: row.ceo_approved || false,
-            userApproved: row.user_approved || false,
-            model: logo.model as string,
-          });
-        }
-
+        // Load all assets from the assets array with individual approval states
         if (Array.isArray(content.assets)) {
           content.assets.forEach((asset: Record<string, unknown>, idx: number) => {
+            const assetCeoApproved = asset.ceoApproved === true;
+            const assetUserApproved = asset.userApproved === true;
             assets.push({
-              id: `asset-${idx}`,
+              id: (asset.id as string) || `asset-${idx}`,
               type: (asset.type as GeneratedImage['type']) || 'icon',
               name: (asset.name as string) || `Asset ${idx + 1}`,
               imageUrl: asset.imageUrl as string,
-              status: 'pending_review',
+              status: assetCeoApproved && assetUserApproved ? 'approved' : 'pending_review',
               progress: 100,
+              ceoApproved: assetCeoApproved,
+              userApproved: assetUserApproved,
               model: asset.model as string,
+              colorData: asset.colorData as GeneratedImage['colorData'],
             });
           });
         }
@@ -314,13 +305,19 @@ export const ImageGenerationStudio = ({
   };
 
   const handleApprove = async (image: GeneratedImage, approver: 'ceo' | 'user') => {
+    const updatedCeoApproved = approver === 'ceo' ? true : (image.ceoApproved || false);
+    const updatedUserApproved = approver === 'user' ? true : (image.userApproved || false);
+    const fullyApproved = updatedCeoApproved && updatedUserApproved;
+
+    // Update local state
     setGeneratedImages(images =>
       images.map(img =>
         img.id === image.id
           ? { 
               ...img, 
-              [approver === 'ceo' ? 'ceoApproved' : 'userApproved']: true,
-              status: (approver === 'ceo' ? img.userApproved : img.ceoApproved) ? 'approved' : img.status
+              ceoApproved: updatedCeoApproved,
+              userApproved: updatedUserApproved,
+              status: fullyApproved ? 'approved' : img.status
             }
           : img
       )
@@ -328,15 +325,51 @@ export const ImageGenerationStudio = ({
 
     toast.success(`${approver === 'ceo' ? 'CEO' : 'You'} approved ${image.name}`);
 
+    // Update the generated_content JSON to track individual asset approvals
     if (phaseId) {
-      await supabase
+      // Fetch current deliverable
+      const { data: deliverable } = await supabase
         .from('phase_deliverables')
-        .update({
-          [approver === 'ceo' ? 'ceo_approved' : 'user_approved']: true,
-          updated_at: new Date().toISOString()
-        })
+        .select('id, generated_content')
         .eq('phase_id', phaseId)
-        .eq('deliverable_type', 'brand_assets');
+        .eq('deliverable_type', 'brand_assets')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const row = deliverable?.[0];
+      if (row) {
+        const content = (row.generated_content || {}) as Record<string, unknown>;
+        const assets = Array.isArray(content.assets) ? [...content.assets] : [];
+        
+        // Find and update the specific asset
+        const assetIndex = assets.findIndex((a: Record<string, unknown>) => 
+          (a.id === image.id) || (a.name === image.name)
+        );
+        
+        if (assetIndex >= 0) {
+          assets[assetIndex] = {
+            ...assets[assetIndex],
+            ceoApproved: updatedCeoApproved,
+            userApproved: updatedUserApproved,
+          };
+        }
+
+        // Check if ALL assets are fully approved
+        const allAssetsApproved = assets.length > 0 && assets.every((a: Record<string, unknown>) => 
+          a.ceoApproved === true && a.userApproved === true
+        );
+
+        await supabase
+          .from('phase_deliverables')
+          .update({
+            generated_content: { ...content, assets },
+            ceo_approved: allAssetsApproved,
+            user_approved: allAssetsApproved,
+            status: allAssetsApproved ? 'approved' : 'pending_review',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', row.id);
+      }
     }
 
     if (onAssetApproved) {
