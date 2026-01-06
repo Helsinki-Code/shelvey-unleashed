@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Clock, Bot, User, ArrowRight, Loader2, Building, Target, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { CEOChatSheet } from '@/components/CEOChatSheet';
+import { CEOOnboardingDialog } from '@/components/CEOOnboardingDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,17 +32,29 @@ interface Project {
 const ProjectOverviewPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
 
   useEffect(() => {
     if (projectId && user) {
       fetchProject();
     }
   }, [projectId, user]);
+
+  // Show onboarding dialog for newly created projects
+  useEffect(() => {
+    const isNewProject = location.state?.newProject === true;
+    if (isNewProject && project) {
+      setShowOnboardingDialog(true);
+      // Clear the state so it doesn't show again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, project]);
 
   const fetchProject = async () => {
     const { data, error } = await supabase
@@ -376,6 +389,17 @@ const ProjectOverviewPage = () => {
       </main>
 
       <CEOChatSheet />
+
+      {/* CEO Onboarding Dialog for new projects */}
+      {project && (
+        <CEOOnboardingDialog
+          open={showOnboardingDialog}
+          onClose={() => setShowOnboardingDialog(false)}
+          projectId={project.id}
+          projectName={project.name}
+          projectDescription={typeof project.description === 'string' ? project.description : ''}
+        />
+      )}
     </div>
   );
 };

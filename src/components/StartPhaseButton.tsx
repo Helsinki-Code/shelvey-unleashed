@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Loader2, Zap } from 'lucide-react';
+import { Play, Loader2, Zap, Palette, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ interface StartPhaseButtonProps {
   phaseNumber: number;
   phaseStatus: string;
   onStart?: () => void;
+  triggerImageGeneration?: () => void;
 }
 
 export const StartPhaseButton = ({
@@ -18,6 +19,7 @@ export const StartPhaseButton = ({
   phaseNumber,
   phaseStatus,
   onStart,
+  triggerImageGeneration,
 }: StartPhaseButtonProps) => {
   const [isStarting, setIsStarting] = useState(false);
 
@@ -25,7 +27,23 @@ export const StartPhaseButton = ({
     setIsStarting(true);
 
     try {
-      // Call phase-auto-worker to start the phase work
+      // For Phase 2, trigger image generation directly
+      if (phaseNumber === 2 && triggerImageGeneration) {
+        // Update phase status to active
+        await supabase
+          .from('business_phases')
+          .update({ status: 'active', started_at: new Date().toISOString() })
+          .eq('project_id', projectId)
+          .eq('phase_number', phaseNumber);
+
+        toast.success('Phase 2 activated! Starting image generation...');
+        triggerImageGeneration();
+        if (onStart) onStart();
+        setIsStarting(false);
+        return;
+      }
+
+      // For other phases, use phase-auto-worker
       const { data, error } = await supabase.functions.invoke('phase-auto-worker', {
         body: {
           projectId,
@@ -50,6 +68,8 @@ export const StartPhaseButton = ({
   // Don't show if phase is already completed
   if (phaseStatus === 'completed') return null;
 
+  const isPhase2 = phaseNumber === 2;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -61,12 +81,17 @@ export const StartPhaseButton = ({
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary" />
+                {isPhase2 ? <Palette className="w-6 h-6 text-primary" /> : <Zap className="w-6 h-6 text-primary" />}
               </div>
               <div>
-                <h3 className="font-bold text-lg">Start Phase {phaseNumber} Agents</h3>
+                <h3 className="font-bold text-lg">
+                  {isPhase2 ? 'Generate Brand Assets' : `Start Phase ${phaseNumber} Agents`}
+                </h3>
                 <p className="text-muted-foreground">
-                  Click to activate AI agents and begin working on deliverables
+                  {isPhase2 
+                    ? 'Generate logos, icons, banners, and color palettes with AI'
+                    : 'Click to activate AI agents and begin working on deliverables'
+                  }
                 </p>
               </div>
             </div>
@@ -80,12 +105,12 @@ export const StartPhaseButton = ({
               {isStarting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Starting Agents...
+                  {isPhase2 ? 'Starting Generation...' : 'Starting Agents...'}
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4" />
-                  Start Phase {phaseNumber}
+                  {isPhase2 ? <Image className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  {isPhase2 ? 'Generate Brand Assets' : `Start Phase ${phaseNumber}`}
                 </>
               )}
             </Button>

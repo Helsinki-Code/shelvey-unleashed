@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Palette } from "lucide-react";
@@ -34,6 +34,9 @@ export default function Phase2Page() {
   const [phase, setPhase] = useState<any>(null);
   const [brandDeliverable, setBrandDeliverable] = useState<Deliverable | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Ref to trigger image generation from StartPhaseButton
+  const triggerGenerationRef = useRef<(() => void) | null>(null);
 
   const canonicalUrl = useMemo(() => {
     try {
@@ -106,6 +109,12 @@ export default function Phase2Page() {
     return () => {
       supabase.removeChannel(channel);
     };
+  };
+
+  const handleTriggerImageGeneration = () => {
+    if (triggerGenerationRef.current) {
+      triggerGenerationRef.current();
+    }
   };
 
   const { progressPct, approvedCount, totalCount, isPhaseApproved } = useMemo(() => {
@@ -202,6 +211,7 @@ export default function Phase2Page() {
               phaseNumber={2}
               phaseStatus={phase?.status || "pending"}
               onStart={fetchData}
+              triggerImageGeneration={handleTriggerImageGeneration}
             />
           </section>
 
@@ -211,6 +221,7 @@ export default function Phase2Page() {
               phaseId={phase?.id}
               agentName="Brand Agent"
               onAssetApproved={() => fetchData()}
+              triggerGenerationRef={triggerGenerationRef}
             />
 
             <ProceedToNextPhaseButton
