@@ -31,9 +31,10 @@ interface UserCEO {
 
 interface CEOChatSheetProps {
   currentPage?: string;
+  defaultOpen?: boolean;
 }
 
-export const CEOChatSheet = ({ currentPage }: CEOChatSheetProps) => {
+export const CEOChatSheet = ({ currentPage, defaultOpen }: CEOChatSheetProps) => {
   const { session, user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -75,18 +76,26 @@ export const CEOChatSheet = ({ currentPage }: CEOChatSheetProps) => {
   };
 
   useEffect(() => {
+    if (defaultOpen) {
+      setIsOpen(true);
+    }
+  }, [defaultOpen]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0 && !isLoadingCEO) {
-      setMessages([{
-        role: 'assistant',
-        content: `Hello! I'm ${ceoName}, your AI CEO.
+      setMessages([
+        {
+          role: 'assistant',
+          content: `Hello! I'm ${ceoName}, your AI CEO.
 
 I'm here to help you build a profitable business. What would you like to work on today?`,
-        timestamp: new Date(),
-      }]);
+          timestamp: new Date(),
+        },
+      ]);
     }
   }, [isOpen, ceoName, isLoadingCEO]);
 
