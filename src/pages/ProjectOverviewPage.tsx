@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -49,6 +49,9 @@ const ProjectOverviewPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  
+  // Check if this is a new project from navigation state BEFORE any async operations
+  const isNewProjectRef = useRef(location.state?.newProject === true);
   const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
 
   useEffect(() => {
@@ -58,15 +61,15 @@ const ProjectOverviewPage = () => {
     }
   }, [projectId, user]);
 
-  // Show onboarding dialog for newly created projects
+  // Show onboarding dialog for newly created projects - trigger when project loads
   useEffect(() => {
-    const isNewProject = location.state?.newProject === true;
-    if (isNewProject && project) {
+    if (isNewProjectRef.current && project) {
       setShowOnboardingDialog(true);
       // Clear the state so it doesn't show again on refresh
       window.history.replaceState({}, document.title);
+      isNewProjectRef.current = false;
     }
-  }, [location.state, project]);
+  }, [project]);
 
   const fetchProject = async () => {
     const { data, error } = await supabase

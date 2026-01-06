@@ -3,9 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
 /**
- * ProjectDetailPage - Redirect to Phase 1 page
- * This page no longer exists as a separate entity.
- * Users are redirected to the Phase 1 page for their project.
+ * ProjectDetailPage - Redirect to Project Overview page
+ * This page serves as a router for /projects/:projectId to the overview page.
  */
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
@@ -13,8 +12,8 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     if (projectId) {
-      // Redirect to Phase 1 page
-      navigate(`/projects/${projectId}/phase/1`, { replace: true });
+      // Redirect to Project Overview page (not Phase 1)
+      navigate(`/projects/${projectId}/overview`, { replace: true });
     }
   }, [projectId, navigate]);
 
