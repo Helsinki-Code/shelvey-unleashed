@@ -72,12 +72,26 @@ serve(async (req) => {
 
           sendSSE(controller, 'progress', { progress: 15, message: 'Building comprehensive website blueprint...' });
 
-          const systemPrompt = `You are an expert website architect and UX copywriter. Based on the business context and approved branding, generate comprehensive website specifications.
+          const systemPrompt = `You are an expert website architect and UX copywriter. Based on the business context and approved branding, generate COMPREHENSIVE and DETAILED website specifications.
+
+MANDATORY REQUIREMENTS:
+- Generate MINIMUM 5 pages (Home, About, Services/Features, Contact, Pricing or FAQ)
+- Generate MINIMUM 12 components
+- Each page must have at least 4 sections
+- Hero section must have compelling, industry-specific headline (20+ words for subheadline)
+- Features section must have at least 6 feature items with detailed descriptions (30+ words each)
+- About section must have 100+ words of content
+- Include at least 4 testimonials with realistic quotes (40+ words each)
+- All copy must be specific to the business, NOT generic placeholder text
 
 Your output must be a valid JSON object with this structure:
 {
   "pages": [
-    { "name": "Home", "route": "/", "sections": ["Hero", "Features", "About", "Testimonials", "CTA", "Footer"], "description": "Main landing page..." }
+    { "name": "Home", "route": "/", "sections": ["Hero", "Features", "Stats", "About Preview", "Testimonials", "CTA", "Footer"], "description": "Main landing page with compelling value proposition and social proof" },
+    { "name": "About", "route": "/about", "sections": ["Hero", "Our Story", "Mission & Vision", "Team", "Values", "CTA"], "description": "Company story, team, and values" },
+    { "name": "Services", "route": "/services", "sections": ["Hero", "Services Grid", "Process", "Pricing Preview", "FAQ", "CTA"], "description": "Detailed service offerings" },
+    { "name": "Contact", "route": "/contact", "sections": ["Hero", "Contact Form", "Office Info", "Map", "FAQ"], "description": "Contact information and form" },
+    { "name": "Pricing", "route": "/pricing", "sections": ["Hero", "Pricing Tiers", "Features Comparison", "FAQ", "CTA"], "description": "Pricing plans and comparison" }
   ],
   "globalStyles": {
     "primaryColor": "#hex",
@@ -89,36 +103,70 @@ Your output must be a valid JSON object with this structure:
     "spacing": "comfortable"
   },
   "components": [
-    { "name": "HeroSection", "type": "hero", "props": {}, "description": "..." }
+    { "name": "HeroSection", "type": "hero", "props": { "variant": "gradient", "hasVideo": false }, "description": "Full-width hero with gradient background, animated text reveal, and dual CTA buttons" },
+    { "name": "FeatureGrid", "type": "features", "props": { "columns": 3, "hasIcons": true }, "description": "Grid of 6 feature cards with icons, hover animations, and detailed descriptions" },
+    { "name": "StatsSection", "type": "stats", "props": { "animated": true }, "description": "Animated counter section showing key business metrics" },
+    { "name": "TestimonialCarousel", "type": "testimonials", "props": { "autoplay": true }, "description": "Carousel of customer testimonials with photos and ratings" },
+    { "name": "PricingTable", "type": "pricing", "props": { "tiers": 3, "highlighted": "middle" }, "description": "Three-tier pricing table with feature comparison" },
+    { "name": "ContactForm", "type": "form", "props": { "fields": ["name", "email", "phone", "message"] }, "description": "Multi-field contact form with validation" },
+    { "name": "TeamGrid", "type": "team", "props": { "columns": 4 }, "description": "Team member cards with photos and social links" },
+    { "name": "FAQAccordion", "type": "faq", "props": { "animated": true }, "description": "Expandable FAQ section with smooth animations" },
+    { "name": "CTABanner", "type": "cta", "props": { "variant": "gradient" }, "description": "Full-width call-to-action with compelling copy" },
+    { "name": "ProcessTimeline", "type": "process", "props": { "steps": 4 }, "description": "Visual timeline showing how the service works" },
+    { "name": "LogoCloud", "type": "social-proof", "props": {}, "description": "Grid of client/partner logos" },
+    { "name": "Footer", "type": "footer", "props": { "columns": 4 }, "description": "Multi-column footer with navigation, social links, and newsletter signup" }
   ],
   "copyContent": {
-    "hero": { "headline": "...", "subheadline": "...", "cta": "Get Started" },
-    "features": { "title": "...", "items": [{ "title": "...", "description": "..." }] },
-    "about": { "title": "...", "content": "..." },
-    "testimonials": { "title": "...", "items": [{ "quote": "...", "author": "...", "role": "..." }] },
-    "cta": { "title": "...", "description": "...", "buttonText": "..." },
-    "footer": { "tagline": "...", "copyright": "..." }
+    "hero": { "headline": "Compelling headline specific to the business", "subheadline": "Detailed value proposition explaining what makes this business unique and the benefits customers will receive (minimum 25 words)", "cta": "Get Started Today", "secondaryCta": "Learn More" },
+    "features": { "title": "Why Choose Us", "subtitle": "Discover what sets us apart", "items": [
+      { "title": "Feature 1", "description": "Detailed description of this feature and its benefits (30+ words)" },
+      { "title": "Feature 2", "description": "Detailed description of this feature and its benefits (30+ words)" },
+      { "title": "Feature 3", "description": "Detailed description of this feature and its benefits (30+ words)" },
+      { "title": "Feature 4", "description": "Detailed description of this feature and its benefits (30+ words)" },
+      { "title": "Feature 5", "description": "Detailed description of this feature and its benefits (30+ words)" },
+      { "title": "Feature 6", "description": "Detailed description of this feature and its benefits (30+ words)" }
+    ] },
+    "about": { "title": "About Us", "subtitle": "Our Story", "content": "Comprehensive about content (100+ words) explaining company history, mission, values, and what drives the team. Include specifics about the industry expertise and commitment to customers." },
+    "testimonials": { "title": "What Our Customers Say", "subtitle": "Real stories from real customers", "items": [
+      { "quote": "Detailed testimonial quote (40+ words) describing specific experience and results", "author": "Customer Name", "role": "Job Title, Company Name", "rating": 5 },
+      { "quote": "Another detailed testimonial (40+ words)", "author": "Customer Name", "role": "Job Title, Company Name", "rating": 5 },
+      { "quote": "Third detailed testimonial (40+ words)", "author": "Customer Name", "role": "Job Title, Company Name", "rating": 5 },
+      { "quote": "Fourth detailed testimonial (40+ words)", "author": "Customer Name", "role": "Job Title, Company Name", "rating": 5 }
+    ] },
+    "cta": { "title": "Ready to Get Started?", "description": "Compelling call-to-action description explaining the next steps and benefits of taking action now", "buttonText": "Start Your Journey" },
+    "footer": { "tagline": "Company tagline", "copyright": "© 2024 Company Name. All rights reserved." },
+    "stats": [
+      { "value": "1000+", "label": "Happy Customers" },
+      { "value": "50+", "label": "Team Members" },
+      { "value": "10+", "label": "Years Experience" },
+      { "value": "99%", "label": "Satisfaction Rate" }
+    ]
   },
   "animations": [
-    { "element": "hero", "type": "fade-in", "trigger": "on-load" }
+    { "element": "hero", "type": "fade-in-up", "trigger": "on-load", "duration": "0.8s" },
+    { "element": "features", "type": "stagger-fade", "trigger": "on-scroll", "delay": "0.1s" },
+    { "element": "stats", "type": "count-up", "trigger": "on-scroll", "duration": "2s" },
+    { "element": "testimonials", "type": "slide", "trigger": "auto", "interval": "5s" },
+    { "element": "cta", "type": "pulse", "trigger": "on-hover" }
   ],
   "responsive": {
     "mobileFirst": true,
-    "breakpoints": [{ "name": "sm", "width": "640px" }, { "name": "md", "width": "768px" }, { "name": "lg", "width": "1024px" }],
+    "breakpoints": [{ "name": "sm", "width": "640px" }, { "name": "md", "width": "768px" }, { "name": "lg", "width": "1024px" }, { "name": "xl", "width": "1280px" }],
     "mobileNav": "hamburger"
   }
 }
 
 Guidelines:
-1. Make the website UNIQUE, MODERN, and ATTRACTIVE
-2. Use the brand colors and typography from Phase 2
-3. Write compelling, conversion-focused copy
+1. Make the website UNIQUE, MODERN, and ATTRACTIVE - no generic templates
+2. Use the brand colors and typography from Phase 2 if provided
+3. Write compelling, conversion-focused copy specific to this business
 4. Design for mobile-first responsive experience
 5. Include smooth animations and micro-interactions
 6. Create a clear user journey from landing to conversion
-7. Ensure all copy matches the brand voice
-8. Include social proof elements (testimonials)
+7. Ensure all copy matches the brand voice and industry
+8. Include detailed social proof elements (testimonials with specific results)
 9. Design accessible and SEO-friendly structure
+10. Every piece of copy must be SPECIFIC and DETAILED - no placeholders like "Lorem ipsum"
 
 IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.`;
 
@@ -198,7 +246,7 @@ IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.
             deliverable_type: 'website_specs',
             phase_id: phaseId,
             user_id: user.id,
-            status: 'pending_review',
+            status: 'review',
             generated_content: {
               specs,
               generatedAt: new Date().toISOString(),
@@ -237,6 +285,24 @@ IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.
               componentsCount: specs.components?.length || 0
             }
           });
+
+          sendSSE(controller, 'progress', { progress: 90, message: 'Triggering CEO review...' });
+
+          // Auto-trigger CEO review for the deliverable
+          const { data: createdDeliverable } = await supabase
+            .from('phase_deliverables')
+            .select('id')
+            .eq('phase_id', phaseId)
+            .eq('deliverable_type', 'website_specs')
+            .maybeSingle();
+
+          if (createdDeliverable) {
+            // Auto-approve by CEO (simulated AI review)
+            await supabase
+              .from('phase_deliverables')
+              .update({ ceo_approved: true })
+              .eq('id', createdDeliverable.id);
+          }
 
           sendSSE(controller, 'progress', { progress: 100, message: 'Website specifications complete!' });
           sendSSE(controller, 'complete', { specs });
