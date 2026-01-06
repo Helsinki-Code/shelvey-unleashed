@@ -218,7 +218,7 @@ export const WebsiteSpecsAgent = ({
         .limit(1)
         .maybeSingle();
 
-      if (brandAssets?.generated_content) {
+if (brandAssets?.generated_content) {
         const content = brandAssets.generated_content as any;
         const assets = Array.isArray(content?.assets) ? content.assets : [];
 
@@ -228,11 +228,25 @@ export const WebsiteSpecsAgent = ({
         const logoAsset = assets.find((a: any) => a.type === 'logo');
         const logoUrl = logoAsset?.imageUrl || logoAsset?.url;
 
+        const iconAsset = assets.find((a: any) => a.type === 'app_icon');
+        const iconUrl = iconAsset?.imageUrl || iconAsset?.url;
+
+        const bannerAsset = assets.find((a: any) => a.type === 'social_banner');
+        const bannerUrl = bannerAsset?.imageUrl || bannerAsset?.url;
+
         setPhase2Data({
           logo: logoUrl,
+          icon: iconUrl,
+          banner: bannerUrl,
           colors: palette,
           typography: content?.typography,
           brandVoice: content?.brandVoice,
+          // Pass all assets for the website generator to use
+          assets: assets.map((a: any) => ({
+            type: a.type,
+            name: a.name,
+            imageUrl: a.imageUrl || a.url,
+          })).filter((a: any) => a.imageUrl),
         });
       }
     }

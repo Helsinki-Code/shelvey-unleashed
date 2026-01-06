@@ -53,7 +53,7 @@ serve(async (req) => {
         try {
           sendSSE(controller, 'progress', { progress: 5, message: 'Analyzing Phase 1 & 2 deliverables...' });
 
-          // Build context from approved deliverables
+// Build context from approved deliverables
           let context = `Business: ${project.name}\nIndustry: ${project.industry}\nDescription: ${project.description}\n\n`;
           
           if (phase1Data) {
@@ -64,15 +64,35 @@ serve(async (req) => {
           }
 
           if (phase2Data) {
-            context += `\nBRAND ASSETS:\n`;
-            if (phase2Data.colors) context += `Colors: ${JSON.stringify(phase2Data.colors)}\n`;
+            context += `\nBRAND ASSETS (USE THESE IN ALL IMAGE PROMPTS):\n`;
+            if (phase2Data.logo) context += `Logo URL: ${phase2Data.logo}\n`;
+            if (phase2Data.colors) {
+              context += `Color Palette: ${JSON.stringify(phase2Data.colors)}\n`;
+              // Extract hex codes for image prompts
+              const colorHexes = phase2Data.colors?.colors?.map((c: any) => c.hex).filter(Boolean) || [];
+              if (colorHexes.length) {
+                context += `Primary Color Hex: ${colorHexes[0]}, Secondary Color Hex: ${colorHexes[1] || colorHexes[0]}, Accent Color Hex: ${colorHexes[2] || colorHexes[0]}\n`;
+              }
+            }
             if (phase2Data.typography) context += `Typography: ${JSON.stringify(phase2Data.typography)}\n`;
             if (phase2Data.brandVoice) context += `Brand Voice: ${phase2Data.brandVoice}\n`;
+            
+            // Pass all asset URLs
+            if (phase2Data.assets) {
+              context += `\nAPPROVED BRAND ASSET URLS (embed these in the website):\n`;
+              phase2Data.assets.forEach((asset: any) => {
+                if (asset.imageUrl || asset.url) {
+                  context += `- ${asset.type || asset.name}: ${asset.imageUrl || asset.url}\n`;
+                }
+              });
+            }
           }
+          
+          context += `\nIMPORTANT: Include the actual brand color hex codes in ALL image generation prompts. Every generated image should incorporate the brand colors.`;
 
           sendSSE(controller, 'progress', { progress: 15, message: 'Building comprehensive website blueprint...' });
 
-          const systemPrompt = `You are a world-class website architect and premium UX copywriter. Create EXCEPTIONAL, DETAILED website specifications that would rival top agency work.
+const systemPrompt = `You are a world-class website architect, premium UX copywriter, and visual art director. Create EXCEPTIONAL, DETAILED website specifications with AI-GENERATED IMAGE PROMPTS that would rival top agency work.
 
 MANDATORY REQUIREMENTS:
 - Generate MINIMUM 8 pages with unique purposes
@@ -87,6 +107,22 @@ MANDATORY REQUIREMENTS:
 - 4-6 detailed services with 80+ word descriptions
 - 10+ FAQ questions with comprehensive 50+ word answers
 - Case studies with Problem → Solution → Results format
+
+CRITICAL - AI IMAGE GENERATION PROMPTS:
+For EVERY section that needs imagery, include detailed "imagePrompt" specifications:
+- Hero: Background image/video poster + floating visual elements
+- Features: Icon-style illustrations or abstract visuals for each feature
+- About: Team photos, office environment, brand story visuals
+- Services: Visual representation of each service
+- Testimonials: Placeholder for customer avatars
+- Case Studies: Before/after visuals, results graphics
+- Blog: Article thumbnails and featured images
+- Each imagePrompt should be 40-80 words with:
+  * Subject matter (what should be in the image)
+  * Style (photorealistic, illustration, 3D render, abstract, minimalist)
+  * Color palette (matching brand colors provided)
+  * Mood/atmosphere (professional, energetic, warm, innovative)
+  * Composition (wide shot, close-up, isometric, flat lay)
 
 OUTPUT FORMAT - Valid JSON object:
 {
@@ -140,35 +176,37 @@ OUTPUT FORMAT - Valid JSON object:
     { "name": "ValueProposition", "type": "content", "props": { "columns": 3 }, "description": "Three-column value prop with icons and descriptions" }
   ],
   "copyContent": {
-    "hero": {
+"hero": {
       "headline": "6-10 power words that create urgency and speak to transformation",
       "subheadline": "50+ word detailed value proposition explaining the unique benefits, target audience, and transformation customers will experience. Include specific outcomes and differentiation.",
       "cta": "Action-oriented primary CTA (e.g., 'Start Your Free Trial')",
       "secondaryCta": "Lower-commitment secondary CTA (e.g., 'Watch Demo')",
-      "trustText": "Social proof line (e.g., 'Trusted by 10,000+ businesses')"
+      "trustText": "Social proof line (e.g., 'Trusted by 10,000+ businesses')",
+      "imagePrompt": "60-80 word detailed AI image generation prompt for hero background. Include: subject matter, style (photorealistic/3D/abstract), industry-specific imagery, brand color integration, mood/atmosphere, composition guidelines. Example: 'Ultra-wide panoramic view of modern tech workspace with soft gradient lighting in brand primary color, floating 3D geometric shapes, glass surfaces reflecting ambient light, professional atmosphere with depth of field blur, 16:9 aspect ratio, cinematic quality'"
     },
     "features": {
       "title": "Benefit-focused section title",
       "subtitle": "Supporting context for features",
       "items": [
-        { "title": "Feature 1", "description": "50+ word detailed description explaining this feature, how it works, and the specific benefits it provides to customers. Include use cases.", "icon": "icon-name" },
-        { "title": "Feature 2", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 3", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 4", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 5", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 6", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 7", "description": "50+ word detailed description...", "icon": "icon-name" },
-        { "title": "Feature 8", "description": "50+ word detailed description...", "icon": "icon-name" }
-      ]
+        { "title": "Feature 1", "description": "50+ word detailed description explaining this feature, how it works, and the specific benefits it provides to customers. Include use cases.", "icon": "icon-name", "imagePrompt": "40-60 word prompt for feature illustration in brand style, abstract or icon-style" },
+        { "title": "Feature 2", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 3", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 4", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 5", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 6", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 7", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
+        { "title": "Feature 8", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." }
+      ],
+      "sectionImagePrompt": "60-80 word prompt for features section background or decorative elements in brand colors"
     },
-    "services": {
+"services": {
       "title": "Our Services",
       "subtitle": "Comprehensive solutions tailored to your needs",
       "items": [
-        { "name": "Service 1", "description": "80+ word detailed description of this service including what's included, the process, expected outcomes, and ideal client profile.", "deliverables": ["Deliverable 1", "Deliverable 2", "Deliverable 3"], "icon": "icon-name" },
-        { "name": "Service 2", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name" },
-        { "name": "Service 3", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name" },
-        { "name": "Service 4", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name" }
+        { "name": "Service 1", "description": "80+ word detailed description of this service including what's included, the process, expected outcomes, and ideal client profile.", "deliverables": ["Deliverable 1", "Deliverable 2", "Deliverable 3"], "icon": "icon-name", "imagePrompt": "50-70 word prompt for service visual representation, showing the outcome or process, professional style, brand colors" },
+        { "name": "Service 2", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." },
+        { "name": "Service 3", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." },
+        { "name": "Service 4", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." }
       ]
     },
     "about": {
@@ -182,24 +220,27 @@ OUTPUT FORMAT - Valid JSON object:
         { "name": "Value 2", "description": "..." },
         { "name": "Value 3", "description": "..." },
         { "name": "Value 4", "description": "..." }
-      ]
+      ],
+      "teamImagePrompt": "60-80 word prompt for about page hero showing team collaboration, modern office environment, diverse professionals working together, warm lighting, brand colors in environment, candid yet professional atmosphere",
+      "officeImagePrompt": "50-70 word prompt for office/workspace imagery, modern interior design, brand-colored accents, professional environment"
     },
-    "testimonials": {
+"testimonials": {
       "title": "What Our Clients Say",
       "subtitle": "Real results from real customers",
       "items": [
-        { "quote": "60+ word detailed testimonial describing specific experience, challenges solved, results achieved with metrics, and recommendation. Make it sound authentic and specific.", "author": "Full Name", "role": "Job Title", "company": "Company Name", "rating": 5, "metric": "e.g., '200% increase in conversions'" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "" }
-      ]
+        { "quote": "60+ word detailed testimonial describing specific experience, challenges solved, results achieved with metrics, and recommendation. Make it sound authentic and specific.", "author": "Full Name", "role": "Job Title", "company": "Company Name", "rating": 5, "metric": "e.g., '200% increase in conversions'", "avatarPrompt": "Professional headshot of business person, neutral background, warm lighting, friendly expression" },
+        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
+        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
+        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
+        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
+        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." }
+      ],
+      "sectionImagePrompt": "50-70 word prompt for testimonials section background, subtle gradient or pattern in brand colors"
     },
     "caseStudies": [
-      { "title": "Case Study 1 Title", "client": "Client Name", "industry": "Industry", "problem": "Detailed problem statement (50+ words)", "solution": "Detailed solution description (80+ words)", "results": [{ "metric": "200%", "label": "Increase in X" }, { "metric": "50%", "label": "Reduction in Y" }], "quote": "Client quote about the project" },
-      { "title": "Case Study 2 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "" },
-      { "title": "Case Study 3 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "" }
+      { "title": "Case Study 1 Title", "client": "Client Name", "industry": "Industry", "problem": "Detailed problem statement (50+ words)", "solution": "Detailed solution description (80+ words)", "results": [{ "metric": "200%", "label": "Increase in X" }, { "metric": "50%", "label": "Reduction in Y" }], "quote": "Client quote about the project", "beforeImagePrompt": "40-60 word prompt showing the 'before' state/challenge", "afterImagePrompt": "40-60 word prompt showing the 'after' state/success" },
+      { "title": "Case Study 2 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "", "beforeImagePrompt": "...", "afterImagePrompt": "..." },
+      { "title": "Case Study 3 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "", "beforeImagePrompt": "...", "afterImagePrompt": "..." }
     ],
     "pricing": {
       "title": "Simple, Transparent Pricing",
@@ -240,7 +281,7 @@ OUTPUT FORMAT - Valid JSON object:
       { "value": "50+", "label": "Integrations", "description": "Connect everything" },
       { "value": "4.9/5", "label": "Rating", "description": "Customer satisfaction" }
     ],
-    "footer": {
+"footer": {
       "tagline": "Compelling company tagline summarizing value proposition",
       "description": "Brief 2-sentence company description",
       "copyright": "© 2024 Company Name. All rights reserved.",
@@ -250,6 +291,42 @@ OUTPUT FORMAT - Valid JSON object:
         "resources": ["Documentation", "Help Center", "Community", "Contact"],
         "legal": ["Privacy Policy", "Terms of Service", "Cookie Policy"]
       }
+    },
+    "blog": {
+      "title": "Latest Insights",
+      "subtitle": "Stay updated with industry news and tips",
+      "articles": [
+        { "title": "Article 1 Title", "excerpt": "40-60 word article preview...", "category": "Category", "thumbnailPrompt": "50-70 word prompt for article featured image relevant to the topic, editorial style, brand colors" },
+        { "title": "Article 2 Title", "excerpt": "...", "category": "Category", "thumbnailPrompt": "..." },
+        { "title": "Article 3 Title", "excerpt": "...", "category": "Category", "thumbnailPrompt": "..." }
+      ]
+    },
+    "socialProof": {
+      "clientLogos": [
+        { "name": "Company 1", "logoPrompt": "Minimal modern logo placeholder, abstract geometric shape, monochrome" },
+        { "name": "Company 2", "logoPrompt": "..." },
+        { "name": "Company 3", "logoPrompt": "..." },
+        { "name": "Company 4", "logoPrompt": "..." },
+        { "name": "Company 5", "logoPrompt": "..." },
+        { "name": "Company 6", "logoPrompt": "..." }
+      ]
+    }
+  },
+  "imageGeneration": {
+    "heroBackground": "80-100 word ultra-detailed prompt for the main hero section background image. Include: subject, style (photorealistic/3D/abstract), industry elements, brand primary and secondary colors as hex codes, lighting (soft ambient, dramatic, natural), composition (wide panoramic, centered, asymmetric), mood (professional, innovative, trustworthy), quality keywords (4K, high detail, cinematic). The image should represent the brand identity.",
+    "ogImage": "60-80 word prompt for Open Graph social sharing image (1200x630), featuring business name, tagline, and brand colors prominently",
+    "favicon": "30-40 word prompt for favicon/app icon, minimal, recognizable at small sizes, brand primary color",
+    "decorativeElements": [
+      { "name": "floating-shape-1", "prompt": "Abstract 3D geometric shape in brand primary color with glass/translucent effect, soft shadows, isolated on transparent background" },
+      { "name": "floating-shape-2", "prompt": "Second complementary geometric shape in brand secondary color..." },
+      { "name": "gradient-blob", "prompt": "Organic blob shape with gradient from brand primary to secondary color, soft edges, glow effect" },
+      { "name": "pattern-background", "prompt": "Subtle repeating pattern using brand colors, modern geometric style, for section backgrounds" }
+    ],
+    "sectionBackgrounds": {
+      "features": "50-70 word prompt for features section background, subtle gradient or pattern",
+      "testimonials": "50-70 word prompt for testimonials background, softer more personal feel",
+      "pricing": "50-70 word prompt for pricing section background, clean professional",
+      "cta": "60-80 word prompt for CTA section background, energetic gradient with brand colors"
     }
   },
   "animations": [
@@ -279,7 +356,7 @@ OUTPUT FORMAT - Valid JSON object:
     "mobileHero": "stacked",
     "mobileCards": "swipeable"
   },
-  "seo": {
+"seo": {
     "siteName": "Business Name",
     "defaultTitle": "Business Name - Primary Keyword",
     "titleTemplate": "%s | Business Name",
@@ -288,20 +365,33 @@ OUTPUT FORMAT - Valid JSON object:
     "ogImage": "/og-image.jpg",
     "twitterHandle": "@handle",
     "schemaType": "Organization"
+  },
+  "brandAssets": {
+    "logoUrl": "URL from Phase 2 approved logo (pass through from input)",
+    "iconUrl": "URL from Phase 2 approved app icon (pass through from input)",
+    "bannerUrl": "URL from Phase 2 approved social banner (pass through from input)",
+    "primaryColorHex": "#exact hex from Phase 2",
+    "secondaryColorHex": "#exact hex from Phase 2",
+    "accentColorHex": "#exact hex from Phase 2",
+    "headingFont": "Font name from Phase 2",
+    "bodyFont": "Font name from Phase 2"
   }
 }
 
 CRITICAL GUIDELINES:
 1. Make website UNIQUE, MODERN, PREMIUM - no generic templates
-2. Use brand colors/typography from Phase 2 if provided
-3. Write conversion-focused copy SPECIFIC to this business
-4. Mobile-first responsive with premium interactions
-5. Smooth animations and micro-interactions throughout
-6. Clear user journey from landing to conversion
-7. Match brand voice and industry terminology
-8. Include detailed social proof with SPECIFIC results/metrics
-9. SEO-optimized structure and meta content
-10. EVERY piece of copy must be DETAILED and SPECIFIC - absolutely NO generic placeholders
+2. Use EXACT brand color HEX CODES from Phase 2 in ALL image prompts - DO NOT use generic color names
+3. Every imagePrompt must include the specific hex codes provided (e.g., "dominant color #3B82F6, accent #10B981")
+4. Write conversion-focused copy SPECIFIC to this business
+5. Mobile-first responsive with premium interactions
+6. Smooth animations and micro-interactions throughout
+7. Clear user journey from landing to conversion
+8. Match brand voice and industry terminology
+9. Include detailed social proof with SPECIFIC results/metrics
+10. SEO-optimized structure and meta content
+11. EVERY piece of copy must be DETAILED and SPECIFIC - absolutely NO generic placeholders
+12. Image prompts should describe photorealistic or high-quality 3D renders in brand colors
+13. Include the approved logo URL in the brandAssets section of the output
 
 IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.`;
 
@@ -323,8 +413,8 @@ IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: context }
               ],
-              temperature: 0.85,
-              max_tokens: 8000,
+temperature: 0.85,
+              max_tokens: 12000,
             }),
           });
 
