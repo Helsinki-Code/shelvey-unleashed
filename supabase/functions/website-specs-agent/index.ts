@@ -19,6 +19,48 @@ interface RequestBody {
   phase2Data?: any;
 }
 
+// Helper to safely stringify and truncate large objects
+const safeStringify = (obj: any, maxLength = 3000): string => {
+  if (!obj) return 'Not available';
+  try {
+    const str = JSON.stringify(obj, null, 2);
+    if (str.length > maxLength) {
+      return str.substring(0, maxLength) + '\n... [truncated for brevity]';
+    }
+    return str;
+  } catch {
+    return 'Unable to serialize';
+  }
+};
+
+// Extract color hex codes from various palette formats
+const extractColorHexes = (colors: any): { primary: string; secondary: string; accent: string; background: string; text: string } => {
+  const defaults = { primary: '#3B82F6', secondary: '#8B5CF6', accent: '#F59E0B', background: '#FFFFFF', text: '#1A1A2E' };
+  
+  if (!colors) return defaults;
+  
+  // Handle array of color objects
+  if (Array.isArray(colors.colors || colors)) {
+    const colorArr = colors.colors || colors;
+    return {
+      primary: colorArr[0]?.hex || colorArr[0]?.value || defaults.primary,
+      secondary: colorArr[1]?.hex || colorArr[1]?.value || defaults.secondary,
+      accent: colorArr[2]?.hex || colorArr[2]?.value || defaults.accent,
+      background: colorArr[4]?.hex || colorArr[4]?.value || defaults.background,
+      text: colorArr[3]?.hex || colorArr[3]?.value || defaults.text,
+    };
+  }
+  
+  // Handle direct hex properties
+  return {
+    primary: colors.primary || colors.primaryColor || defaults.primary,
+    secondary: colors.secondary || colors.secondaryColor || defaults.secondary,
+    accent: colors.accent || colors.accentColor || defaults.accent,
+    background: colors.background || colors.backgroundColor || defaults.background,
+    text: colors.text || colors.textColor || defaults.text,
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,11 +68,10 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Helper to send SSE
   const sendSSE = (controller: ReadableStreamDefaultController, type: string, data: any) => {
     const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
     controller.enqueue(new TextEncoder().encode(message));
@@ -47,495 +88,497 @@ serve(async (req) => {
     const body: RequestBody = await req.json();
     const { projectId, phaseId, project, phase1Data, phase2Data } = body;
 
-    // Create streaming response
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          sendSSE(controller, 'progress', { progress: 5, message: 'Analyzing Phase 1 & 2 deliverables...' });
+          sendSSE(controller, 'progress', { progress: 5, message: 'Analyzing business context from Phase 1 & Phase 2...' });
 
-// Build context from approved deliverables
-          let context = `Business: ${project.name}\nIndustry: ${project.industry}\nDescription: ${project.description}\n\n`;
+          // ============================================
+          // BUILD RICH CONTEXT FROM ALL PHASES
+          // ============================================
           
+          // Extract brand colors deterministically
+          const brandColors = extractColorHexes(phase2Data?.colors);
+          
+          // Build comprehensive business context
+          let businessContext = `
+═══════════════════════════════════════════════════════════════
+BUSINESS PROFILE
+═══════════════════════════════════════════════════════════════
+Name: ${project.name}
+Industry: ${project.industry}
+Description: ${project.description}
+`;
+
+          // Phase 1: Full research data
           if (phase1Data) {
-            context += `MARKET RESEARCH:\n`;
-            if (phase1Data.targetAudience) context += `Target Audience: ${JSON.stringify(phase1Data.targetAudience)}\n`;
-            if (phase1Data.competitors) context += `Competitors: ${JSON.stringify(phase1Data.competitors)}\n`;
-            if (phase1Data.uniqueValue) context += `Unique Value: ${phase1Data.uniqueValue}\n`;
+            businessContext += `
+═══════════════════════════════════════════════════════════════
+PHASE 1: MARKET RESEARCH & STRATEGY (Approved)
+═══════════════════════════════════════════════════════════════
+
+📊 MARKET ANALYSIS:
+${safeStringify(phase1Data.marketAnalysis, 2000)}
+
+🎯 TARGET AUDIENCE PROFILE:
+${safeStringify(phase1Data.targetAudienceProfile || phase1Data.targetAudience, 1500)}
+
+🏆 COMPETITOR LANDSCAPE:
+${safeStringify(phase1Data.competitorReport || phase1Data.competitors, 1500)}
+
+📈 TREND FORECAST:
+${safeStringify(phase1Data.trendForecast, 1000)}
+
+💎 UNIQUE VALUE PROPOSITION:
+${phase1Data.uniqueValue || 'Not specified - infer from business description'}
+`;
           }
 
+          // Phase 2: Full branding data with ACTUAL asset URLs
           if (phase2Data) {
-            context += `\nBRAND ASSETS (USE THESE IN ALL IMAGE PROMPTS):\n`;
-            if (phase2Data.logo) context += `Logo URL: ${phase2Data.logo}\n`;
-            if (phase2Data.colors) {
-              context += `Color Palette: ${JSON.stringify(phase2Data.colors)}\n`;
-              // Extract hex codes for image prompts
-              const colorHexes = phase2Data.colors?.colors?.map((c: any) => c.hex).filter(Boolean) || [];
-              if (colorHexes.length) {
-                context += `Primary Color Hex: ${colorHexes[0]}, Secondary Color Hex: ${colorHexes[1] || colorHexes[0]}, Accent Color Hex: ${colorHexes[2] || colorHexes[0]}\n`;
-              }
-            }
-            if (phase2Data.typography) context += `Typography: ${JSON.stringify(phase2Data.typography)}\n`;
-            if (phase2Data.brandVoice) context += `Brand Voice: ${phase2Data.brandVoice}\n`;
-            
-            // Pass all asset URLs
-            if (phase2Data.assets) {
-              context += `\nAPPROVED BRAND ASSET URLS (embed these in the website):\n`;
-              phase2Data.assets.forEach((asset: any) => {
-                if (asset.imageUrl || asset.url) {
-                  context += `- ${asset.type || asset.name}: ${asset.imageUrl || asset.url}\n`;
-                }
-              });
-            }
+            businessContext += `
+═══════════════════════════════════════════════════════════════
+PHASE 2: BRAND IDENTITY (Approved)
+═══════════════════════════════════════════════════════════════
+
+🎨 BRAND COLOR PALETTE (USE THESE EXACT HEX CODES):
+- Primary Color: ${brandColors.primary}
+- Secondary Color: ${brandColors.secondary}
+- Accent Color: ${brandColors.accent}
+- Background Color: ${brandColors.background}
+- Text Color: ${brandColors.text}
+
+✏️ TYPOGRAPHY:
+${safeStringify(phase2Data.typography, 500)}
+
+🗣️ BRAND VOICE:
+${phase2Data.brandVoice || 'Professional, trustworthy, innovative'}
+
+🖼️ APPROVED BRAND ASSETS (ACTUAL URLs TO USE):
+${phase2Data.logo ? `- Logo: ${phase2Data.logo}` : ''}
+${phase2Data.icon ? `- App Icon: ${phase2Data.icon}` : ''}
+${phase2Data.banner ? `- Banner: ${phase2Data.banner}` : ''}
+${phase2Data.assets?.map((a: any) => `- ${a.type || a.name}: ${a.imageUrl}`).join('\n') || ''}
+`;
           }
-          
-          context += `\nIMPORTANT: Include the actual brand color hex codes in ALL image generation prompts. Every generated image should incorporate the brand colors.`;
 
-          sendSSE(controller, 'progress', { progress: 15, message: 'Building comprehensive website blueprint...' });
+          sendSSE(controller, 'progress', { progress: 15, message: 'Discovering optimal site architecture for this business...' });
 
-const systemPrompt = `You are a world-class website architect, premium UX copywriter, and visual art director. Create EXCEPTIONAL, DETAILED website specifications with AI-GENERATED IMAGE PROMPTS that would rival top agency work.
+          // ============================================
+          // DYNAMIC SYSTEM PROMPT (NO HARDCODING!)
+          // ============================================
+          const systemPrompt = `You are a world-class website architect, premium UX strategist, and visual art director. Your job is to DISCOVER and DESIGN the optimal website structure for THIS SPECIFIC BUSINESS based on the provided context.
 
-MANDATORY REQUIREMENTS:
-- Generate MINIMUM 8 pages with unique purposes
-- Generate MINIMUM 20 premium components
-- Each page must have 5-8 distinct sections
-- ALL copy must be SPECIFIC to this business - NO generic placeholder text
-- Hero headline: 6-10 power words, emotionally compelling
-- Hero subheadline: 50+ words explaining unique value proposition
-- 8+ features with 50+ word descriptions each
-- 6+ testimonials with 60+ words, specific metrics/results
-- About section: 250+ words covering origin story, mission, vision, values
-- 4-6 detailed services with 80+ word descriptions
-- 10+ FAQ questions with comprehensive 50+ word answers
-- Case studies with Problem → Solution → Results format
+═══════════════════════════════════════════════════════════════
+CRITICAL RULES - READ CAREFULLY
+═══════════════════════════════════════════════════════════════
 
-CRITICAL - AI IMAGE GENERATION PROMPTS:
-For EVERY section that needs imagery, include detailed "imagePrompt" specifications:
-- Hero: Background image/video poster + floating visual elements
-- Features: Icon-style illustrations or abstract visuals for each feature
-- About: Team photos, office environment, brand story visuals
-- Services: Visual representation of each service
-- Testimonials: Placeholder for customer avatars
-- Case Studies: Before/after visuals, results graphics
-- Blog: Article thumbnails and featured images
-- Each imagePrompt should be 40-80 words with:
-  * Subject matter (what should be in the image)
-  * Style (photorealistic, illustration, 3D render, abstract, minimalist)
-  * Color palette (matching brand colors provided)
-  * Mood/atmosphere (professional, energetic, warm, innovative)
-  * Composition (wide shot, close-up, isometric, flat lay)
+🚫 DO NOT USE PRE-DEFINED PAGE LISTS
+🚫 DO NOT USE GENERIC TEMPLATE STRUCTURES  
+🚫 DO NOT ASSUME "Home/About/Services/Contact" IS CORRECT
+🚫 DO NOT COPY EXAMPLE STRUCTURES FROM TRAINING DATA
 
-OUTPUT FORMAT - Valid JSON object:
+✅ ANALYZE the business type, industry, and goals
+✅ DECIDE pages based on what THIS business actually needs
+✅ USE industry-specific terminology (not generic "Services" if they offer "Programs", "Treatments", "Plans", etc.)
+✅ VARY the structure based on business complexity
+
+═══════════════════════════════════════════════════════════════
+DYNAMIC PAGE COUNT RULES
+═══════════════════════════════════════════════════════════════
+
+Based on business type, generate APPROPRIATE number of pages:
+
+SIMPLE LOCAL SERVICE (plumber, salon, etc): 5-7 pages
+PROFESSIONAL SERVICES (agency, consulting): 7-10 pages
+SAAS/TECH PRODUCT: 8-12 pages
+E-COMMERCE: 10-15 pages (collections, product pages, etc.)
+PORTFOLIO/CREATIVE: 6-9 pages
+HEALTHCARE/MEDICAL: 8-12 pages
+EDUCATION/COURSES: 9-14 pages
+ENTERPRISE B2B: 10-14 pages
+
+═══════════════════════════════════════════════════════════════
+INDUSTRY-SPECIFIC PAGE EXAMPLES (CHOOSE WHAT FITS)
+═══════════════════════════════════════════════════════════════
+
+SaaS/Tech: Pricing, Integrations, Security, API Docs, Changelog, Status, Enterprise
+E-commerce: Collections, Product, Cart, Checkout, Order Tracking, Returns, Size Guide
+Healthcare: Conditions, Treatments, Practitioners, Book Appointment, Patient Portal, Insurance
+Agency: Case Studies, Process, Capabilities, Industries, Team, Careers, Insights
+Restaurant: Menu, Reservations, Locations, Catering, Events, Gift Cards
+Real Estate: Listings, Property Detail, Neighborhoods, Agents, Mortgage Calculator, Virtual Tours
+Education: Courses, Curriculum, Instructors, Student Portal, Certifications, Resources
+Fitness: Classes, Trainers, Schedule, Membership, Facilities, Nutrition
+
+═══════════════════════════════════════════════════════════════
+COMPONENT GENERATION RULES
+═══════════════════════════════════════════════════════════════
+
+Generate 18-40 UNIQUE components based on complexity:
+- Each component must have a clear, specific purpose
+- Components should match the industry vocabulary
+- Include both layout components and interactive elements
+- Specify animations, hover states, and micro-interactions
+
+═══════════════════════════════════════════════════════════════
+COPY CONTENT REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+ALL copy must be:
+- Specific to THIS business (use their name, industry terminology)
+- Based on the target audience profile from Phase 1
+- Aligned with the brand voice from Phase 2
+- Written as FINAL production copy, not placeholders
+
+Word count minimums:
+- Hero headline: 6-12 power words
+- Hero subheadline: 40-80 words with specific value proposition
+- Feature descriptions: 40-60 words each
+- Service descriptions: 60-100 words each
+- About/Story section: 200-400 words
+- Testimonials: 50-80 words each (realistic, metric-driven)
+- FAQ answers: 40-80 words each
+
+═══════════════════════════════════════════════════════════════
+IMAGE PLAN (CRITICAL FOR AI GENERATION)
+═══════════════════════════════════════════════════════════════
+
+For every visual element, provide a detailed "imagePlan" array. Each slot must include:
+
 {
+  "slotId": "unique-identifier",
+  "pageRoute": "/page-route",
+  "sectionId": "section-name",
+  "placement": "hero-background | inline | card | icon | avatar | gallery",
+  "aspectRatio": "16:9 | 4:3 | 1:1 | 3:2 | 9:16",
+  "prompt": "60-100 word detailed prompt including: subject, style, composition, lighting, mood, and BRAND COLORS (${brandColors.primary}, ${brandColors.secondary})",
+  "negativePrompt": "what to avoid in the image",
+  "priority": "high | medium | low"
+}
+
+EVERY section that could benefit from imagery MUST have an image slot.
+Prioritize: Hero (always high), Feature icons, Team photos, Case study visuals, Service illustrations.
+
+═══════════════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════════════
+
+Return a valid JSON object with this structure:
+
+{
+  "siteArchitecture": {
+    "siteType": "saas | ecommerce | portfolio | service | corporate | blog | landing",
+    "complexity": "simple | medium | complex",
+    "totalPages": number,
+    "totalComponents": number,
+    "primaryGoal": "lead generation | sales | booking | information | portfolio showcase | community"
+  },
   "pages": [
-    { "name": "Home", "route": "/", "sections": ["Hero", "TrustBar", "Features", "Stats", "HowItWorks", "CaseStudyPreview", "Testimonials", "Pricing Preview", "FAQ Preview", "Newsletter", "CTA", "Footer"], "description": "High-converting landing page with compelling value prop, social proof, and clear user journey", "metaTitle": "Business Name - Compelling 60 char title", "metaDescription": "160 char meta description with keywords" },
-    { "name": "About", "route": "/about", "sections": ["Hero", "OurStory", "MissionVision", "CoreValues", "TeamGrid", "Timeline", "Partners", "CTA"], "description": "Brand story and team showcase", "metaTitle": "", "metaDescription": "" },
-    { "name": "Services", "route": "/services", "sections": ["Hero", "ServiceOverview", "ServiceCards", "ProcessTimeline", "Deliverables", "CaseStudies", "Testimonials", "CTA"], "description": "Detailed service offerings with process", "metaTitle": "", "metaDescription": "" },
-    { "name": "Portfolio", "route": "/portfolio", "sections": ["Hero", "FilterBar", "ProjectGrid", "CaseStudyFeatured", "ResultsMetrics", "ClientLogos", "CTA"], "description": "Work showcase with results", "metaTitle": "", "metaDescription": "" },
-    { "name": "Pricing", "route": "/pricing", "sections": ["Hero", "PricingToggle", "PricingTiers", "FeatureComparison", "Guarantees", "FAQ", "CTA"], "description": "Transparent pricing with comparison", "metaTitle": "", "metaDescription": "" },
-    { "name": "Blog", "route": "/blog", "sections": ["Hero", "FeaturedPost", "CategoryFilter", "ArticleGrid", "Newsletter", "CTA"], "description": "Content hub and resources", "metaTitle": "", "metaDescription": "" },
-    { "name": "Contact", "route": "/contact", "sections": ["Hero", "ContactOptions", "ContactForm", "OfficeLocations", "FAQ", "SocialLinks"], "description": "Multiple contact channels", "metaTitle": "", "metaDescription": "" },
-    { "name": "FAQ", "route": "/faq", "sections": ["Hero", "CategoryTabs", "AccordionFAQ", "ContactCTA", "Resources"], "description": "Comprehensive FAQ organized by topic", "metaTitle": "", "metaDescription": "" }
+    {
+      "name": "Page Name",
+      "route": "/route",
+      "purpose": "What this page achieves for the business",
+      "sections": ["Section1", "Section2", ...],
+      "metaTitle": "SEO title under 60 chars",
+      "metaDescription": "SEO description under 160 chars"
+    }
+  ],
+  "components": [
+    {
+      "name": "ComponentName",
+      "type": "hero | features | testimonials | cta | form | pricing | team | gallery | faq | footer | etc",
+      "props": { detailed configuration },
+      "animations": { "type": "fadeIn | slideUp | scaleIn | stagger", "duration": "0.5s", "delay": "0s" },
+      "description": "What this component does and why"
+    }
   ],
   "globalStyles": {
-    "primaryColor": "#hex from brand",
-    "secondaryColor": "#hex",
-    "accentColor": "#hex",
-    "backgroundColor": "#hex",
-    "textColor": "#hex",
-    "headingFont": "Font Name",
-    "bodyFont": "Font Name",
-    "borderRadius": "rounded-xl",
-    "spacing": "comfortable",
-    "shadows": { "soft": "0 4px 20px rgba(0,0,0,0.08)", "medium": "0 8px 30px rgba(0,0,0,0.12)", "strong": "0 20px 50px rgba(0,0,0,0.15)" },
-    "gradients": { "primary": "linear-gradient(135deg, primary, secondary)", "subtle": "linear-gradient(180deg, bg-light, bg-dark)", "accent": "linear-gradient(90deg, accent, primary)" }
+    "primaryColor": "${brandColors.primary}",
+    "secondaryColor": "${brandColors.secondary}",
+    "accentColor": "${brandColors.accent}",
+    "backgroundColor": "${brandColors.background}",
+    "textColor": "${brandColors.text}",
+    "headingFont": "from Phase 2 typography",
+    "bodyFont": "from Phase 2 typography",
+    "borderRadius": "none | sm | md | lg | xl | 2xl | full",
+    "spacing": "compact | comfortable | spacious",
+    "shadows": { "soft": "...", "medium": "...", "strong": "..." },
+    "gradients": { "primary": "...", "subtle": "...", "accent": "..." }
   },
-  "components": [
-    { "name": "HeroSection", "type": "hero", "props": { "variant": "gradient-animated", "hasVideo": false, "hasParticles": true }, "description": "Full-width hero with animated gradient, text reveal, floating elements, dual CTA" },
-    { "name": "TrustBar", "type": "social-proof", "props": { "items": 6 }, "description": "Horizontal scrolling bar with client logos and trust badges" },
-    { "name": "FeatureGrid", "type": "features", "props": { "columns": 3, "hasIcons": true, "hasHoverEffects": true }, "description": "8-feature grid with icons, hover animations, detailed descriptions" },
-    { "name": "StatsCounter", "type": "stats", "props": { "animated": true, "style": "cards" }, "description": "Animated number counters with icons and labels" },
-    { "name": "ProcessTimeline", "type": "process", "props": { "steps": 5, "style": "horizontal" }, "description": "Visual step-by-step process with icons and connectors" },
-    { "name": "TestimonialCarousel", "type": "testimonials", "props": { "autoplay": true, "hasRatings": true, "hasPhotos": true }, "description": "Carousel with customer photos, ratings, company logos" },
-    { "name": "TestimonialGrid", "type": "testimonials", "props": { "columns": 3, "masonry": true }, "description": "Masonry grid of testimonial cards" },
-    { "name": "PricingTable", "type": "pricing", "props": { "tiers": 3, "highlighted": "middle", "hasToggle": true }, "description": "Three-tier pricing with monthly/annual toggle, feature lists" },
-    { "name": "FeatureComparison", "type": "comparison", "props": { "columns": 4 }, "description": "Detailed feature comparison table across tiers" },
-    { "name": "CaseStudyCard", "type": "case-study", "props": { "hasMetrics": true }, "description": "Rich case study preview with before/after metrics" },
-    { "name": "CaseStudyFull", "type": "case-study", "props": { "layout": "full" }, "description": "Full case study with problem, solution, results sections" },
-    { "name": "TeamGrid", "type": "team", "props": { "columns": 4, "hasHover": true }, "description": "Team member cards with hover reveal for bio and social" },
-    { "name": "FAQAccordion", "type": "faq", "props": { "animated": true, "hasCategories": true }, "description": "Categorized expandable FAQ with smooth animations" },
-    { "name": "ContactForm", "type": "form", "props": { "fields": ["name", "email", "phone", "company", "budget", "message"], "hasValidation": true }, "description": "Multi-field contact form with real-time validation" },
-    { "name": "NewsletterSection", "type": "newsletter", "props": { "style": "inline" }, "description": "Email capture with benefit statement and privacy note" },
-    { "name": "CTABanner", "type": "cta", "props": { "variant": "gradient", "hasAnimation": true }, "description": "Full-width CTA with compelling copy and animated button" },
-    { "name": "ServiceCard", "type": "service", "props": { "hasIcon": true, "hasLink": true }, "description": "Individual service card with icon, description, link" },
-    { "name": "BlogCard", "type": "blog", "props": { "hasImage": true, "hasExcerpt": true }, "description": "Blog post preview with image, title, excerpt, date" },
-    { "name": "LogoCloud", "type": "logos", "props": { "animated": true, "rows": 2 }, "description": "Animated logo grid with grayscale hover effect" },
-    { "name": "Footer", "type": "footer", "props": { "columns": 5 }, "description": "Multi-column footer with nav, social, newsletter, legal" },
-    { "name": "BeforeAfterSlider", "type": "comparison", "props": { "interactive": true }, "description": "Interactive before/after image comparison slider" },
-    { "name": "MetricsBar", "type": "stats", "props": { "style": "inline" }, "description": "Horizontal metrics display with icons" },
-    { "name": "VideoModal", "type": "media", "props": { "autoplay": false }, "description": "Video popup modal with play button trigger" },
-    { "name": "ValueProposition", "type": "content", "props": { "columns": 3 }, "description": "Three-column value prop with icons and descriptions" }
-  ],
   "copyContent": {
-"hero": {
-      "headline": "6-10 power words that create urgency and speak to transformation",
-      "subheadline": "50+ word detailed value proposition explaining the unique benefits, target audience, and transformation customers will experience. Include specific outcomes and differentiation.",
-      "cta": "Action-oriented primary CTA (e.g., 'Start Your Free Trial')",
-      "secondaryCta": "Lower-commitment secondary CTA (e.g., 'Watch Demo')",
-      "trustText": "Social proof line (e.g., 'Trusted by 10,000+ businesses')",
-      "imagePrompt": "60-80 word detailed AI image generation prompt for hero background. Include: subject matter, style (photorealistic/3D/abstract), industry-specific imagery, brand color integration, mood/atmosphere, composition guidelines. Example: 'Ultra-wide panoramic view of modern tech workspace with soft gradient lighting in brand primary color, floating 3D geometric shapes, glass surfaces reflecting ambient light, professional atmosphere with depth of field blur, 16:9 aspect ratio, cinematic quality'"
+    "hero": {
+      "headline": "Powerful headline specific to this business",
+      "subheadline": "40-80 word value proposition",
+      "primaryCta": "Action button text",
+      "secondaryCta": "Secondary action",
+      "trustIndicators": ["Indicator 1", "Indicator 2"]
     },
     "features": {
-      "title": "Benefit-focused section title",
-      "subtitle": "Supporting context for features",
+      "sectionTitle": "...",
+      "sectionSubtitle": "...",
       "items": [
-        { "title": "Feature 1", "description": "50+ word detailed description explaining this feature, how it works, and the specific benefits it provides to customers. Include use cases.", "icon": "icon-name", "imagePrompt": "40-60 word prompt for feature illustration in brand style, abstract or icon-style" },
-        { "title": "Feature 2", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 3", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 4", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 5", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 6", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 7", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." },
-        { "title": "Feature 8", "description": "50+ word detailed description...", "icon": "icon-name", "imagePrompt": "..." }
-      ],
-      "sectionImagePrompt": "60-80 word prompt for features section background or decorative elements in brand colors"
+        { "title": "...", "description": "40-60 words", "icon": "lucide-icon-name" }
+      ]
     },
-"services": {
-      "title": "Our Services",
-      "subtitle": "Comprehensive solutions tailored to your needs",
+    "services": {
+      "sectionTitle": "...",
       "items": [
-        { "name": "Service 1", "description": "80+ word detailed description of this service including what's included, the process, expected outcomes, and ideal client profile.", "deliverables": ["Deliverable 1", "Deliverable 2", "Deliverable 3"], "icon": "icon-name", "imagePrompt": "50-70 word prompt for service visual representation, showing the outcome or process, professional style, brand colors" },
-        { "name": "Service 2", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." },
-        { "name": "Service 3", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." },
-        { "name": "Service 4", "description": "80+ word detailed description...", "deliverables": [], "icon": "icon-name", "imagePrompt": "..." }
+        { "name": "...", "description": "60-100 words", "deliverables": [], "price": "optional" }
       ]
     },
     "about": {
-      "title": "About Us",
-      "subtitle": "Our Story & Mission",
-      "story": "250+ word company origin story including founding story, challenges overcome, growth milestones, and what drives the team. Make it personal and authentic.",
-      "mission": "Clear mission statement (30+ words)",
-      "vision": "Aspirational vision statement (30+ words)",
-      "values": [
-        { "name": "Value 1", "description": "Description of this core value and how it manifests in daily work" },
-        { "name": "Value 2", "description": "..." },
-        { "name": "Value 3", "description": "..." },
-        { "name": "Value 4", "description": "..." }
-      ],
-      "teamImagePrompt": "60-80 word prompt for about page hero showing team collaboration, modern office environment, diverse professionals working together, warm lighting, brand colors in environment, candid yet professional atmosphere",
-      "officeImagePrompt": "50-70 word prompt for office/workspace imagery, modern interior design, brand-colored accents, professional environment"
+      "sectionTitle": "...",
+      "story": "200-400 word company story",
+      "mission": "30+ words",
+      "vision": "30+ words",
+      "values": [{ "name": "...", "description": "..." }],
+      "team": [{ "name": "...", "role": "...", "bio": "..." }]
     },
-"testimonials": {
-      "title": "What Our Clients Say",
-      "subtitle": "Real results from real customers",
+    "testimonials": {
+      "sectionTitle": "...",
       "items": [
-        { "quote": "60+ word detailed testimonial describing specific experience, challenges solved, results achieved with metrics, and recommendation. Make it sound authentic and specific.", "author": "Full Name", "role": "Job Title", "company": "Company Name", "rating": 5, "metric": "e.g., '200% increase in conversions'", "avatarPrompt": "Professional headshot of business person, neutral background, warm lighting, friendly expression" },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." },
-        { "quote": "60+ word testimonial...", "author": "", "role": "", "company": "", "rating": 5, "metric": "", "avatarPrompt": "..." }
-      ],
-      "sectionImagePrompt": "50-70 word prompt for testimonials section background, subtle gradient or pattern in brand colors"
+        { "quote": "50-80 words with specific results/metrics", "author": "...", "role": "...", "company": "...", "metric": "e.g., 300% increase" }
+      ]
     },
-    "caseStudies": [
-      { "title": "Case Study 1 Title", "client": "Client Name", "industry": "Industry", "problem": "Detailed problem statement (50+ words)", "solution": "Detailed solution description (80+ words)", "results": [{ "metric": "200%", "label": "Increase in X" }, { "metric": "50%", "label": "Reduction in Y" }], "quote": "Client quote about the project", "beforeImagePrompt": "40-60 word prompt showing the 'before' state/challenge", "afterImagePrompt": "40-60 word prompt showing the 'after' state/success" },
-      { "title": "Case Study 2 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "", "beforeImagePrompt": "...", "afterImagePrompt": "..." },
-      { "title": "Case Study 3 Title", "client": "", "industry": "", "problem": "", "solution": "", "results": [], "quote": "", "beforeImagePrompt": "...", "afterImagePrompt": "..." }
-    ],
     "pricing": {
-      "title": "Simple, Transparent Pricing",
-      "subtitle": "Choose the plan that fits your needs",
+      "sectionTitle": "...",
       "tiers": [
-        { "name": "Starter", "price": "$X", "period": "/month", "description": "Perfect for...", "features": ["Feature 1", "Feature 2", "Feature 3", "Feature 4", "Feature 5"], "cta": "Get Started", "highlighted": false },
-        { "name": "Professional", "price": "$X", "period": "/month", "description": "Ideal for...", "features": ["Everything in Starter", "Feature 6", "Feature 7", "Feature 8", "Feature 9", "Feature 10"], "cta": "Start Free Trial", "highlighted": true, "badge": "Most Popular" },
-        { "name": "Enterprise", "price": "Custom", "period": "", "description": "For large teams...", "features": ["Everything in Professional", "Feature 11", "Feature 12", "Feature 13", "Dedicated support"], "cta": "Contact Sales", "highlighted": false }
-      ],
-      "guarantee": "30-day money-back guarantee. No questions asked."
+        { "name": "...", "price": "...", "period": "...", "features": [], "cta": "...", "highlighted": boolean }
+      ]
     },
     "faq": {
-      "title": "Frequently Asked Questions",
-      "subtitle": "Everything you need to know",
-      "categories": ["General", "Pricing", "Technical", "Support"],
+      "sectionTitle": "...",
       "items": [
-        { "question": "Question 1?", "answer": "50+ word comprehensive answer addressing the question fully with examples or specifics where relevant.", "category": "General" },
-        { "question": "Question 2?", "answer": "50+ word answer...", "category": "General" },
-        { "question": "Question 3?", "answer": "50+ word answer...", "category": "Pricing" },
-        { "question": "Question 4?", "answer": "50+ word answer...", "category": "Pricing" },
-        { "question": "Question 5?", "answer": "50+ word answer...", "category": "Technical" },
-        { "question": "Question 6?", "answer": "50+ word answer...", "category": "Technical" },
-        { "question": "Question 7?", "answer": "50+ word answer...", "category": "Support" },
-        { "question": "Question 8?", "answer": "50+ word answer...", "category": "Support" },
-        { "question": "Question 9?", "answer": "50+ word answer...", "category": "General" },
-        { "question": "Question 10?", "answer": "50+ word answer...", "category": "General" }
+        { "question": "...", "answer": "40-80 words" }
       ]
     },
     "cta": {
-      "primary": { "title": "Ready to Transform Your Business?", "description": "Compelling 40+ word CTA description explaining benefits of taking action now, reducing friction, and creating urgency.", "buttonText": "Get Started Today", "secondaryText": "No credit card required" },
-      "secondary": { "title": "Have Questions?", "description": "Alternative CTA for those not ready to commit", "buttonText": "Schedule a Call" }
+      "headline": "...",
+      "description": "...",
+      "buttonText": "...",
+      "secondaryText": "..."
     },
-    "stats": [
-      { "value": "10,000+", "label": "Happy Customers", "description": "Worldwide" },
-      { "value": "99.9%", "label": "Uptime", "description": "Reliability guaranteed" },
-      { "value": "$50M+", "label": "Revenue Generated", "description": "For our clients" },
-      { "value": "24/7", "label": "Support", "description": "Always available" },
-      { "value": "50+", "label": "Integrations", "description": "Connect everything" },
-      { "value": "4.9/5", "label": "Rating", "description": "Customer satisfaction" }
-    ],
-"footer": {
-      "tagline": "Compelling company tagline summarizing value proposition",
-      "description": "Brief 2-sentence company description",
-      "copyright": "© 2024 Company Name. All rights reserved.",
-      "links": {
-        "product": ["Features", "Pricing", "Integrations", "Changelog"],
-        "company": ["About", "Careers", "Blog", "Press"],
-        "resources": ["Documentation", "Help Center", "Community", "Contact"],
-        "legal": ["Privacy Policy", "Terms of Service", "Cookie Policy"]
-      }
-    },
-    "blog": {
-      "title": "Latest Insights",
-      "subtitle": "Stay updated with industry news and tips",
-      "articles": [
-        { "title": "Article 1 Title", "excerpt": "40-60 word article preview...", "category": "Category", "thumbnailPrompt": "50-70 word prompt for article featured image relevant to the topic, editorial style, brand colors" },
-        { "title": "Article 2 Title", "excerpt": "...", "category": "Category", "thumbnailPrompt": "..." },
-        { "title": "Article 3 Title", "excerpt": "...", "category": "Category", "thumbnailPrompt": "..." }
-      ]
-    },
-    "socialProof": {
-      "clientLogos": [
-        { "name": "Company 1", "logoPrompt": "Minimal modern logo placeholder, abstract geometric shape, monochrome" },
-        { "name": "Company 2", "logoPrompt": "..." },
-        { "name": "Company 3", "logoPrompt": "..." },
-        { "name": "Company 4", "logoPrompt": "..." },
-        { "name": "Company 5", "logoPrompt": "..." },
-        { "name": "Company 6", "logoPrompt": "..." }
-      ]
+    "footer": {
+      "tagline": "...",
+      "copyright": "© 2025 ${project.name}. All rights reserved.",
+      "socialLinks": [],
+      "legalLinks": ["Privacy Policy", "Terms of Service"]
     }
   },
-  "imageGeneration": {
-    "heroBackground": "80-100 word ultra-detailed prompt for the main hero section background image. Include: subject, style (photorealistic/3D/abstract), industry elements, brand primary and secondary colors as hex codes, lighting (soft ambient, dramatic, natural), composition (wide panoramic, centered, asymmetric), mood (professional, innovative, trustworthy), quality keywords (4K, high detail, cinematic). The image should represent the brand identity.",
-    "ogImage": "60-80 word prompt for Open Graph social sharing image (1200x630), featuring business name, tagline, and brand colors prominently",
-    "favicon": "30-40 word prompt for favicon/app icon, minimal, recognizable at small sizes, brand primary color",
-    "decorativeElements": [
-      { "name": "floating-shape-1", "prompt": "Abstract 3D geometric shape in brand primary color with glass/translucent effect, soft shadows, isolated on transparent background" },
-      { "name": "floating-shape-2", "prompt": "Second complementary geometric shape in brand secondary color..." },
-      { "name": "gradient-blob", "prompt": "Organic blob shape with gradient from brand primary to secondary color, soft edges, glow effect" },
-      { "name": "pattern-background", "prompt": "Subtle repeating pattern using brand colors, modern geometric style, for section backgrounds" }
-    ],
-    "sectionBackgrounds": {
-      "features": "50-70 word prompt for features section background, subtle gradient or pattern",
-      "testimonials": "50-70 word prompt for testimonials background, softer more personal feel",
-      "pricing": "50-70 word prompt for pricing section background, clean professional",
-      "cta": "60-80 word prompt for CTA section background, energetic gradient with brand colors"
+  "imagePlan": [
+    {
+      "slotId": "hero-background",
+      "pageRoute": "/",
+      "sectionId": "hero",
+      "placement": "hero-background",
+      "aspectRatio": "16:9",
+      "prompt": "60-100 word detailed prompt with brand colors",
+      "negativePrompt": "...",
+      "priority": "high"
     }
-  },
-  "animations": [
-    { "element": "hero", "type": "fade-in-up", "trigger": "on-load", "duration": "0.8s", "stagger": "0.15s" },
-    { "element": "hero-text", "type": "text-reveal", "trigger": "on-load", "duration": "1.2s" },
-    { "element": "trust-bar", "type": "slide-in", "trigger": "on-scroll", "duration": "0.6s" },
-    { "element": "features", "type": "stagger-fade", "trigger": "on-scroll", "delay": "0.1s", "stagger": "0.08s" },
-    { "element": "stats", "type": "count-up", "trigger": "on-scroll", "duration": "2s" },
-    { "element": "testimonials", "type": "carousel-slide", "trigger": "auto", "interval": "5s" },
-    { "element": "cta-button", "type": "pulse-glow", "trigger": "on-hover", "duration": "0.3s" },
-    { "element": "cards", "type": "hover-lift", "trigger": "on-hover", "duration": "0.25s" },
-    { "element": "images", "type": "parallax", "trigger": "on-scroll", "speed": "0.5" },
-    { "element": "section-headers", "type": "fade-in", "trigger": "on-scroll", "duration": "0.5s" },
-    { "element": "floating-elements", "type": "float", "trigger": "continuous", "duration": "3s" },
-    { "element": "gradient-bg", "type": "gradient-shift", "trigger": "continuous", "duration": "10s" }
   ],
-  "responsive": {
-    "mobileFirst": true,
-    "breakpoints": [
-      { "name": "sm", "width": "640px" },
-      { "name": "md", "width": "768px" },
-      { "name": "lg", "width": "1024px" },
-      { "name": "xl", "width": "1280px" },
-      { "name": "2xl", "width": "1536px" }
-    ],
-    "mobileNav": "hamburger-slide",
-    "mobileHero": "stacked",
-    "mobileCards": "swipeable"
-  },
-"seo": {
-    "siteName": "Business Name",
-    "defaultTitle": "Business Name - Primary Keyword",
-    "titleTemplate": "%s | Business Name",
-    "defaultDescription": "Primary meta description with key value proposition and target keywords",
-    "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-    "ogImage": "/og-image.jpg",
-    "twitterHandle": "@handle",
-    "schemaType": "Organization"
-  },
-  "brandAssets": {
-    "logoUrl": "URL from Phase 2 approved logo (pass through from input)",
-    "iconUrl": "URL from Phase 2 approved app icon (pass through from input)",
-    "bannerUrl": "URL from Phase 2 approved social banner (pass through from input)",
-    "primaryColorHex": "#exact hex from Phase 2",
-    "secondaryColorHex": "#exact hex from Phase 2",
-    "accentColorHex": "#exact hex from Phase 2",
-    "headingFont": "Font name from Phase 2",
-    "bodyFont": "Font name from Phase 2"
+  "seoStrategy": {
+    "primaryKeywords": [],
+    "secondaryKeywords": [],
+    "localSeo": boolean,
+    "schemaTypes": ["Organization", "Product", "Service", "FAQ", etc]
   }
 }
 
-CRITICAL GUIDELINES:
-1. Make website UNIQUE, MODERN, PREMIUM - no generic templates
-2. Use EXACT brand color HEX CODES from Phase 2 in ALL image prompts - DO NOT use generic color names
-3. Every imagePrompt must include the specific hex codes provided (e.g., "dominant color #3B82F6, accent #10B981")
-4. Write conversion-focused copy SPECIFIC to this business
-5. Mobile-first responsive with premium interactions
-6. Smooth animations and micro-interactions throughout
-7. Clear user journey from landing to conversion
-8. Match brand voice and industry terminology
-9. Include detailed social proof with SPECIFIC results/metrics
-10. SEO-optimized structure and meta content
-11. EVERY piece of copy must be DETAILED and SPECIFIC - absolutely NO generic placeholders
-12. Image prompts should describe photorealistic or high-quality 3D renders in brand colors
-13. Include the approved logo URL in the brandAssets section of the output
+Remember: 
+- Every decision must be derived from the business context provided
+- Use the EXACT brand colors: Primary ${brandColors.primary}, Secondary ${brandColors.secondary}, Accent ${brandColors.accent}
+- Reference the target audience when writing copy
+- Reference competitor insights when positioning
+- Make it unique and premium, not template-like`;
 
-IMPORTANT: Output ONLY the JSON object, no markdown code blocks or explanations.`;
+          sendSSE(controller, 'progress', { progress: 25, message: 'AI is designing custom site architecture...' });
 
-          sendSSE(controller, 'progress', { progress: 25, message: 'Generating page structure...' });
-
-          if (!openaiKey) {
-            throw new Error('OpenAI API key not configured');
-          }
-
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          // Call AI with the rich context
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${openaiKey}`,
+              'Authorization': `Bearer ${lovableKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4o',
+              model: 'google/gemini-2.5-pro',
               messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: context }
+                { role: 'user', content: businessContext }
               ],
-temperature: 0.85,
-              max_tokens: 12000,
+              temperature: 0.8,
+              max_tokens: 16000,
             }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('OpenAI error:', errorData);
-            throw new Error(errorData.error?.message || 'OpenAI API failed');
+          if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error('AI API error:', aiResponse.status, errorText);
+            throw new Error(`AI API error: ${aiResponse.status}`);
           }
 
-          sendSSE(controller, 'progress', { progress: 50, message: 'Crafting website copy...' });
+          sendSSE(controller, 'progress', { progress: 60, message: 'Parsing website specifications...' });
 
-          const data = await response.json();
-          const content = data.choices[0]?.message?.content;
+          const aiData = await aiResponse.json();
+          const rawContent = aiData.choices?.[0]?.message?.content;
 
-          if (!content) {
-            throw new Error('No content generated');
+          if (!rawContent) {
+            throw new Error('No content returned from AI');
           }
 
-          sendSSE(controller, 'progress', { progress: 70, message: 'Defining component specifications...' });
-
-          // Parse the JSON response
-          let specs;
+          // Parse JSON from response (handle markdown code blocks)
+          let specs: any;
           try {
-            // Clean potential markdown wrapping
-            let cleanContent = content.trim();
-            if (cleanContent.startsWith('```json')) {
-              cleanContent = cleanContent.slice(7);
+            let jsonStr = rawContent;
+            const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) {
+              jsonStr = jsonMatch[1];
             }
-            if (cleanContent.startsWith('```')) {
-              cleanContent = cleanContent.slice(3);
-            }
-            if (cleanContent.endsWith('```')) {
-              cleanContent = cleanContent.slice(0, -3);
-            }
-            specs = JSON.parse(cleanContent.trim());
+            // Clean up any trailing commas or issues
+            jsonStr = jsonStr.trim().replace(/,(\s*[}\]])/g, '$1');
+            specs = JSON.parse(jsonStr);
           } catch (parseError) {
-            console.error('Parse error:', parseError, 'Content:', content);
-            throw new Error('Failed to parse specifications');
+            console.error('JSON parse error:', parseError, 'Raw content:', rawContent.substring(0, 500));
+            throw new Error('Failed to parse AI response as JSON');
           }
 
-          sendSSE(controller, 'progress', { progress: 85, message: 'Saving specifications...' });
+          sendSSE(controller, 'progress', { progress: 75, message: 'Injecting brand assets and validating...' });
 
-          // Check for existing deliverable
-          const { data: existing } = await supabase
-            .from('phase_deliverables')
-            .select('id')
-            .eq('phase_id', phaseId)
-            .eq('deliverable_type', 'website_specs')
-            .maybeSingle();
-
-          const deliverableData = {
-            name: 'Website Specifications',
-            description: 'Detailed website architecture, copy, and styling specifications',
-            deliverable_type: 'website_specs',
-            phase_id: phaseId,
-            user_id: user.id,
-            status: 'review',
-            generated_content: {
-              specs,
-              generatedAt: new Date().toISOString(),
-              context: {
-                phase1Data,
-                phase2Data
-              }
-            },
-            ceo_approved: false,
-            user_approved: false,
-            version: existing ? 2 : 1,
-            updated_at: new Date().toISOString()
+          // ============================================
+          // DETERMINISTIC ASSET INJECTION
+          // ============================================
+          // Force-inject actual asset URLs regardless of what the model output
+          specs.brandAssets = {
+            logoUrl: phase2Data?.logo || null,
+            iconUrl: phase2Data?.icon || null,
+            bannerUrl: phase2Data?.banner || null,
+            primaryColorHex: brandColors.primary,
+            secondaryColorHex: brandColors.secondary,
+            accentColorHex: brandColors.accent,
+            backgroundColorHex: brandColors.background,
+            textColorHex: brandColors.text,
+            headingFont: phase2Data?.typography?.headingFont || specs.globalStyles?.headingFont || 'Inter',
+            bodyFont: phase2Data?.typography?.bodyFont || specs.globalStyles?.bodyFont || 'Inter',
+            assetLibrary: phase2Data?.assets || [],
           };
 
-          if (existing) {
-            await supabase
-              .from('phase_deliverables')
-              .update(deliverableData)
-              .eq('id', existing.id);
-          } else {
-            await supabase
-              .from('phase_deliverables')
-              .insert(deliverableData);
+          // Force globalStyles colors to match
+          if (specs.globalStyles) {
+            specs.globalStyles.primaryColor = brandColors.primary;
+            specs.globalStyles.secondaryColor = brandColors.secondary;
+            specs.globalStyles.accentColor = brandColors.accent;
+            specs.globalStyles.backgroundColor = brandColors.background;
+            specs.globalStyles.textColor = brandColors.text;
           }
 
-          // Log agent activity
+          // ============================================
+          // VALIDATION & AUTO-REPAIR
+          // ============================================
+          const pageCount = specs.pages?.length || 0;
+          const componentCount = specs.components?.length || 0;
+          const imageSlotCount = specs.imagePlan?.length || 0;
+
+          console.log(`Specs validation: ${pageCount} pages, ${componentCount} components, ${imageSlotCount} image slots`);
+
+          // Ensure minimums
+          if (pageCount < 5) {
+            console.warn('Page count below minimum, specs may be incomplete');
+          }
+          if (componentCount < 15) {
+            console.warn('Component count below minimum, specs may be incomplete');
+          }
+          if (imageSlotCount < 5) {
+            console.warn('Image slots below minimum, adding defaults');
+            // Add essential image slots if missing
+            if (!specs.imagePlan) specs.imagePlan = [];
+            const existingSlotIds = specs.imagePlan.map((s: any) => s.slotId);
+            
+            const essentialSlots = [
+              {
+                slotId: 'hero-background',
+                pageRoute: '/',
+                sectionId: 'hero',
+                placement: 'hero-background',
+                aspectRatio: '16:9',
+                prompt: `Professional ${project.industry} imagery with modern aesthetic, gradient overlay transitioning from ${brandColors.primary} to ${brandColors.secondary}, abstract geometric shapes, dynamic lighting, high-end corporate feel, ultra-wide cinematic composition`,
+                negativePrompt: 'text, watermark, low quality, blurry',
+                priority: 'high'
+              },
+              {
+                slotId: 'about-team',
+                pageRoute: '/about',
+                sectionId: 'team',
+                placement: 'inline',
+                aspectRatio: '16:9',
+                prompt: `Diverse professional team collaborating in modern ${project.industry} office, warm natural lighting, brand colors ${brandColors.accent} accents in environment, candid yet polished, depth of field`,
+                negativePrompt: 'posed, stiff, artificial',
+                priority: 'medium'
+              },
+            ];
+
+            essentialSlots.forEach(slot => {
+              if (!existingSlotIds.includes(slot.slotId)) {
+                specs.imagePlan.push(slot);
+              }
+            });
+          }
+
+          sendSSE(controller, 'progress', { progress: 85, message: 'Saving specifications to database...' });
+
+          // Save to database
+          const { data: deliverable, error: saveError } = await supabase
+            .from('phase_deliverables')
+            .upsert({
+              phase_id: phaseId,
+              user_id: user.id,
+              name: 'Website Specifications',
+              deliverable_type: 'website_specs',
+              description: `Dynamic website blueprint: ${specs.siteArchitecture?.totalPages || pageCount} pages, ${specs.siteArchitecture?.totalComponents || componentCount} components, ${specs.imagePlan?.length || 0} image slots`,
+              status: 'review',
+              generated_content: { specs, generatedAt: new Date().toISOString() },
+              ceo_approved: true, // Auto-approve by CEO
+            }, { onConflict: 'phase_id,deliverable_type' })
+            .select()
+            .single();
+
+          if (saveError) {
+            console.error('Save error:', saveError);
+            throw saveError;
+          }
+
+          // Log activity
           await supabase.from('agent_activity_logs').insert({
             agent_id: 'website-specs-agent',
-            agent_name: 'Website Copy & Specs Agent',
-            action: 'Generated website specifications',
+            agent_name: 'Website Specs Agent',
+            action: 'Generated dynamic website specifications',
             status: 'completed',
             metadata: {
               projectId,
               phaseId,
-              pagesCount: specs.pages?.length || 0,
-              componentsCount: specs.components?.length || 0
-            }
+              pageCount: specs.pages?.length,
+              componentCount: specs.components?.length,
+              imageSlots: specs.imagePlan?.length,
+              siteType: specs.siteArchitecture?.siteType,
+            },
           });
 
-          sendSSE(controller, 'progress', { progress: 90, message: 'Triggering CEO review...' });
+          sendSSE(controller, 'progress', { progress: 95, message: 'Finalizing...' });
 
-          // Auto-trigger CEO review for the deliverable
-          const { data: createdDeliverable } = await supabase
-            .from('phase_deliverables')
-            .select('id')
-            .eq('phase_id', phaseId)
-            .eq('deliverable_type', 'website_specs')
-            .maybeSingle();
-
-          if (createdDeliverable) {
-            // Auto-approve by CEO (simulated AI review)
-            await supabase
-              .from('phase_deliverables')
-              .update({ ceo_approved: true })
-              .eq('id', createdDeliverable.id);
-          }
-
-          sendSSE(controller, 'progress', { progress: 100, message: 'Website specifications complete!' });
-          sendSSE(controller, 'complete', { specs });
-
+          // Send complete event
+          sendSSE(controller, 'complete', { 
+            specs,
+            progress: 100,
+            message: `Website specifications complete: ${specs.pages?.length || 0} pages, ${specs.components?.length || 0} components, ${specs.imagePlan?.length || 0} image slots ready for generation`
+          });
+          
+          controller.close();
         } catch (error) {
-          console.error('Stream error:', error);
-          sendSSE(controller, 'error', { message: error instanceof Error ? error.message : 'Generation failed' });
-        } finally {
+          console.error('Streaming error:', error);
+          sendSSE(controller, 'error', { 
+            message: error instanceof Error ? error.message : 'Unknown error' 
+          });
           controller.close();
         }
       }

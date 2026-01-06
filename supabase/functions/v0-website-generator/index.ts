@@ -22,6 +22,7 @@ interface V0GenerationRequest {
   approvedSpecs?: any;
   prompt?: string;
   conversationId?: string;
+  selectedPage?: string; // For dynamic page selection
   editMode?: {
     section: string;
     changes: string;
@@ -48,118 +49,191 @@ serve(async (req) => {
     }
 
     const body: V0GenerationRequest = await req.json();
-    const { projectId, businessName, industry, description, branding, approvedSpecs, prompt, editMode } = body;
+    const { projectId, businessName, industry, description, branding, approvedSpecs, prompt, editMode, selectedPage } = body;
 
-// Build sections from approved specs or use defaults
-    const sections = approvedSpecs?.pages?.[0]?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer'];
-    
-    // Extract brand assets from approved specs
+    // ============================================
+    // EXTRACT BRAND ASSETS DETERMINISTICALLY
+    // ============================================
     const brandAssets = approvedSpecs?.brandAssets || {};
     const logoUrl = brandAssets.logoUrl || branding?.logo;
     const iconUrl = brandAssets.iconUrl;
-    const primaryColor = brandAssets.primaryColorHex || approvedSpecs?.globalStyles?.primaryColor || branding?.primaryColor;
-    const secondaryColor = brandAssets.secondaryColorHex || approvedSpecs?.globalStyles?.secondaryColor || branding?.secondaryColor;
-    const accentColor = brandAssets.accentColorHex || approvedSpecs?.globalStyles?.accentColor || branding?.accentColor;
+    const bannerUrl = brandAssets.bannerUrl;
     
-    // Extract image generation prompts from specs
-    const imagePrompts = approvedSpecs?.imageGeneration || {};
-    const copyImagePrompts = approvedSpecs?.copyContent || {};
+    // Colors - prefer brandAssets (injected deterministically) over globalStyles
+    const primaryColor = brandAssets.primaryColorHex || approvedSpecs?.globalStyles?.primaryColor || branding?.primaryColor || '#3B82F6';
+    const secondaryColor = brandAssets.secondaryColorHex || approvedSpecs?.globalStyles?.secondaryColor || branding?.secondaryColor || '#8B5CF6';
+    const accentColor = brandAssets.accentColorHex || approvedSpecs?.globalStyles?.accentColor || branding?.accentColor || '#F59E0B';
+    const backgroundColor = brandAssets.backgroundColorHex || approvedSpecs?.globalStyles?.backgroundColor || '#FFFFFF';
+    const textColor = brandAssets.textColorHex || approvedSpecs?.globalStyles?.textColor || '#1A1A2E';
     
-    // Build image generation instructions
-    let imageInstructions = '';
-    if (Object.keys(imagePrompts).length > 0 || logoUrl) {
-      imageInstructions = `
-BRAND ASSETS TO USE:
-${logoUrl ? `- Logo URL: ${logoUrl} (USE THIS as the actual logo image src)` : ''}
-${iconUrl ? `- Icon URL: ${iconUrl}` : ''}
+    // Fonts
+    const headingFont = brandAssets.headingFont || approvedSpecs?.globalStyles?.headingFont || branding?.headingFont || 'Inter';
+    const bodyFont = brandAssets.bodyFont || approvedSpecs?.globalStyles?.bodyFont || branding?.bodyFont || 'Inter';
 
-AI-GENERATED IMAGES (use these prompts with placeholder divs that describe the image):
-${imagePrompts.heroBackground ? `- Hero Background: "${imagePrompts.heroBackground}"` : ''}
-${copyImagePrompts.hero?.imagePrompt ? `- Hero Visual: "${copyImagePrompts.hero.imagePrompt}"` : ''}
-${imagePrompts.sectionBackgrounds?.features ? `- Features Background: "${imagePrompts.sectionBackgrounds.features}"` : ''}
-${imagePrompts.sectionBackgrounds?.testimonials ? `- Testimonials Background: "${imagePrompts.sectionBackgrounds.testimonials}"` : ''}
-${imagePrompts.sectionBackgrounds?.cta ? `- CTA Background: "${imagePrompts.sectionBackgrounds.cta}"` : ''}
-
-For each image placeholder, add a data-image-prompt attribute with the prompt for AI generation.
-Example: <div data-image-prompt="abstract 3D geometric shapes in ${primaryColor || 'brand color'}" className="..." />
-`;
+    // ============================================
+    // BUILD DYNAMIC SECTIONS FROM SPECS
+    // ============================================
+    // Get page structure from approved specs (dynamic, not hardcoded)
+    let targetPage = approvedSpecs?.pages?.[0]; // Default to first page (usually Home)
+    if (selectedPage && approvedSpecs?.pages) {
+      targetPage = approvedSpecs.pages.find((p: any) => 
+        p.route === selectedPage || p.name.toLowerCase() === selectedPage.toLowerCase()
+      ) || targetPage;
     }
     
-    // Build copy instructions from approved specs
+    const sections = targetPage?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'CTA', 'Footer'];
+    const pagePurpose = targetPage?.purpose || targetPage?.description || `Main landing page for ${businessName}`;
+
+    // ============================================
+    // BUILD IMAGE INSTRUCTIONS FROM imagePlan
+    // ============================================
+    const imagePlan = approvedSpecs?.imagePlan || [];
+    const relevantImages = imagePlan.filter((img: any) => 
+      img.pageRoute === (targetPage?.route || '/') || img.priority === 'high'
+    );
+
+    let imageInstructions = '';
+    if (logoUrl || relevantImages.length > 0) {
+      imageInstructions = `
+══════════════════════════════════════════════════════════════════
+BRAND ASSETS & IMAGE INSTRUCTIONS
+══════════════════════════════════════════════════════════════════
+
+🖼️ ACTUAL BRAND ASSETS (USE THESE EXACT URLs):
+${logoUrl ? `<img src="${logoUrl}" alt="${businessName} Logo" className="h-8 w-auto" />` : ''}
+${iconUrl ? `- Icon: ${iconUrl}` : ''}
+${bannerUrl ? `- Banner: ${bannerUrl}` : ''}
+
+📸 AI-GENERATED IMAGE PLACEHOLDERS:
+For each image slot below, create a placeholder <div> with the exact prompt as a data attribute:
+
+${relevantImages.map((img: any) => `
+Section: ${img.sectionId}
+Placement: ${img.placement}
+Aspect Ratio: ${img.aspectRatio}
+Code: <div 
+  data-image-prompt="${img.prompt}"
+  data-aspect-ratio="${img.aspectRatio}"
+  className="relative overflow-hidden ${img.aspectRatio === '16:9' ? 'aspect-video' : img.aspectRatio === '1:1' ? 'aspect-square' : 'aspect-[4/3]'} bg-gradient-to-br from-[${primaryColor}]/10 to-[${secondaryColor}]/10 rounded-xl"
+>
+  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+    <span className="text-sm opacity-50">AI Image: ${img.sectionId}</span>
+  </div>
+</div>
+`).join('\n')}
+
+IMPORTANT: 
+- Use the actual logo URL in an <img> tag in header/nav
+- For other images, use the placeholder div pattern with data-image-prompt
+`;
+    }
+
+    // ============================================
+    // BUILD COPY INSTRUCTIONS FROM specs.copyContent
+    // ============================================
     let copyInstructions = '';
     if (approvedSpecs?.copyContent) {
       const copy = approvedSpecs.copyContent;
       copyInstructions = `
-EXACT COPY TO USE:
-Hero:
+══════════════════════════════════════════════════════════════════
+EXACT COPY TO USE (FROM APPROVED SPECS)
+══════════════════════════════════════════════════════════════════
+
+🎯 HERO SECTION:
 - Headline: "${copy.hero?.headline || ''}"
 - Subheadline: "${copy.hero?.subheadline || ''}"
-- CTA Button: "${copy.hero?.cta || 'Get Started'}"
+- Primary CTA: "${copy.hero?.primaryCta || copy.hero?.cta || 'Get Started'}"
 - Secondary CTA: "${copy.hero?.secondaryCta || 'Learn More'}"
+${copy.hero?.trustIndicators ? `- Trust Indicators: ${copy.hero.trustIndicators.join(', ')}` : ''}
 
-Features:
-- Title: "${copy.features?.title || ''}"
-- Subtitle: "${copy.features?.subtitle || ''}"
-${copy.features?.items?.map((f: any, i: number) => `- Feature ${i+1}: "${f.title}" - ${f.description}`).join('\n') || ''}
+⭐ FEATURES:
+- Section Title: "${copy.features?.sectionTitle || copy.features?.title || 'Features'}"
+- Section Subtitle: "${copy.features?.sectionSubtitle || copy.features?.subtitle || ''}"
+${copy.features?.items?.map((f: any, i: number) => `
+Feature ${i+1}: "${f.title}"
+Description: ${f.description}
+Icon: ${f.icon || 'Star'}`).join('\n') || ''}
 
-About:
-- Title: "${copy.about?.title || ''}"
+🏢 ABOUT:
+- Section Title: "${copy.about?.sectionTitle || copy.about?.title || 'About Us'}"
 - Story: "${copy.about?.story || copy.about?.content || ''}"
 - Mission: "${copy.about?.mission || ''}"
+- Vision: "${copy.about?.vision || ''}"
 
-Services:
-${copy.services?.items?.map((s: any, i: number) => `- Service ${i+1}: "${s.name}" - ${s.description}`).join('\n') || ''}
+💼 SERVICES:
+${copy.services?.items?.map((s: any, i: number) => `
+Service ${i+1}: "${s.name}"
+Description: ${s.description}
+${s.deliverables?.length ? `Deliverables: ${s.deliverables.join(', ')}` : ''}`).join('\n') || ''}
 
-Testimonials:
-${copy.testimonials?.items?.map((t: any, i: number) => `- Testimonial ${i+1}: "${t.quote}" - ${t.author}, ${t.role} at ${t.company}`).join('\n') || ''}
+💬 TESTIMONIALS:
+- Section Title: "${copy.testimonials?.sectionTitle || copy.testimonials?.title || 'What Our Clients Say'}"
+${copy.testimonials?.items?.map((t: any, i: number) => `
+Testimonial ${i+1}: "${t.quote}"
+- Author: ${t.author}
+- Role: ${t.role}
+- Company: ${t.company}
+- Metric: ${t.metric || ''}`).join('\n') || ''}
 
-CTA Section:
-- Title: "${copy.cta?.primary?.title || copy.cta?.title || ''}"
-- Description: "${copy.cta?.primary?.description || copy.cta?.description || ''}"
-- Button: "${copy.cta?.primary?.buttonText || copy.cta?.buttonText || 'Start Now'}"
+💰 PRICING:
+${copy.pricing?.tiers?.map((tier: any) => `
+Tier: ${tier.name} - ${tier.price}/${tier.period || 'month'}
+Features: ${tier.features?.join(', ') || ''}
+Highlighted: ${tier.highlighted ? 'Yes (popular)' : 'No'}`).join('\n') || ''}
 
-Footer:
+❓ FAQ:
+${copy.faq?.items?.map((faq: any) => `
+Q: ${faq.question}
+A: ${faq.answer}`).join('\n') || ''}
+
+📣 CTA SECTION:
+- Headline: "${copy.cta?.headline || copy.cta?.primary?.title || ''}"
+- Description: "${copy.cta?.description || copy.cta?.primary?.description || ''}"
+- Button: "${copy.cta?.buttonText || copy.cta?.primary?.buttonText || 'Get Started Now'}"
+
+🔗 FOOTER:
 - Tagline: "${copy.footer?.tagline || ''}"
 - Copyright: "${copy.footer?.copyright || `© ${new Date().getFullYear()} ${businessName}`}"
 `;
     }
 
-    // Build style instructions from approved specs
-    let styleInstructions = '';
-    if (approvedSpecs?.globalStyles || brandAssets.primaryColorHex) {
-      const styles = approvedSpecs?.globalStyles || {};
-      styleInstructions = `
-DESIGN TOKENS (USE EXACT HEX CODES):
-- Primary Color: ${primaryColor || 'professional blue'}
-- Secondary Color: ${secondaryColor || 'complementary'}
-- Accent Color: ${accentColor || 'for CTAs'}
-- Background Color: ${styles.backgroundColor || '#ffffff'}
-- Text Color: ${styles.textColor || '#1a1a1a'}
-- Heading Font: ${brandAssets.headingFont || styles.headingFont || branding?.headingFont || 'modern sans-serif'}
-- Body Font: ${brandAssets.bodyFont || styles.bodyFont || branding?.bodyFont || 'readable sans-serif'}
-- Border Radius: ${styles.borderRadius || 'rounded-lg'}
-- Spacing: ${styles.spacing || 'comfortable'}
+    // ============================================
+    // BUILD STYLE INSTRUCTIONS
+    // ============================================
+    const styleInstructions = `
+══════════════════════════════════════════════════════════════════
+DESIGN SYSTEM (USE EXACT VALUES)
+══════════════════════════════════════════════════════════════════
 
-GRADIENTS:
-${styles.gradients ? `- Primary Gradient: ${styles.gradients.primary}` : ''}
-${styles.gradients ? `- Subtle Gradient: ${styles.gradients.subtle}` : ''}
+🎨 COLOR TOKENS (Tailwind arbitrary values):
+- Primary: [${primaryColor}] → bg-[${primaryColor}], text-[${primaryColor}], border-[${primaryColor}]
+- Secondary: [${secondaryColor}] → bg-[${secondaryColor}], text-[${secondaryColor}]
+- Accent: [${accentColor}] → bg-[${accentColor}], text-[${accentColor}]
+- Background: [${backgroundColor}]
+- Text: [${textColor}]
 
-SHADOWS:
-${styles.shadows ? `- Soft: ${styles.shadows.soft}` : ''}
-${styles.shadows ? `- Medium: ${styles.shadows.medium}` : ''}
+🔤 TYPOGRAPHY:
+- Headings: font-[${headingFont}] or closest Google Font
+- Body: font-[${bodyFont}] or closest Google Font
+
+📐 SPACING & RADIUS:
+- Border Radius: ${approvedSpecs?.globalStyles?.borderRadius || 'rounded-xl'}
+- Spacing: ${approvedSpecs?.globalStyles?.spacing || 'comfortable (py-20 px-6)'}
+
+🌊 GRADIENTS:
+- Primary Gradient: bg-gradient-to-br from-[${primaryColor}] to-[${secondaryColor}]
+- Subtle Gradient: bg-gradient-to-b from-[${backgroundColor}] to-[${primaryColor}]/5
+- Accent Gradient: bg-gradient-to-r from-[${accentColor}] to-[${primaryColor}]
+
+🌑 SHADOWS:
+- Soft: shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+- Medium: shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+- Glow: shadow-[0_0_40px_${primaryColor}40]
 `;
-    } else if (branding) {
-      styleInstructions = `
-Brand Guidelines:
-- Primary Color: ${branding.primaryColor || 'professional blue'}
-- Secondary Color: ${branding.secondaryColor || 'complementary color'}
-- Accent Color: ${branding.accentColor || 'for CTAs and highlights'}
-- Heading Font: ${branding.headingFont || 'modern sans-serif'}
-- Body Font: ${branding.bodyFont || 'readable sans-serif'}
-`;
-    }
 
-    // Build the enhanced prompt - handle edit mode vs full generation
+    // ============================================
+    // BUILD THE ENHANCED PROMPT
+    // ============================================
     let enhancedPrompt = '';
     
     if (editMode) {
@@ -185,12 +259,18 @@ Requirements:
 Output only the React component code, no explanations.
 `.trim();
     } else {
-enhancedPrompt = `
-Create a modern, professional, UNIQUE landing page for:
+      enhancedPrompt = `
+══════════════════════════════════════════════════════════════════
+CREATE A PREMIUM WEBSITE PAGE
+══════════════════════════════════════════════════════════════════
 
-Business Name: ${businessName}
+Business: ${businessName}
 Industry: ${industry}
 Description: ${description}
+
+Page: ${targetPage?.name || 'Home'}
+Route: ${targetPage?.route || '/'}
+Purpose: ${pagePurpose}
 
 ${imageInstructions}
 
@@ -200,37 +280,45 @@ ${copyInstructions}
 
 ${prompt ? `Additional Requirements: ${prompt}` : ''}
 
-SECTIONS TO INCLUDE: ${sections.join(', ')}
+══════════════════════════════════════════════════════════════════
+SECTIONS TO BUILD: ${sections.join(' → ')}
+══════════════════════════════════════════════════════════════════
 
-Requirements:
+TECHNICAL REQUIREMENTS:
 1. Create a complete, production-ready React component with TypeScript
-2. Use Tailwind CSS for all styling - use the EXACT hex color codes provided
+2. Use Tailwind CSS with the EXACT hex color codes provided (use arbitrary values like bg-[#hex])
 3. Include Framer Motion animations for smooth interactions
-4. Make it fully responsive (mobile-first)
-5. Create a UNIQUE, MODERN, ATTRACTIVE design - avoid generic patterns
-6. Use the EXACT copy provided above - do not make up different text
-7. Include beautiful gradients, shadows, and micro-interactions
-8. Ensure excellent accessibility (proper contrast, semantic HTML)
-9. Add hover states and smooth transitions
-10. Make it stand out - be creative with layout and visual effects
-11. USE THE LOGO URL PROVIDED - add an <img> tag with the logo src
-12. Add data-image-prompt attributes to image placeholders for AI generation
+4. Fully responsive design (mobile-first)
+5. Use the EXACT copy text provided above - do not make up different text
+6. Include beautiful gradients, shadows, and micro-interactions
+7. Proper accessibility (contrast, semantic HTML, alt text)
+8. Add hover states and smooth transitions
 
-Output only the React component code, no explanations.
+IMAGE HANDLING:
+- ${logoUrl ? `Use this ACTUAL logo: <img src="${logoUrl}" alt="${businessName} logo" />` : 'Create a text logo using the business name'}
+- For other images, use placeholder divs with data-image-prompt attributes
+
+COMPONENT STRUCTURE:
+- Export a single default function component
+- Include all sections in order: ${sections.join(', ')}
+- Each section should be visually distinct and premium
+
+Output only the React component code, no explanations or markdown.
 `.trim();
     }
 
+    // ============================================
+    // STREAMING GENERATION
+    // ============================================
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Send initial start event
           sendSSE(controller, { 
             type: 'start', 
             message: 'Connecting to v0 Platform API...',
             timestamp: new Date().toISOString()
           });
 
-          // Call v0 API
           console.log('Calling v0 API with prompt length:', enhancedPrompt.length);
           
           const v0Response = await fetch('https://api.v0.dev/v1/chat', {
@@ -240,12 +328,7 @@ Output only the React component code, no explanations.
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              messages: [
-                {
-                  role: 'user',
-                  content: enhancedPrompt,
-                }
-              ],
+              messages: [{ role: 'user', content: enhancedPrompt }],
               stream: true,
             }),
           });
@@ -258,19 +341,20 @@ Output only the React component code, no explanations.
 
           sendSSE(controller, { 
             type: 'connected', 
-            message: 'Connected to v0 - Starting generation...',
+            message: 'Connected to v0 - Building your website...',
             timestamp: new Date().toISOString()
           });
 
-          // Process the streaming response
           const reader = v0Response.body?.getReader();
           if (!reader) throw new Error('No response body from v0');
 
           const decoder = new TextDecoder();
           let fullCode = '';
           let buffer = '';
-          let componentCount = 0;
-          const components: string[] = ['Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer'];
+          
+          // Dynamic component tracking based on sections
+          let componentIndex = 0;
+          const totalSections = sections.length;
 
           while (true) {
             const { done, value } = await reader.read();
@@ -278,7 +362,6 @@ Output only the React component code, no explanations.
 
             buffer += decoder.decode(value, { stream: true });
             
-            // Process SSE lines
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
@@ -296,64 +379,23 @@ Output only the React component code, no explanations.
                 if (content) {
                   fullCode += content;
                   
-                  // Detect component sections for progress updates
-                  if (content.includes('Hero') && componentCount === 0) {
-                    componentCount = 1;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'Hero',
-                      progress: 16,
-                      message: 'Building Hero section...',
-                      timestamp: new Date().toISOString()
-                    });
-                  } else if (content.includes('Features') && componentCount === 1) {
-                    componentCount = 2;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'Features',
-                      progress: 33,
-                      message: 'Building Features section...',
-                      timestamp: new Date().toISOString()
-                    });
-                  } else if ((content.includes('About') || content.includes('Why')) && componentCount === 2) {
-                    componentCount = 3;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'About',
-                      progress: 50,
-                      message: 'Building About section...',
-                      timestamp: new Date().toISOString()
-                    });
-                  } else if (content.includes('Testimonial') && componentCount === 3) {
-                    componentCount = 4;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'Testimonials',
-                      progress: 66,
-                      message: 'Building Testimonials section...',
-                      timestamp: new Date().toISOString()
-                    });
-                  } else if (content.includes('Contact') && componentCount === 4) {
-                    componentCount = 5;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'Contact',
-                      progress: 83,
-                      message: 'Building Contact section...',
-                      timestamp: new Date().toISOString()
-                    });
-                  } else if (content.includes('Footer') && componentCount === 5) {
-                    componentCount = 6;
-                    sendSSE(controller, { 
-                      type: 'component_start', 
-                      component: 'Footer',
-                      progress: 95,
-                      message: 'Building Footer section...',
-                      timestamp: new Date().toISOString()
-                    });
+                  // Dynamic section detection
+                  for (let i = componentIndex; i < sections.length; i++) {
+                    const sectionName = sections[i];
+                    if (content.toLowerCase().includes(sectionName.toLowerCase()) && componentIndex === i) {
+                      componentIndex = i + 1;
+                      const progressPercent = Math.round((componentIndex / totalSections) * 90) + 5;
+                      sendSSE(controller, { 
+                        type: 'component_start', 
+                        component: sectionName,
+                        progress: progressPercent,
+                        message: `Building ${sectionName} section...`,
+                        timestamp: new Date().toISOString()
+                      });
+                      break;
+                    }
                   }
 
-                  // Stream code chunks
                   sendSSE(controller, { 
                     type: 'code_chunk', 
                     content: content,
@@ -361,21 +403,18 @@ Output only the React component code, no explanations.
                   });
                 }
               } catch (e) {
-                // Ignore parse errors for incomplete JSON
+                // Ignore parse errors
               }
             }
           }
 
-          // Clean up the code - extract just the React component
+          // Clean up code
           let cleanedCode = fullCode;
-          
-          // Try to extract code from markdown code blocks
           const codeBlockMatch = fullCode.match(/```(?:tsx?|jsx?|javascript|typescript)?\n([\s\S]*?)```/);
           if (codeBlockMatch) {
             cleanedCode = codeBlockMatch[1];
           }
 
-          // Send complete event with full code
           sendSSE(controller, { 
             type: 'complete', 
             code: cleanedCode,
@@ -409,13 +448,8 @@ Output only the React component code, no explanations.
   } catch (error) {
     console.error('v0 generator error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
