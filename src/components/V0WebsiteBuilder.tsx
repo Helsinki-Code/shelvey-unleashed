@@ -73,14 +73,17 @@ export const V0WebsiteBuilder = ({
   const [streamingCode, setStreamingCode] = useState('');
   const [progress, setProgress] = useState(0);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [components, setComponents] = useState<ComponentProgress[]>([
-    { name: 'Hero', status: 'pending' },
-    { name: 'Features', status: 'pending' },
-    { name: 'About', status: 'pending' },
-    { name: 'Testimonials', status: 'pending' },
-    { name: 'Contact', status: 'pending' },
-    { name: 'Footer', status: 'pending' },
-  ]);
+  
+  // Dynamic sections from approved specs
+  const [selectedPage, setSelectedPage] = useState('/');
+  const availablePages = approvedSpecs?.pages || [];
+  const currentPage = availablePages.find((p: any) => p.route === selectedPage) || availablePages[0];
+  const currentSections = currentPage?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer'];
+  
+  const [components, setComponents] = useState<ComponentProgress[]>(
+    currentSections.map((name: string) => ({ name, status: 'pending' as const }))
+  );
+  
   const [activeView, setActiveView] = useState<'code' | 'preview'>('preview');
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLDivElement>(null);
@@ -92,6 +95,13 @@ export const V0WebsiteBuilder = ({
   const [editChanges, setEditChanges] = useState('');
   const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string }[]>([]);
 
+  // Update components when page changes
+  useEffect(() => {
+    if (currentSections.length > 0) {
+      setComponents(currentSections.map((name: string) => ({ name, status: 'pending' as const })));
+    }
+  }, [selectedPage, JSON.stringify(currentSections)]);
+
   useEffect(() => {
     if (existingWebsite?.html_content) {
       setGeneratedCode(existingWebsite.html_content);
@@ -102,14 +112,7 @@ export const V0WebsiteBuilder = ({
     setStreamingCode('');
     setProgress(0);
     setCurrentMessage('');
-    setComponents([
-      { name: 'Hero', status: 'pending' },
-      { name: 'Features', status: 'pending' },
-      { name: 'About', status: 'pending' },
-      { name: 'Testimonials', status: 'pending' },
-      { name: 'Contact', status: 'pending' },
-      { name: 'Footer', status: 'pending' },
-    ]);
+    setComponents(currentSections.map((name: string) => ({ name, status: 'pending' as const })));
   };
 
   const handleGenerate = async () => {
@@ -138,6 +141,7 @@ export const V0WebsiteBuilder = ({
             branding,
             approvedSpecs,
             prompt: prompt || undefined,
+            selectedPage: selectedPage || '/',
           }),
           signal: abortControllerRef.current.signal,
         }
@@ -399,9 +403,11 @@ export const V0WebsiteBuilder = ({
     }
   };
 
+  // Dynamic section options from current page + general options
   const sectionOptions = [
-    'Hero', 'Features', 'About', 'Testimonials', 'Contact', 'Footer', 'Colors', 'Typography', 'Layout', 'Animations'
-  ];
+    ...currentSections,
+    'Colors', 'Typography', 'Layout', 'Animations'
+  ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
 
   return (
     <div className="space-y-6">
@@ -448,12 +454,41 @@ export const V0WebsiteBuilder = ({
             )}
           </div>
 
+          {/* Dynamic Page Selector */}
+          {availablePages.length > 1 && (
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <Layers className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Generate page:</span>
+              <Select value={selectedPage} onValueChange={setSelectedPage}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select page..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePages.map((page: any) => (
+                    <SelectItem key={page.route} value={page.route}>
+                      {page.name} ({page.route})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">
+                {currentSections.length} sections
+              </span>
+            </div>
+          )}
+
           {/* Generation Info */}
           <div className="p-3 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" />
-              Uses your Phase 2 branding: {branding?.primaryColor || 'Auto-detected colors'}, {branding?.headingFont || 'Modern fonts'}
+              Uses your Phase 2 branding: {approvedSpecs?.brandAssets?.primaryColorHex || branding?.primaryColor || 'Auto-detected colors'}
             </p>
+            {approvedSpecs?.brandAssets?.logoUrl && (
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                Logo will be embedded: {approvedSpecs.brandAssets.logoUrl.substring(0, 50)}...
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
