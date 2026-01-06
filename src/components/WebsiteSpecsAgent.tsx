@@ -111,6 +111,7 @@ export const WebsiteSpecsAgent = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [feedbackInput, setFeedbackInput] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [isApproving, setIsApproving] = useState<'ceo' | 'user' | null>(null);
 
   // Phase 1 & 2 approved data
   const [phase1Data, setPhase1Data] = useState<any>(null);
@@ -323,7 +324,12 @@ export const WebsiteSpecsAgent = ({
   };
 
   const handleApproval = async (approvedBy: 'ceo' | 'user', approved: boolean) => {
-    if (!existingDeliverable) return;
+    if (!existingDeliverable) {
+      toast.error('No specifications found. Please generate specs first.');
+      return;
+    }
+
+    setIsApproving(approvedBy);
 
     try {
       const feedback = feedbackInput.trim();
@@ -331,6 +337,7 @@ export const WebsiteSpecsAgent = ({
       // If asking for revisions, require at least some feedback.
       if (!approved && !feedback) {
         toast.error('Please add feedback before requesting revisions');
+        setIsApproving(null);
         return;
       }
 
@@ -378,6 +385,8 @@ export const WebsiteSpecsAgent = ({
     } catch (error: any) {
       console.error('Approval error:', error);
       toast.error(error?.message || 'Failed to submit approval');
+    } finally {
+      setIsApproving(null);
     }
   };
 
@@ -759,10 +768,10 @@ export const WebsiteSpecsAgent = ({
                   </Badge>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleApproval('ceo', true)} className="gap-1">
-                      <ThumbsUp className="w-3 h-3" /> Approve
+                    <Button size="sm" onClick={() => handleApproval('ceo', true)} className="gap-1" disabled={isApproving === 'ceo'}>
+                      {isApproving === 'ceo' ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />} Approve
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleApproval('ceo', false)} className="gap-1">
+                    <Button size="sm" variant="outline" onClick={() => handleApproval('ceo', false)} className="gap-1" disabled={isApproving === 'ceo'}>
                       <ThumbsDown className="w-3 h-3" /> Revise
                     </Button>
                   </div>
@@ -777,10 +786,10 @@ export const WebsiteSpecsAgent = ({
                   </Badge>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleApproval('user', true)} className="gap-1">
-                      <ThumbsUp className="w-3 h-3" /> Approve
+                    <Button size="sm" onClick={() => handleApproval('user', true)} className="gap-1" disabled={isApproving === 'user'}>
+                      {isApproving === 'user' ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />} Approve
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleApproval('user', false)} className="gap-1">
+                    <Button size="sm" variant="outline" onClick={() => handleApproval('user', false)} className="gap-1" disabled={isApproving === 'user'}>
                       <ThumbsDown className="w-3 h-3" /> Revise
                     </Button>
                   </div>
