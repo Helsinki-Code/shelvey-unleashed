@@ -2856,6 +2856,72 @@ export type Database = {
           },
         ]
       }
+      website_pages: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          feedback: string | null
+          id: string
+          page_code: string
+          page_name: string
+          page_route: string
+          project_id: string | null
+          status: string
+          updated_at: string
+          user_approved: boolean | null
+          user_id: string
+          version: number | null
+          website_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          page_code: string
+          page_name: string
+          page_route?: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_approved?: boolean | null
+          user_id: string
+          version?: number | null
+          website_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          page_code?: string
+          page_name?: string
+          page_route?: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_approved?: boolean | null
+          user_id?: string
+          version?: number | null
+          website_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_pages_website_id_fkey"
+            columns: ["website_id"]
+            isOneToOne: false
+            referencedRelation: "generated_websites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

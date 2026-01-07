@@ -17,7 +17,8 @@ import {
   Zap,
   Edit,
   MessageSquare,
-  Send
+  Send,
+  FileCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,6 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ReactCodePreview } from './ReactCodePreview';
+import { WebsitePageApprovalPanel } from './WebsitePageApprovalPanel';
 
 interface V0WebsiteBuilderProps {
   projectId: string;
@@ -255,8 +257,10 @@ export const V0WebsiteBuilder = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      let websiteId = existingWebsite?.id;
+
       if (existingWebsite?.id) {
-        // Update existing
+        // Update existing website
         const { error } = await supabase
           .from('generated_websites')
           .update({
@@ -267,9 +271,8 @@ export const V0WebsiteBuilder = ({
           .eq('id', existingWebsite.id);
 
         if (error) throw error;
-        onWebsiteGenerated?.(code, existingWebsite.id);
       } else {
-        // Create new
+        // Create new website
         const { data, error } = await supabase
           .from('generated_websites')
           .insert({
@@ -283,8 +286,51 @@ export const V0WebsiteBuilder = ({
           .single();
 
         if (error) throw error;
-        onWebsiteGenerated?.(code, data.id);
+        websiteId = data.id;
       }
+
+      // Save individual page to website_pages table for approval workflow
+      const pageName = currentPage?.name || 'Home';
+      const pageRoute = selectedPage || '/';
+
+      // Check if this page already exists
+      const { data: existingPage } = await supabase
+        .from('website_pages')
+        .select('id, version')
+        .eq('project_id', projectId)
+        .eq('page_route', pageRoute)
+        .single();
+
+      if (existingPage) {
+        // Update existing page
+        await supabase
+          .from('website_pages')
+          .update({
+            page_code: code,
+            status: 'pending_review',
+            user_approved: false,
+            feedback: null,
+            version: (existingPage.version || 1) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingPage.id);
+      } else {
+        // Create new page entry
+        await supabase
+          .from('website_pages')
+          .insert({
+            website_id: websiteId,
+            project_id: projectId,
+            user_id: user.id,
+            page_name: pageName,
+            page_route: pageRoute,
+            page_code: code,
+            status: 'pending_review',
+          });
+      }
+
+      onWebsiteGenerated?.(code, websiteId || '');
+      toast.success(`${pageName} generated - please review and approve!`);
     } catch (error) {
       console.error('Save error:', error);
     }
@@ -630,6 +676,21 @@ export const V0WebsiteBuilder = ({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Page Approval Workflow Panel */}
+      {availablePages.length > 0 && (
+        <WebsitePageApprovalPanel
+          projectId={projectId}
+          websiteId={existingWebsite?.id || null}
+          availablePages={availablePages.map((p: any) => ({ name: p.name, route: p.route }))}
+          onAllPagesApproved={() => {
+            toast.success('All pages approved! Website ready for deployment.');
+          }}
+          onDeployReady={(pages) => {
+            console.log('Ready to deploy pages:', pages);
+          }}
+        />
       )}
 
       {/* Dynamic Conversation / Edit Mode */}
