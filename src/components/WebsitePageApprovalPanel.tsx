@@ -180,11 +180,49 @@ export const WebsitePageApprovalPanel = ({
     }
   };
 
-  const handleDeployWebsite = () => {
-    if (onDeployReady) {
-      onDeployReady(pages);
+  const handleDeployWebsite = async () => {
+    if (!websiteId) {
+      toast.error('No website ID found. Please generate a website first.');
+      return;
     }
-    toast.success('Website ready for deployment!');
+    
+    setIsSubmitting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('Please sign in to deploy');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('deploy-website', {
+        body: { websiteId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Deployment failed');
+      }
+
+      const { deployment } = response.data;
+      
+      toast.success(`Website deployed successfully!`, {
+        description: `Live at: ${deployment.deployedUrl}`,
+        action: {
+          label: 'View Site',
+          onClick: () => window.open(deployment.deployedUrl, '_blank'),
+        },
+      });
+
+      if (onDeployReady) {
+        onDeployReady(pages);
+      }
+    } catch (error: any) {
+      console.error('Deployment error:', error);
+      toast.error('Deployment failed', {
+        description: error.message || 'Please try again',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getPageStatus = (route: string) => {
@@ -250,9 +288,18 @@ export const WebsitePageApprovalPanel = ({
               </CardDescription>
             </div>
             {allPagesApproved && (
-              <Button onClick={handleDeployWebsite} className="gap-2" size="lg">
-                <Rocket className="w-4 h-4" />
-                Deploy Website
+              <Button 
+                onClick={handleDeployWebsite} 
+                className="gap-2" 
+                size="lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Rocket className="w-4 h-4" />
+                )}
+                {isSubmitting ? 'Deploying...' : 'Deploy Website'}
               </Button>
             )}
           </div>
