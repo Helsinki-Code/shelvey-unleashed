@@ -96,6 +96,20 @@ export const V0WebsiteBuilder = ({
   const [editSection, setEditSection] = useState('');
   const [editChanges, setEditChanges] = useState('');
   const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string }[]>([]);
+  
+  // Saved pages state for preview selector
+  const [savedPages, setSavedPages] = useState<{ page_name: string; page_route: string; page_code: string; user_approved: boolean }[]>([]);
+  const [previewPageRoute, setPreviewPageRoute] = useState('/');
+  
+  // Get the code to preview - from saved pages or streaming
+  const previewCode = (() => {
+    if (isGenerating && previewPageRoute === selectedPage) {
+      return streamingCode || generatedCode;
+    }
+    const savedPage = savedPages.find(p => p.page_route === previewPageRoute);
+    if (savedPage) return savedPage.page_code;
+    return generatedCode || streamingCode;
+  })();
 
   // Update components when page changes
   useEffect(() => {
@@ -109,6 +123,48 @@ export const V0WebsiteBuilder = ({
       setGeneratedCode(existingWebsite.html_content);
     }
   }, [existingWebsite]);
+  
+  // Fetch saved pages from database
+  useEffect(() => {
+    const fetchSavedPages = async () => {
+      const { data, error } = await supabase
+        .from('website_pages')
+        .select('page_name, page_route, page_code, user_approved')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
+      
+      if (!error && data) {
+        setSavedPages(data);
+        // Set default preview to first saved page or homepage
+        if (data.length > 0 && !data.find(p => p.page_route === previewPageRoute)) {
+          setPreviewPageRoute(data[0].page_route);
+        }
+      }
+    };
+    
+    fetchSavedPages();
+    
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('preview-pages-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'website_pages',
+          filter: `project_id=eq.${projectId}`,
+        },
+        () => {
+          fetchSavedPages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId]);
 
   const resetState = () => {
     setStreamingCode('');
@@ -620,38 +676,56 @@ export const V0WebsiteBuilder = ({
         )}
       </AnimatePresence>
 
-      {/* Code & Preview */}
-      {(streamingCode || generatedCode) && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="w-5 h-5" />
-                Generated Website
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'code' | 'preview')}>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="preview" className="text-xs gap-1 h-7">
-                      <Eye className="w-3 h-3" />
-                      Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="code" className="text-xs gap-1 h-7">
-                      <Code2 className="w-3 h-3" />
-                      Code
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <Button variant="ghost" size="icon" onClick={handleCopyCode} className="h-8 w-8">
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
+      {/* Code & Preview - Now with page selector */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              Generated Website
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Page selector dropdown */}
+              {savedPages.length > 0 && (
+                <Select value={previewPageRoute} onValueChange={setPreviewPageRoute}>
+                  <SelectTrigger className="w-[180px] h-8">
+                    <SelectValue placeholder="Select page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedPages.map((page) => (
+                      <SelectItem key={page.page_route} value={page.page_route}>
+                        <div className="flex items-center gap-2">
+                          {page.user_approved && <CheckCircle2 className="w-3 h-3 text-green-500" />}
+                          <span>{page.page_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'code' | 'preview')}>
+                <TabsList className="h-8">
+                  <TabsTrigger value="preview" className="text-xs gap-1 h-7">
+                    <Eye className="w-3 h-3" />
+                    Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="code" className="text-xs gap-1 h-7">
+                    <Code2 className="w-3 h-3" />
+                    Code
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Button variant="ghost" size="icon" onClick={handleCopyCode} className="h-8 w-8">
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {activeView === 'preview' ? (
+          </div>
+        </CardHeader>
+        <CardContent>
+          {previewCode ? (
+            activeView === 'preview' ? (
               <div className="rounded-lg overflow-hidden border bg-background">
-                <ReactCodePreview code={generatedCode || streamingCode} />
+                <ReactCodePreview code={previewCode} />
               </div>
             ) : (
               <div 
@@ -659,7 +733,7 @@ export const V0WebsiteBuilder = ({
                 className="bg-zinc-950 rounded-lg p-4 max-h-[500px] overflow-auto"
               >
                 <pre className="text-sm text-zinc-300 font-mono whitespace-pre-wrap">
-                  {isGenerating ? (
+                  {isGenerating && previewPageRoute === selectedPage ? (
                     <>
                       {streamingCode}
                       <motion.span
@@ -669,14 +743,18 @@ export const V0WebsiteBuilder = ({
                       />
                     </>
                   ) : (
-                    generatedCode
+                    previewCode
                   )}
                 </pre>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            )
+          ) : (
+            <div className="h-[400px] flex items-center justify-center text-muted-foreground border rounded-lg">
+              <p>Generate a page to see the preview</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Page Approval Workflow Panel */}
       {availablePages.length > 0 && (
