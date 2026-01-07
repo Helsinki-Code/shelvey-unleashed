@@ -19,7 +19,7 @@ import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
-import { V0StyleBuilder } from '@/components/V0StyleBuilder';
+import { V0Builder } from '@/components/v0-builder';
 import { WebsiteSpecsAgent } from '@/components/WebsiteSpecsAgent';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -648,7 +648,7 @@ const Phase3Page = () => {
                   </CardContent>
                 </Card>
               ) : project && (
-                <V0StyleBuilder
+                <V0Builder
                   projectId={projectId!}
                   project={{
                     name: project.name,
