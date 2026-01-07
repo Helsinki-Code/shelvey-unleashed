@@ -333,6 +333,7 @@ Output only the React component code, no explanations or markdown.
               model: 'v0-1.5-md',
               messages: [{ role: 'user', content: enhancedPrompt }],
               stream: true,
+              max_completion_tokens: 32000, // Allow full website generation (default is only 4000)
             }),
           });
 
