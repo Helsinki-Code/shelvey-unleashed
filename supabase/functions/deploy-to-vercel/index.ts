@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface DeployRequest {
   websiteId: string;
+  projectId?: string;
   customDomain?: string;
 }
 
@@ -52,7 +53,7 @@ serve(async (req) => {
       });
     }
 
-    const { websiteId, customDomain }: DeployRequest = await req.json();
+    const { websiteId, projectId, customDomain }: DeployRequest = await req.json();
 
     // Get website data
     const { data: website, error: websiteError } = await supabase
@@ -69,24 +70,136 @@ serve(async (req) => {
       });
     }
 
+    // Get all approved pages from website_pages table
+    const lookupProjectId = projectId || website.project_id;
+    const { data: websitePages, error: pagesError } = await supabase
+      .from('website_pages')
+      .select('*')
+      .eq('project_id', lookupProjectId)
+      .eq('user_approved', true)
+      .order('page_route');
+
+    if (pagesError) {
+      console.error('Error fetching pages:', pagesError);
+    }
+
     const projectName = website.business_projects?.name || website.name;
     const sanitizedName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 50);
     const vercelProjectName = `shelvey-${sanitizedName}-${websiteId.slice(0, 8)}`;
 
-    console.log(`Deploying ${vercelProjectName} to Vercel...`);
+    console.log(`Deploying ${vercelProjectName} to Vercel with ${websitePages?.length || 0} pages...`);
 
-    // Create the deployment files
-    const htmlContent = website.html_content;
-    const cssContent = website.css_content || '';
-    const jsContent = website.js_content || '';
+    // Build deployment files from website_pages
+    const deploymentFiles: { file: string; data: string; encoding: string }[] = [];
 
-    // Create a full HTML file with embedded CSS/JS
-    const fullHtml = `<!DOCTYPE html>
+    // Helper function to create HTML wrapper for React code
+    const createHtmlWrapper = (pageCode: string, pageName: string) => {
+      // Clean up the code - remove imports, exports, and TypeScript annotations
+      let cleanCode = pageCode
+        // Remove import statements
+        .replace(/^import\s+.*?['"];?\s*$/gm, '')
+        // Remove export statements but keep the component content
+        .replace(/^export\s+(default\s+)?/gm, '')
+        // Remove TypeScript type annotations
+        .replace(/:\s*(string|number|boolean|any|void|React\.\w+|\w+\[\])\s*([,\)\}=])/g, '$2')
+        .replace(/<(\w+)([^>]*)\s+as\s+\w+([^>]*)>/g, '<$1$2$3>')
+        // Remove interface/type declarations
+        .replace(/^(interface|type)\s+\w+\s*(\{[\s\S]*?\}|=[\s\S]*?;)\s*$/gm, '')
+        .trim();
+
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${pageName} - ${projectName}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    // Mock framer-motion
+    const motion = new Proxy({}, {
+      get: (target, prop) => {
+        return React.forwardRef((props, ref) => {
+          const { initial, animate, whileInView, whileHover, whileTap, transition, viewport, variants, ...rest } = props;
+          return React.createElement(prop, { ...rest, ref, className: \`\${rest.className || ''} animate-fade-in\` });
+        });
+      }
+    });
+    const AnimatePresence = ({ children }) => children;
+    const useInView = () => [null, true];
+    const useScroll = () => ({ scrollYProgress: { get: () => 0 } });
+    const useTransform = (val, input, output) => output?.[0] || 0;
+    const useMotionValue = (val) => ({ get: () => val, set: () => {} });
+    const useSpring = (val) => val;
+
+    // Mock lucide-react icons
+    const createIcon = (name) => (props) => React.createElement('span', { 
+      className: \`inline-block w-6 h-6 \${props.className || ''}\`, 
+      style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
+    }, '●');
+    
+    const Icons = new Proxy({}, { get: (_, name) => createIcon(name) });
+    const { CheckCircle, Star, ArrowRight, Menu, X, ChevronRight, ChevronDown, Play, Users, Award, BookOpen, Clock, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram, Youtube, Github, Globe, Heart, Shield, Zap, Target, Rocket, Code, Database, Cloud, Lock, Unlock, Settings, User, Search, Home, Info, HelpCircle, AlertCircle, XCircle, Check, Plus, Minus, Edit, Trash, Download, Upload, Share, Copy, Link, ExternalLink, Eye, EyeOff, Bell, Calendar, Image, Video, FileText, Folder, File, Send, MessageCircle, MessageSquare, ThumbsUp, ThumbsDown, Bookmark, Tag, Filter, Grid, List, MoreHorizontal, MoreVertical, RefreshCw, RotateCw, Loader, Loader2, Save, LogIn, LogOut, UserPlus, UserMinus, Briefcase, Building, CreditCard, DollarSign, TrendingUp, TrendingDown, BarChart, PieChart, Activity, Cpu, Server, Wifi, WifiOff, Battery, BatteryCharging, Sun, Moon, CloudRain, Wind, Thermometer, Droplet, Umbrella, Sunrise, Sunset, Camera, Mic, MicOff, Volume, Volume1, Volume2, VolumeX, Headphones, Radio, Tv, Monitor, Smartphone, Tablet, Laptop, Watch, Printer, Terminal, Command, GitBranch, GitCommit, GitMerge, GitPullRequest, Package, Box, Archive, Layers, Layout, Sidebar, PanelLeft, PanelRight, Maximize, Minimize, Expand, Shrink, Move, Crosshair, Navigation, Map, Compass, Flag, Anchor, Truck, Car, Plane, Train, Bus, Bike, Ship, ShoppingCart, ShoppingBag, Gift, Percent, Receipt, Wallet, PiggyBank, Banknote, Coins, Calculator, Scale, Ruler, Scissors, Crop, Palette, Brush, Pencil, Pen, Highlighter, Eraser, Type, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify, Indent, Outdent, Quote, ListOrdered, ListTree, Table, Columns, Rows, Hash, AtSign, Paperclip, Pin, Bookmark as BookmarkIcon, Flag as FlagIcon, AlertTriangle, AlertOctagon, Info as InfoIcon, HelpCircle as HelpCircleIcon, XOctagon, MinusCircle, PlusCircle, CheckCircle2, XCircle as XCircleIcon, Circle, Square, Triangle, Hexagon, Octagon, Pentagon, Diamond, Gem, Crown, Medal, Trophy, Flame, Sparkles, PartyPopper, Confetti, Cake, Wine, Coffee, Beer, Pizza, Apple, Leaf, TreeDeciduous, Flower, Flower2, Bug, Feather, Footprints, Paw, Fish, Bird, Rabbit, Cat, Dog, Turtle, Snail, Worm, Bee, Butterfly, Clover, Mushroom, Bone, Skull, Ghost, Alien, Bot, Robot } = Icons;
+
+    // Component code
+    ${cleanCode}
+
+    // Find the main component function
+    const componentMatch = \`${cleanCode}\`.match(/function\\s+(\\w+Page|\\w+Component|\\w+)\\s*\\(/);
+    const ComponentName = componentMatch ? componentMatch[1] : 'App';
+    
+    // Render
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      const Component = eval(ComponentName);
+      root.render(React.createElement(Component));
+    } catch (e) {
+      console.error('Render error:', e);
+      document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Error loading page: ' + e.message + '</div>';
+    }
+  </script>
+</body>
+</html>`;
+    };
+
+    // Add pages from website_pages table
+    if (websitePages && websitePages.length > 0) {
+      for (const page of websitePages) {
+        const route = page.page_route === '/' ? 'index.html' : 
+                      page.page_route.replace(/^\//, '').replace(/\/$/, '') + '.html';
+        
+        const htmlContent = createHtmlWrapper(page.page_code, page.page_name);
+        
+        deploymentFiles.push({
+          file: route,
+          data: btoa(unescape(encodeURIComponent(htmlContent))),
+          encoding: 'base64',
+        });
+      }
+    } else {
+      // Fallback to legacy html_content if no pages exist
+      const htmlContent = website.html_content || '<html><body><h1>No content</h1></body></html>';
+      const cssContent = website.css_content || '';
+      const jsContent = website.js_content || '';
+
+      const fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${projectName}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>${cssContent}</style>
 </head>
 <body>
@@ -95,10 +208,18 @@ ${htmlContent}
 </body>
 </html>`;
 
+      deploymentFiles.push({
+        file: 'index.html',
+        data: btoa(unescape(encodeURIComponent(fullHtml))),
+        encoding: 'base64',
+      });
+    }
+
+    console.log(`Prepared ${deploymentFiles.length} files for deployment`);
+
     // Step 1: Create or get existing project
     let vercelProjectId: string;
     
-    // Check if project exists
     const projectCheckResponse = await fetch(
       `https://api.vercel.com/v9/projects/${vercelProjectName}`,
       {
@@ -113,7 +234,6 @@ ${htmlContent}
       vercelProjectId = existingProject.id;
       console.log(`Using existing Vercel project: ${vercelProjectId}`);
     } else {
-      // Create new project
       const createProjectResponse = await fetch(
         'https://api.vercel.com/v9/projects',
         {
@@ -157,13 +277,7 @@ ${htmlContent}
         },
         body: JSON.stringify({
           name: vercelProjectName,
-          files: [
-            {
-              file: 'index.html',
-              data: btoa(unescape(encodeURIComponent(fullHtml))),
-              encoding: 'base64',
-            },
-          ],
+          files: deploymentFiles,
           projectSettings: {
             framework: null,
           },
@@ -213,7 +327,6 @@ ${htmlContent}
       } else {
         const domainError = await addDomainResponse.text();
         console.log(`Custom domain note: ${domainError}`);
-        // Don't fail the deployment, just note it
         customDomainResult = { 
           warning: 'Domain may already be added or requires DNS configuration',
           details: domainError 
@@ -225,16 +338,8 @@ ${htmlContent}
     let dnsConfig = null;
     if (customDomain) {
       dnsConfig = {
-        aRecord: {
-          type: 'A',
-          name: '@',
-          value: '76.76.21.21',
-        },
-        cnameRecord: {
-          type: 'CNAME',
-          name: 'www',
-          value: 'cname.vercel-dns.com',
-        },
+        aRecord: { type: 'A', name: '@', value: '76.76.21.21' },
+        cnameRecord: { type: 'CNAME', name: 'www', value: 'cname.vercel-dns.com' },
       };
     }
 
@@ -257,8 +362,8 @@ ${htmlContent}
       hosting_type: 'vercel',
       domain: customDomain || `${vercelProjectName}.vercel.app`,
       subdomain: vercelProjectName,
-      dns_verified: !customDomain, // Auto-verified for Vercel subdomains
-      ssl_provisioned: true, // Vercel auto-provisions SSL
+      dns_verified: !customDomain,
+      ssl_provisioned: true,
       a_record: dnsConfig?.aRecord?.value || null,
       cname_record: dnsConfig?.cnameRecord?.value || null,
     };
@@ -268,18 +373,17 @@ ${htmlContent}
       .upsert(hostingData, { onConflict: 'website_id' });
 
     // Log activity
-    await supabase.from('user_agent_activity').insert({
-      user_id: user.id,
-      project_id: website.project_id,
+    await supabase.from('agent_activity_logs').insert({
       agent_id: 'vercel-deployer',
       agent_name: 'Vercel Deployer',
       action: `Deployed website to Vercel: ${productionUrl}`,
       status: 'completed',
-      result: { 
+      metadata: { 
         websiteId, 
         deploymentId: deployment.id,
         url: productionUrl,
         customDomain,
+        pagesDeployed: deploymentFiles.length,
       },
     });
 
@@ -293,6 +397,7 @@ ${htmlContent}
       customDomain: customDomain || null,
       customDomainResult,
       dnsConfig,
+      pagesDeployed: deploymentFiles.length,
       message: customDomain 
         ? `Deployed! Configure DNS for ${customDomain} to complete setup.`
         : `Website deployed to ${productionUrl}`,

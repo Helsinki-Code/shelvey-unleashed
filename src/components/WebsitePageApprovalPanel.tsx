@@ -194,21 +194,23 @@ export const WebsitePageApprovalPanel = ({
         return;
       }
 
-      const response = await supabase.functions.invoke('deploy-website', {
-        body: { websiteId },
+      // Call deploy-to-vercel which properly bundles and deploys the website
+      const response = await supabase.functions.invoke('deploy-to-vercel', {
+        body: { websiteId, projectId },
       });
 
       if (response.error) {
         throw new Error(response.error.message || 'Deployment failed');
       }
 
-      const { deployment } = response.data;
+      const { productionUrl, deploymentUrl } = response.data;
+      const liveUrl = productionUrl || deploymentUrl;
       
       toast.success(`Website deployed successfully!`, {
-        description: `Live at: ${deployment.deployedUrl}`,
+        description: `Live at: ${liveUrl}`,
         action: {
           label: 'View Site',
-          onClick: () => window.open(deployment.deployedUrl, '_blank'),
+          onClick: () => window.open(liveUrl, '_blank'),
         },
       });
 
