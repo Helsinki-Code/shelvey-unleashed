@@ -527,21 +527,42 @@ Remember:
 
           sendSSE(controller, 'progress', { progress: 85, message: 'Saving specifications to database...' });
 
-          // Save to database
-          const { data: deliverable, error: saveError } = await supabase
+          // Save to database (phase_deliverables has no unique constraint for an UPSERT)
+          const { data: existing, error: existingError } = await supabase
             .from('phase_deliverables')
-            .upsert({
-              phase_id: phaseId,
-              user_id: user.id,
-              name: 'Website Specifications',
-              deliverable_type: 'website_specs',
-              description: `Dynamic website blueprint: ${specs.siteArchitecture?.totalPages || pageCount} pages, ${specs.siteArchitecture?.totalComponents || componentCount} components, ${specs.imagePlan?.length || 0} image slots`,
-              status: 'review',
-              generated_content: { specs, generatedAt: new Date().toISOString() },
-              ceo_approved: true, // Auto-approve by CEO
-            }, { onConflict: 'phase_id,deliverable_type' })
-            .select()
-            .single();
+            .select('id, user_approved')
+            .eq('phase_id', phaseId)
+            .eq('deliverable_type', 'website_specs')
+            .maybeSingle();
+
+          if (existingError) {
+            console.error('Fetch existing deliverable error:', existingError);
+            throw existingError;
+          }
+
+          const payload: Record<string, any> = {
+            phase_id: phaseId,
+            user_id: user.id,
+            name: 'Website Specifications',
+            deliverable_type: 'website_specs',
+            description: `Dynamic website blueprint: ${specs.siteArchitecture?.totalPages || pageCount} pages, ${specs.siteArchitecture?.totalComponents || componentCount} components, ${specs.imagePlan?.length || 0} image slots`,
+            status: 'review',
+            generated_content: { specs, generatedAt: new Date().toISOString() },
+            ceo_approved: true, // Auto-approve by CEO
+          };
+
+          const { data: deliverable, error: saveError } = existing?.id
+            ? await supabase
+                .from('phase_deliverables')
+                .update(payload)
+                .eq('id', existing.id)
+                .select()
+                .single()
+            : await supabase
+                .from('phase_deliverables')
+                .insert(payload)
+                .select()
+                .single();
 
           if (saveError) {
             console.error('Save error:', saveError);

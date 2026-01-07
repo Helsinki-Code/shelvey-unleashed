@@ -309,26 +309,27 @@ if (brandAssets?.generated_content) {
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') continue;
 
+          let event: any;
           try {
-            const event = JSON.parse(jsonStr);
+            event = JSON.parse(jsonStr);
+          } catch {
+            continue; // ignore JSON parse errors
+          }
 
-            switch (event.type) {
-              case 'progress':
-                setProgress(event.progress);
-                setCurrentStep(event.message);
-                break;
-              case 'complete':
-                setSpecs(event.specs);
-                setProgress(100);
-                setCurrentStep('Website specifications complete!');
-                await fetchExistingSpecs();
-                toast.success('Website specifications generated!');
-                break;
-              case 'error':
-                throw new Error(event.message);
-            }
-          } catch (e) {
-            // Ignore parse errors
+          switch (event?.type) {
+            case 'progress':
+              setProgress(typeof event.progress === 'number' ? event.progress : 0);
+              setCurrentStep(typeof event.message === 'string' ? event.message : '');
+              break;
+            case 'complete':
+              setSpecs(event.specs);
+              setProgress(100);
+              setCurrentStep('Website specifications complete!');
+              await fetchExistingSpecs();
+              toast.success('Website specifications generated!');
+              break;
+            case 'error':
+              throw new Error(event?.message || 'Failed to generate specs');
           }
         }
       }
