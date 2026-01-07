@@ -113,6 +113,26 @@ export const ReactCodePreview = ({
     cleanedCode = cleanedCode.replace(/export\s+default\s+/g, '');
     cleanedCode = cleanedCode.replace(/export\s+/g, '');
     
+    // FIX: Remove TypeScript type annotations that break Babel
+    // Remove : type annotations from function parameters and variables
+    cleanedCode = cleanedCode.replace(/:\s*number(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*string(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*boolean(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*any(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*void(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*React\.\w+(\s*[,\)\}=])/g, '$1');
+    cleanedCode = cleanedCode.replace(/:\s*\w+\[\](\s*[,\)\}=])/g, '$1');
+    
+    // FIX: Escape problematic inline SVG data URLs in className attributes
+    // Replace data:image/svg+xml URLs that contain quotes which break JSX parsing
+    cleanedCode = cleanedCode.replace(/bg-\[url\(['"]data:image\/svg\+xml[^'"\]]*['"\]]\]/g, (match) => {
+      // Replace the problematic pattern with a simpler background
+      return 'bg-gradient-to-br from-background/5 to-transparent';
+    });
+    
+    // Also handle url(...) patterns with embedded SVG that have quote issues
+    cleanedCode = cleanedCode.replace(/url\(['"]?data:image\/svg\+xml[^)]*\)/g, "url('data:image/svg+xml,<svg></svg>')");
+    
     cleanedCode = cleanedCode.trim();
 
     return `
