@@ -411,12 +411,66 @@ Output only the React component code, no explanations or markdown.
             }
           }
 
-          // Clean up code
+          // Clean up code - CRITICAL: Extract only valid TSX code
           let cleanedCode = fullCode;
-          const codeBlockMatch = fullCode.match(/```(?:tsx?|jsx?|javascript|typescript)?\n([\s\S]*?)```/);
+          
+          // Try to extract code from markdown code blocks first
+          const codeBlockMatch = fullCode.match(/```(?:tsx?|jsx?|javascript|typescript)?\s*\n([\s\S]*?)```/);
           if (codeBlockMatch) {
-            cleanedCode = codeBlockMatch[1];
+            cleanedCode = codeBlockMatch[1].trim();
+          } else {
+            // No code block found - try to find the component code directly
+            // Look for 'use client' or import statements as the start
+            const componentStartPatterns = [
+              /(['"]use client['"][\s\S]*)/,
+              /(import\s+[\s\S]*)/,
+              /(export\s+default\s+function[\s\S]*)/,
+              /(function\s+\w+\s*\([\s\S]*)/,
+              /(const\s+\w+\s*=\s*\([\s\S]*)/
+            ];
+            
+            for (const pattern of componentStartPatterns) {
+              const match = fullCode.match(pattern);
+              if (match) {
+                cleanedCode = match[1].trim();
+                break;
+              }
+            }
           }
+          
+          // Remove any AI thinking/reasoning text that might be before the actual code
+          // This handles cases where the model outputs reasoning before code
+          const thinkingPatterns = [
+            /^[\s\S]*?(?=(['"]use client['"]))/,
+            /^[\s\S]*?(?=(import\s+{))/,
+            /^[\s\S]*?(?=(import\s+React))/,
+            /^<[Tt]hinking>[\s\S]*?<\/[Tt]hinking>\s*/,
+            /^I need to[\s\S]*?(?=import|export|function|const)/i,
+            /^Let me[\s\S]*?(?=import|export|function|const)/i,
+            /^Here's[\s\S]*?(?=import|export|function|const)/i,
+            /^Here is[\s\S]*?(?=import|export|function|const)/i
+          ];
+          
+          for (const pattern of thinkingPatterns) {
+            cleanedCode = cleanedCode.replace(pattern, '');
+          }
+          
+          // Validate the code starts with something reasonable
+          const validCodeStart = /^['"]use client['"]|^import\s|^export\s|^function\s|^const\s/;
+          if (!validCodeStart.test(cleanedCode.trim())) {
+            // Try one more extraction - find the first import statement
+            const importMatch = cleanedCode.match(/(import\s+[\s\S]*)/);
+            if (importMatch) {
+              cleanedCode = importMatch[1];
+            } else {
+              console.error('Generated code does not appear valid:', cleanedCode.substring(0, 200));
+              throw new Error('Generated code is not valid React/TypeScript. Please try again.');
+            }
+          }
+          
+          cleanedCode = cleanedCode.trim();
+          
+          console.log('Cleaned code starts with:', cleanedCode.substring(0, 100));
 
           sendSSE(controller, { 
             type: 'complete', 
