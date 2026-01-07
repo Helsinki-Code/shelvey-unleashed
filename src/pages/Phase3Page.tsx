@@ -19,7 +19,7 @@ import { DomainMarketplace } from '@/components/DomainMarketplace';
 import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
-import { V0WebsiteBuilder } from '@/components/V0WebsiteBuilder';
+import { V0StyleBuilder } from '@/components/V0StyleBuilder';
 import { WebsiteSpecsAgent } from '@/components/WebsiteSpecsAgent';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -633,7 +633,7 @@ const Phase3Page = () => {
               )}
             </TabsContent>
 
-            {/* V0 Website Builder Tab */}
+            {/* V0 Style Builder Tab - Chat + Preview like v0.dev */}
             <TabsContent value="v0-builder">
               {!specsApproved ? (
                 <Card>
@@ -648,7 +648,7 @@ const Phase3Page = () => {
                   </CardContent>
                 </Card>
               ) : project && (
-                <V0WebsiteBuilder
+                <V0StyleBuilder
                   projectId={projectId!}
                   project={{
                     name: project.name,
@@ -657,17 +657,9 @@ const Phase3Page = () => {
                   }}
                   branding={branding}
                   approvedSpecs={approvedSpecs}
-                  existingWebsite={generatedWebsite ? {
-                    id: generatedWebsite.id,
-                    html_content: generatedWebsite.html_content,
-                  } : null}
-                  onWebsiteGenerated={(code, websiteId) => {
-                    setGeneratedCode(code);
-                    if (!generatedWebsite) {
-                      fetchData();
-                    } else {
-                      setGeneratedWebsite(prev => prev ? { ...prev, html_content: code } : null);
-                    }
+                  onDeploymentComplete={(url) => {
+                    setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : null);
+                    fetchData();
                   }}
                 />
               )}
