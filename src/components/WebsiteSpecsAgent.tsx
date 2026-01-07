@@ -157,7 +157,10 @@ export const WebsiteSpecsAgent = ({
 
       if (deliverables?.length) {
         const byName = (needle: string) =>
-          deliverables.find((d: any) => (d.name || '').toLowerCase().includes(needle));
+          deliverables.find((d: any) => {
+            const name = d?.name || d?.deliverable_type || '';
+            return typeof name === 'string' && name.toLowerCase().includes(needle);
+          });
 
         const market = byName('market');
         const competitors = byName('competitor');
