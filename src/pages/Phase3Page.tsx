@@ -358,14 +358,75 @@ const Phase3Page = () => {
 
   // Redeploy to update live website content
   const handleRedeployToSubdomain = async () => {
+    if (!generatedWebsite?.id) {
+      toast.error('No website found to redeploy');
+      return;
+    }
+
+    setDeploymentStatus('deploying');
+    setDeploymentMessage('Redeploying website...');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Use deploy-to-vercel for redeployment
+      const response = await supabase.functions.invoke('deploy-to-vercel', {
+        body: { 
+          websiteId: generatedWebsite.id, 
+          projectId: project?.id 
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Redeployment failed');
+      }
+
+      const { productionUrl, deploymentUrl } = response.data;
+      const liveUrl = productionUrl || deploymentUrl;
+
+      setDeploymentStatus('success');
+      setDeploymentMessage('Website redeployed successfully!');
+      
+      toast.success('Website redeployed!', {
+        description: `Live at: ${liveUrl}`,
+        action: {
+          label: 'View Site',
+          onClick: () => window.open(liveUrl, '_blank'),
+        },
+      });
+
+      // Refresh website data
+      fetchData();
+
+      setTimeout(() => {
+        setDeploymentStatus('idle');
+        setDeploymentMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Redeploy error:', error);
+      setDeploymentStatus('error');
+      setDeploymentMessage(error instanceof Error ? error.message : 'Redeployment failed');
+      toast.error('Redeployment failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
+
+  // Legacy redeploy - keeping for backwards compatibility  
+  const handleLegacyRedeployToSubdomain = async () => {
     if (!generatedWebsite?.deployed_url) return;
 
-    // Extract subdomain from deployed URL
-    const urlMatch = generatedWebsite.deployed_url.match(/https?:\/\/([^.]+)\.shelvey\.pro/);
-    const existingSubdomain = urlMatch ? urlMatch[1] : null;
+    // Extract subdomain from deployed URL - support both .shelvey.pro and .vercel.app
+    const shelveyMatch = generatedWebsite.deployed_url.match(/https?:\/\/([^.]+)\.shelvey\.pro/);
+    const vercelMatch = generatedWebsite.deployed_url.match(/https?:\/\/([^.]+)\.vercel\.app/);
+    const existingSubdomain = shelveyMatch?.[1] || vercelMatch?.[1];
 
     if (!existingSubdomain) {
-      toast.error('Could not determine subdomain for redeploy');
+      // If no subdomain found, just do a fresh deploy
+      handleRedeployToSubdomain();
       return;
     }
 
