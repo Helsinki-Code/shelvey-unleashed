@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StreamingMessage } from './StreamingMessage';
 import { SuggestionChips } from './SuggestionChips';
+import { Loader } from '@/components/ai-elements';
 import { cn } from '@/lib/utils';
 import type { Message } from './V0Builder';
 
@@ -13,6 +14,8 @@ interface ChatPanelProps {
   messages: Message[];
   isGenerating: boolean;
   onSendMessage: (content: string) => void;
+  onFileClick?: (path: string) => void;
+  currentGeneratingFiles?: string[];
   project: {
     name: string;
     industry: string;
@@ -25,6 +28,8 @@ export function ChatPanel({
   messages,
   isGenerating,
   onSendMessage,
+  onFileClick,
+  currentGeneratingFiles = [],
   project,
   specs,
 }: ChatPanelProps) {
@@ -32,12 +37,12 @@ export function ChatPanel({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, currentGeneratingFiles]);
 
   const handleSubmit = () => {
     if (!input.trim() || isGenerating) return;
@@ -102,21 +107,36 @@ export function ChatPanel({
               />
             </motion.div>
           ) : (
-            messages.map((message) => (
-              <StreamingMessage key={message.id} message={message} />
-            ))
+            messages.map((message, index) => {
+              // Only pass generating files to the last assistant message if it's streaming
+              const isLastStreaming = 
+                message.role === 'assistant' && 
+                message.isStreaming && 
+                index === messages.length - 1;
+              
+              return (
+                <StreamingMessage 
+                  key={message.id} 
+                  message={message}
+                  generatingFiles={isLastStreaming ? currentGeneratingFiles : []}
+                  onFileClick={onFileClick}
+                />
+              );
+            })
           )}
           
-          {isGenerating && messages[messages.length - 1]?.role !== 'assistant' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-muted-foreground"
-            >
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Generating...</span>
-            </motion.div>
-          )}
+          {/* Show loader when waiting for first response */}
+          <AnimatePresence>
+            {isGenerating && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <Loader label="Generating..." />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </ScrollArea>
 
