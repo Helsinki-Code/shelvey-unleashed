@@ -176,50 +176,64 @@ export const V0WebsiteBuilder = ({
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') continue;
 
+          let event: any;
           try {
-            const event = JSON.parse(jsonStr);
-            
-            switch (event.type) {
-              case 'start':
-              case 'connected':
-                setCurrentMessage(event.message);
-                break;
-                
-              case 'component_start':
-                setCurrentMessage(event.message);
-                setProgress(event.progress);
-                setComponents(prev => prev.map(c => ({
+            event = JSON.parse(jsonStr);
+          } catch {
+            continue; // ignore JSON parse errors
+          }
+
+          switch (event?.type) {
+            case 'start':
+            case 'connected':
+              setCurrentMessage(typeof event.message === 'string' ? event.message : '');
+              break;
+
+            case 'component_start':
+              setCurrentMessage(typeof event.message === 'string' ? event.message : '');
+              setProgress(typeof event.progress === 'number' ? event.progress : 0);
+              setComponents((prev) =>
+                prev.map((c) => ({
                   ...c,
-                  status: c.name === event.component ? 'building' : 
-                          prev.find(p => p.name === event.component && 
-                            prev.indexOf(p) > prev.findIndex(x => x.name === c.name))
-                            ? c.status : 
-                          c.status === 'building' ? 'complete' : c.status
-                })));
-                break;
-                
-              case 'code_chunk':
+                  status:
+                    c.name === event.component
+                      ? 'building'
+                      : prev.find(
+                            (p) =>
+                              p.name === event.component &&
+                              prev.indexOf(p) > prev.findIndex((x) => x.name === c.name)
+                          )
+                        ? c.status
+                        : c.status === 'building'
+                          ? 'complete'
+                          : c.status,
+                }))
+              );
+              break;
+
+            case 'code_chunk':
+              if (typeof event.content === 'string') {
                 fullCode += event.content;
                 setStreamingCode(fullCode);
-                break;
-                
-              case 'complete':
-                setProgress(100);
-                setCurrentMessage(event.message);
-                setGeneratedCode(event.code);
-                setComponents(prev => prev.map(c => ({ ...c, status: 'complete' })));
-                
-                // Save to database
+              }
+              break;
+
+            case 'complete':
+              setProgress(100);
+              setCurrentMessage(typeof event.message === 'string' ? event.message : 'Website generation complete');
+              setGeneratedCode(typeof event.code === 'string' ? event.code : '');
+              setComponents((prev) => prev.map((c) => ({ ...c, status: 'complete' })));
+
+              // Save to database
+              if (typeof event.code === 'string') {
                 await saveWebsite(event.code);
-                
-                toast.success('Website generated successfully!');
-                break;
-                
-              case 'error':
-                throw new Error(event.message);
-            }
-          } catch (e) {
-            // Ignore parse errors
+              }
+
+              toast.success('Website generated successfully!');
+              break;
+
+            case 'error':
+              throw new Error(typeof event?.message === 'string' ? event.message : 'Generation failed');
           }
         }
       }
@@ -355,38 +369,43 @@ export const V0WebsiteBuilder = ({
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') continue;
 
+          let event: any;
           try {
-            const event = JSON.parse(jsonStr);
-            
-            switch (event.type) {
-              case 'start':
-              case 'connected':
-                setCurrentMessage(event.message);
-                break;
-              case 'code_chunk':
+            event = JSON.parse(jsonStr);
+          } catch {
+            continue; // ignore JSON parse errors
+          }
+
+          switch (event?.type) {
+            case 'start':
+            case 'connected':
+              setCurrentMessage(typeof event.message === 'string' ? event.message : '');
+              break;
+            case 'code_chunk':
+              if (typeof event.content === 'string') {
                 fullCode += event.content;
                 setStreamingCode(fullCode);
-                break;
-              case 'complete':
-                setProgress(100);
-                setCurrentMessage('Changes applied!');
-                setGeneratedCode(event.code);
+              }
+              break;
+            case 'complete':
+              setProgress(100);
+              setCurrentMessage('Changes applied!');
+              setGeneratedCode(typeof event.code === 'string' ? event.code : '');
+              if (typeof event.code === 'string') {
                 await saveWebsite(event.code);
-                toast.success('Website updated successfully!');
-                setEditChanges('');
-                setEditMode(false);
-                // Add to conversation history
-                setConversationHistory(prev => [
-                  ...prev,
-                  { role: 'user', content: `Change ${editSection}: ${editChanges}` },
-                  { role: 'assistant', content: 'Changes applied successfully' }
-                ]);
-                break;
-              case 'error':
-                throw new Error(event.message);
-            }
-          } catch (e) {
-            // Ignore parse errors
+              }
+              toast.success('Website updated successfully!');
+              setEditChanges('');
+              setEditMode(false);
+              // Add to conversation history
+              setConversationHistory((prev) => [
+                ...prev,
+                { role: 'user', content: `Change ${editSection}: ${editChanges}` },
+                { role: 'assistant', content: 'Changes applied successfully' },
+              ]);
+              break;
+            case 'error':
+              throw new Error(typeof event?.message === 'string' ? event.message : 'Edit failed');
           }
         }
       }
