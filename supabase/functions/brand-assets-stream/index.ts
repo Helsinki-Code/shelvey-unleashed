@@ -170,12 +170,13 @@ serve(async (req) => {
       let userUploadedLogoUrl: string | null = null;
       if (project?.business_model && typeof project.business_model === 'object') {
         const bm = project.business_model as Record<string, unknown>;
-        const uploadedAssets = bm.uploaded_assets as Array<{ type: string; url: string; filename: string }> | undefined;
+        const uploadedAssets = bm.uploaded_assets as Array<{ type: string; url: string; filename?: string; name?: string }> | undefined;
         if (uploadedAssets && Array.isArray(uploadedAssets)) {
-          const logoAsset = uploadedAssets.find(a => 
-            a.type === 'image' && 
-            (a.filename.toLowerCase().includes('logo') || uploadedAssets.length === 1)
-          );
+          const logoAsset = uploadedAssets.find(a => {
+            if (a.type !== 'image') return false;
+            const filename = a.filename || a.name || '';
+            return (typeof filename === 'string' && filename.toLowerCase().includes('logo')) || uploadedAssets.length === 1;
+          });
           if (logoAsset) {
             userUploadedLogoUrl = logoAsset.url;
           }
