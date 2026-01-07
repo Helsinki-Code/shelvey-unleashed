@@ -76,9 +76,11 @@ serve(async (req) => {
     // Get page structure from approved specs (dynamic, not hardcoded)
     let targetPage = approvedSpecs?.pages?.[0]; // Default to first page (usually Home)
     if (selectedPage && approvedSpecs?.pages) {
-      targetPage = approvedSpecs.pages.find((p: any) => 
-        p.route === selectedPage || p.name.toLowerCase() === selectedPage.toLowerCase()
-      ) || targetPage;
+      targetPage = approvedSpecs.pages.find((p: any) => {
+        const pageName = typeof p?.name === 'string' ? p.name : '';
+        const selected = typeof selectedPage === 'string' ? selectedPage : '';
+        return p?.route === selectedPage || pageName.toLowerCase() === selected.toLowerCase();
+      }) || targetPage;
     }
     
     const sections = targetPage?.sections || ['Hero', 'Features', 'About', 'Testimonials', 'CTA', 'Footer'];
@@ -321,13 +323,14 @@ Output only the React component code, no explanations or markdown.
 
           console.log('Calling v0 API with prompt length:', enhancedPrompt.length);
           
-          const v0Response = await fetch('https://api.v0.dev/v1/chat', {
+          const v0Response = await fetch('https://api.v0.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${V0_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              model: 'v0-1.5-md',
               messages: [{ role: 'user', content: enhancedPrompt }],
               stream: true,
             }),
