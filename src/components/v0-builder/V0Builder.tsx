@@ -6,7 +6,6 @@ import { useTheme } from 'next-themes';
 import { ChatPanel } from './ChatPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { DeploymentModal } from './DeploymentModal';
-import { cn } from '@/lib/utils';
 
 export interface ProjectFile {
   path: string;
@@ -57,6 +56,26 @@ export function V0Builder({
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
+  const [currentGeneratingFiles, setCurrentGeneratingFiles] = useState<string[]>([]);
+
+  const handleFileReceived = useCallback((file: ProjectFile) => {
+    // Remove from generating list
+    setCurrentGeneratingFiles(prev => prev.filter(f => f !== file.path));
+    
+    // Add/update in project files
+    setProjectFiles(prev => {
+      const existing = prev.findIndex(f => f.path === file.path);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = file;
+        return updated;
+      }
+      return [...prev, file];
+    });
+    
+    // Auto-select first generated file
+    setSelectedFile(prev => prev || file.path);
+  }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const userMessage: Message = {
@@ -68,6 +87,7 @@ export function V0Builder({
     
     setMessages(prev => [...prev, userMessage]);
     setIsGenerating(true);
+    setCurrentGeneratingFiles([]);
 
     // Create assistant message placeholder for streaming
     const assistantId = crypto.randomUUID();
@@ -77,6 +97,7 @@ export function V0Builder({
       content: '',
       isStreaming: true,
       timestamp: new Date(),
+      files: [],
     };
     setMessages(prev => [...prev, assistantMessage]);
 
@@ -108,46 +129,58 @@ export function V0Builder({
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let fullContent = '';
-      let generatedFiles: ProjectFile[] = [];
+      let narrativeContent = '';
+      const generatedFiles: ProjectFile[] = [];
+      let lineBuffer = '';
 
       while (reader) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() || ''; // Keep incomplete line in buffer
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
+          if (!line.startsWith('data: ')) continue;
+          
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(data);
-              
-              if (parsed.type === 'content') {
-                fullContent += parsed.content;
-                setMessages(prev => prev.map(m => 
-                  m.id === assistantId 
-                    ? { ...m, content: fullContent }
-                    : m
-                ));
-              } else if (parsed.type === 'file') {
-                generatedFiles.push(parsed.file);
-                setProjectFiles(prev => {
-                  const existing = prev.findIndex(f => f.path === parsed.file.path);
-                  if (existing >= 0) {
-                    const updated = [...prev];
-                    updated[existing] = parsed.file;
-                    return updated;
-                  }
-                  return [...prev, parsed.file];
-                });
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'content') {
+              // Narrative content - update chat message
+              narrativeContent += parsed.content;
+              setMessages(prev => prev.map(m => 
+                m.id === assistantId 
+                  ? { ...m, content: narrativeContent }
+                  : m
+              ));
+            } else if (parsed.type === 'status') {
+              // Status update - track generating file
+              const match = parsed.label?.match(/Generating (.+?)\.\.\./);
+              if (match) {
+                setCurrentGeneratingFiles(prev => 
+                  prev.includes(match[1]) ? prev : [...prev, match[1]]
+                );
               }
-            } catch {
-              // Partial JSON, continue
+            } else if (parsed.type === 'file') {
+              // File received - add to project files immediately
+              const file = parsed.file as ProjectFile;
+              generatedFiles.push(file);
+              handleFileReceived(file);
+              
+              // Also add to message's files array
+              setMessages(prev => prev.map(m => 
+                m.id === assistantId 
+                  ? { ...m, files: [...(m.files || []), file] }
+                  : m
+              ));
             }
+          } catch {
+            // Partial JSON, continue
           }
         }
       }
@@ -155,7 +188,7 @@ export function V0Builder({
       // Finalize message
       setMessages(prev => prev.map(m => 
         m.id === assistantId 
-          ? { ...m, content: fullContent, isStreaming: false, files: generatedFiles }
+          ? { ...m, content: narrativeContent, isStreaming: false, files: generatedFiles }
           : m
       ));
 
@@ -168,13 +201,19 @@ export function V0Builder({
       ));
     } finally {
       setIsGenerating(false);
+      setCurrentGeneratingFiles([]);
     }
-  }, [messages, projectId, project, branding, approvedSpecs]);
+  }, [messages, projectId, project, branding, approvedSpecs, handleFileReceived]);
 
   const handleDeploymentSuccess = (url: string) => {
     setDeployedUrl(url);
     setShowDeployModal(false);
     onDeploymentComplete?.(url);
+  };
+
+  const handleFileClick = (path: string) => {
+    setSelectedFile(path);
+    setChatCollapsed(true); // Collapse chat to show preview
   };
 
   const currentFile = projectFiles.find(f => f.path === selectedFile);
@@ -250,6 +289,8 @@ export function V0Builder({
                 messages={messages}
                 isGenerating={isGenerating}
                 onSendMessage={handleSendMessage}
+                onFileClick={handleFileClick}
+                currentGeneratingFiles={currentGeneratingFiles}
                 project={project}
                 specs={approvedSpecs}
               />

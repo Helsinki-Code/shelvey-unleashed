@@ -5,6 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Streaming state machine states
+enum ParseState {
+  NARRATIVE,    // Normal text - emit as content
+  FENCE_START,  // Detected ``` - check for file block
+  FILE_BLOCK,   // Inside file block - buffer content
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -18,11 +25,8 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are an expert React/TypeScript website builder. Generate complete, production-ready React components using:
-- React 18 with hooks
-- Tailwind CSS for styling
-- Framer Motion for animations
-- Lucide React for icons
+    // Updated system prompt - instructs AI to keep narrative brief and separate from code
+    const systemPrompt = `You are an expert React/TypeScript website builder. Generate complete, production-ready React components.
 
 Project: ${project?.name || 'Website'}
 Industry: ${project?.industry || 'General'}
@@ -30,18 +34,23 @@ Description: ${project?.description || ''}
 ${branding ? `Branding: Primary color: ${branding.primaryColor}, Secondary: ${branding.secondaryColor}` : ''}
 ${specs ? `Specifications: ${JSON.stringify(specs)}` : ''}
 
-When generating code:
-1. Create complete, working React components
-2. Use semantic HTML and accessibility best practices
-3. Make it fully responsive
-4. Include smooth animations
-5. After explaining, output each file with format:
-   
+CRITICAL RULES FOR OUTPUT FORMAT:
+1. Keep your explanations VERY BRIEF (under 50 words) - just state what you're creating
+2. NEVER paste code directly in your explanation text
+3. After your brief explanation, output files using EXACTLY this format:
+
 \`\`\`tsx:src/App.tsx
-// file content here
+// complete file content
 \`\`\`
 
-Generate beautiful, modern UI that matches the project requirements.`;
+\`\`\`tsx:src/components/Hero.tsx
+// complete file content  
+\`\`\`
+
+4. Each file block must have the language and path on the same line as the opening fence
+5. Use React 18 with hooks, Tailwind CSS, Framer Motion, and Lucide icons
+6. Make components fully responsive with modern, beautiful UI
+7. Include smooth animations and transitions`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -69,67 +78,161 @@ Generate beautiful, modern UI that matches the project requirements.`;
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    // Transform the stream to extract files
-    const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        controller.enqueue(chunk);
-      },
-    });
-
     const reader = response.body?.getReader();
-    const writer = transformStream.writable.getWriter();
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    
-    let buffer = "";
-    let fullContent = "";
 
-    (async () => {
-      try {
-        while (reader) {
-          const { done, value } = await reader.read();
-          if (done) break;
+    // Create a ReadableStream that processes and filters the response
+    const stream = new ReadableStream({
+      async start(controller) {
+        let buffer = "";
+        let parseState = ParseState.NARRATIVE;
+        let narrativeBuffer = "";
+        let fileBuffer = "";
+        let currentFilePath = "";
+        let currentFileType = "";
+        let fenceAccumulator = "";
+        
+        const emitContent = (text: string) => {
+          if (text) {
+            controller.enqueue(encoder.encode(
+              `data: ${JSON.stringify({ type: "content", content: text })}\n\n`
+            ));
+          }
+        };
+        
+        const emitFile = (path: string, type: string, content: string) => {
+          controller.enqueue(encoder.encode(
+            `data: ${JSON.stringify({ 
+              type: "file", 
+              file: { path: path.trim(), content: content.trim(), type } 
+            })}\n\n`
+          ));
+        };
+        
+        const emitStatus = (label: string) => {
+          controller.enqueue(encoder.encode(
+            `data: ${JSON.stringify({ type: "status", label })}\n\n`
+          ));
+        };
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+        try {
+          while (reader) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") {
-                // Extract files from full content
-                const fileRegex = /```(\w+):([^\n]+)\n([\s\S]*?)```/g;
-                let match;
-                while ((match = fileRegex.exec(fullContent)) !== null) {
-                  const [, type, path, content] = match;
-                  await writer.write(encoder.encode(
-                    `data: ${JSON.stringify({ type: "file", file: { path: path.trim(), content: content.trim(), type } })}\n\n`
-                  ));
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6).trim();
+                if (data === "[DONE]") {
+                  // Flush any remaining narrative
+                  if (narrativeBuffer.trim()) {
+                    emitContent(narrativeBuffer);
+                  }
+                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                  continue;
                 }
-                await writer.write(encoder.encode("data: [DONE]\n\n"));
-                continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  
+                  if (content) {
+                    // Process character by character for file block detection
+                    for (const char of content) {
+                      switch (parseState) {
+                        case ParseState.NARRATIVE:
+                          if (char === '`') {
+                            fenceAccumulator += char;
+                            if (fenceAccumulator === '```') {
+                              parseState = ParseState.FENCE_START;
+                              fenceAccumulator = "";
+                            }
+                          } else {
+                            if (fenceAccumulator) {
+                              narrativeBuffer += fenceAccumulator;
+                              fenceAccumulator = "";
+                            }
+                            narrativeBuffer += char;
+                            
+                            // Emit content in small chunks for real-time feel
+                            if (narrativeBuffer.length >= 10 || char === '\n') {
+                              emitContent(narrativeBuffer);
+                              narrativeBuffer = "";
+                            }
+                          }
+                          break;
+                          
+                        case ParseState.FENCE_START:
+                          if (char === '\n') {
+                            // Parse the file header: "tsx:src/App.tsx" or just language
+                            const headerParts = fenceAccumulator.split(':');
+                            if (headerParts.length >= 2) {
+                              currentFileType = headerParts[0].trim();
+                              currentFilePath = headerParts.slice(1).join(':').trim();
+                              parseState = ParseState.FILE_BLOCK;
+                              fileBuffer = "";
+                              emitStatus(`Generating ${currentFilePath}...`);
+                            } else {
+                              // Just a regular code block, not a file
+                              narrativeBuffer += "```" + fenceAccumulator + char;
+                              parseState = ParseState.NARRATIVE;
+                            }
+                            fenceAccumulator = "";
+                          } else {
+                            fenceAccumulator += char;
+                          }
+                          break;
+                          
+                        case ParseState.FILE_BLOCK:
+                          if (char === '`') {
+                            fenceAccumulator += char;
+                            if (fenceAccumulator === '```') {
+                              // End of file block - emit the file
+                              emitFile(currentFilePath, currentFileType, fileBuffer);
+                              parseState = ParseState.NARRATIVE;
+                              fenceAccumulator = "";
+                              fileBuffer = "";
+                              currentFilePath = "";
+                              currentFileType = "";
+                            }
+                          } else {
+                            if (fenceAccumulator) {
+                              fileBuffer += fenceAccumulator;
+                              fenceAccumulator = "";
+                            }
+                            fileBuffer += char;
+                          }
+                          break;
+                      }
+                    }
+                  }
+                } catch {
+                  // Partial JSON, continue
+                }
               }
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  fullContent += content;
-                  await writer.write(encoder.encode(
-                    `data: ${JSON.stringify({ type: "content", content })}\n\n`
-                  ));
-                }
-              } catch {}
             }
           }
+          
+          // Handle any remaining content
+          if (narrativeBuffer.trim()) {
+            emitContent(narrativeBuffer);
+          }
+          if (fileBuffer && currentFilePath) {
+            emitFile(currentFilePath, currentFileType, fileBuffer);
+          }
+          
+        } finally {
+          controller.close();
         }
-      } finally {
-        await writer.close();
       }
-    })();
+    });
 
-    return new Response(transformStream.readable, {
+    return new Response(stream, {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
