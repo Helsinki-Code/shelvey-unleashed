@@ -1,54 +1,81 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useEffect, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { 
-  ArrowLeft, FileText, Target, Type, Newspaper, Search, 
-  Share2, Users, Loader2, CheckCircle2, Clock, Bot, MessageSquare
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
-import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
-import { PageHeader } from "@/components/PageHeader";
-import { ProceedToNextPhaseButton } from "@/components/ProceedToNextPhaseButton";
-import { StartPhaseButton } from "@/components/StartPhaseButton";
-import { AgentChatSheet } from "@/components/AgentChatSheet";
-import { DeliverableCard } from "@/components/DeliverableCard";
-import ContentStrategyBuilder from "@/components/ContentStrategyBuilder";
-import WebsiteCopyGenerator from "@/components/WebsiteCopyGenerator";
-import BlogArticleGenerator from "@/components/BlogArticleGenerator";
-import SEODashboard from "@/components/SEODashboard";
-import SocialContentFactory from "@/components/SocialContentFactory";
-
-import { getPhaseAgent } from '@/lib/phase-agents';
+  ArrowLeft, FileText, Loader2, Bot, CheckCircle2, Clock, 
+  Eye, MessageSquare, RefreshCw, Play, Sparkles, PenTool
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
+import { AgentChatSheet } from '@/components/AgentChatSheet';
+import { DeliverableCard } from '@/components/DeliverableCard';
+import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
 import { PhaseAgentCard } from '@/components/PhaseAgentCard';
+import { PageHeader } from '@/components/PageHeader';
+import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
+import { StartPhaseButton } from '@/components/StartPhaseButton';
+import { ContentGenerationStudio } from '@/components/ContentGenerationStudio';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { getPhaseAgent } from '@/lib/phase-agents';
 
+// Interfaces
+interface Deliverable {
+  id: string;
+  name: string;
+  description: string | null;
+  deliverable_type: string;
+  status: string | null;
+  ceo_approved: boolean | null;
+  user_approved: boolean | null;
+  feedback: string | null;
+  generated_content: any;
+  screenshots: any;
+  agent_work_steps: any;
+  citations: any;
+  assigned_agent_id: string | null;
+  version: number | null;
+}
+
+interface AgentActivity {
+  id: string;
+  agent_id: string;
+  agent_name: string;
+  action: string;
+  status: string;
+  created_at: string;
+  metadata: any;
+}
+
+// Get the single Content Agent for Phase 4
 const PHASE_AGENT = getPhaseAgent(4)!;
 
 export default function Phase4Page() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  
+  // State
   const [project, setProject] = useState<any>(null);
   const [phase, setPhase] = useState<any>(null);
-  const [deliverables, setDeliverables] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("team");
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [activities, setActivities] = useState<AgentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('content-studio');
   const [showAgentChat, setShowAgentChat] = useState(false);
-  const [activities, setActivities] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (projectId && user) {
-      fetchPhaseData();
-    }
-  }, [projectId, user]);
+  // Fetch data function
+  const fetchData = useCallback(async () => {
+    if (!projectId || !user) return;
 
-  const fetchPhaseData = async () => {
     try {
       // Fetch project
       const { data: projectData } = await supabase
@@ -56,8 +83,8 @@ export default function Phase4Page() {
         .select('*')
         .eq('id', projectId)
         .single();
-      
-      setProject(projectData);
+
+      if (projectData) setProject(projectData);
 
       // Fetch Phase 4
       const { data: phaseData } = await supabase
@@ -67,28 +94,101 @@ export default function Phase4Page() {
         .eq('phase_number', 4)
         .single();
 
-      setPhase(phaseData);
+      if (phaseData) setPhase(phaseData);
 
       // Fetch deliverables
       if (phaseData) {
         const { data: deliverablesData } = await supabase
           .from('phase_deliverables')
           .select('*')
-          .eq('phase_id', phaseData.id);
+          .eq('phase_id', phaseData.id)
+          .order('created_at');
 
-        setDeliverables(deliverablesData || []);
+        if (deliverablesData) setDeliverables(deliverablesData);
       }
+
+      // Fetch recent activity for this project/phase
+      const { data: activityData } = await supabase
+        .from('agent_activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      // Filter activities for this project or the phase agent
+      const projectActivities = (activityData || []).filter((activity: AgentActivity) => {
+        const metadata = activity.metadata as any;
+        return metadata?.projectId === projectId || activity.agent_id === PHASE_AGENT.id;
+      });
+
+      setActivities(projectActivities.slice(0, 50));
     } catch (error) {
       console.error('Error fetching phase data:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
+  }, [projectId, user]);
+
+  // Initial data fetch
+  useEffect(() => {
+    if (projectId && user) {
+      fetchData();
+    }
+  }, [projectId, user, fetchData]);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!projectId || !user || !phase?.id) return;
+
+    const channel = supabase
+      .channel(`phase4-updates-${projectId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agent_activity_logs' },
+        (payload) => {
+          if (payload.new) {
+            const newActivity = payload.new as AgentActivity;
+            const metadata = newActivity.metadata as any;
+            if (metadata?.projectId === projectId || newActivity.agent_id === PHASE_AGENT.id) {
+              setActivities(prev => [newActivity, ...prev.slice(0, 49)]);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'phase_deliverables', filter: `phase_id=eq.${phase.id}` },
+        (payload) => {
+          if (payload.new) {
+            const updated = payload.new as Deliverable;
+            setDeliverables(prev =>
+              prev.map(d => d.id === updated.id ? updated : d)
+            );
+            if (updated.status === 'review') {
+              toast.success(`${updated.name} is ready for review!`);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, user, phase?.id]);
+
+  // Handlers
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    toast.success('Data refreshed');
   };
 
-  const getCompletionPercentage = () => {
+  // Calculations
+  const calculateProgress = () => {
     if (deliverables.length === 0) return 0;
-    const completed = deliverables.filter(d => d.status === 'approved' || d.status === 'completed').length;
-    return Math.round((completed / deliverables.length) * 100);
+    const approved = deliverables.filter(d => d.ceo_approved && d.user_approved).length;
+    return Math.round((approved / deliverables.length) * 100);
   };
 
   const isPhaseFullyApproved = () => {
@@ -96,213 +196,297 @@ export default function Phase4Page() {
     return deliverables.every(d => d.ceo_approved && d.user_approved);
   };
 
-  if (loading) {
+  const getAgentStatus = () => {
+    const recentActivity = activities.find(a => a.agent_id === PHASE_AGENT.id);
+    if (recentActivity?.status === 'in_progress' || recentActivity?.status === 'working') {
+      return 'working';
+    }
+    if (recentActivity?.status === 'completed') {
+      return 'completed';
+    }
+    return 'idle';
+  };
+
+  const getAgentCurrentTask = () => {
+    const recentActivity = activities.find(
+      a => a.agent_id === PHASE_AGENT.id && (a.status === 'in_progress' || a.status === 'working')
+    );
+    return recentActivity?.action || undefined;
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    return date.toLocaleTimeString();
+  };
+
+  // Loading state
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <SimpleDashboardSidebar />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading Phase 4...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <SimpleDashboardSidebar />
-      <main className="flex-1 p-8 overflow-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(`/projects/${projectId}`)}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Project
-          </Button>
+    <div className="min-h-screen bg-background flex">
+      <Helmet>
+        <title>Phase 4: Content Creation | {project?.name} | ShelVey</title>
+        <meta name="description" content="Create compelling content for your business with AI-powered tools" />
+      </Helmet>
 
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <FileText className="h-8 w-8 text-primary" />
-                Phase 4: Content Creation
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {project?.name} - Create compelling content for your business
-              </p>
+      <SimpleDashboardSidebar />
+
+      <main className="flex-1 p-6 ml-64">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => navigate(`/projects/${projectId}`)}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Project
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <PenTool className="w-6 h-6 text-primary" />
+                  Phase 4: Content Creation
+                </h1>
+                <p className="text-muted-foreground">{project?.name}</p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge 
-                variant={phase?.status === 'completed' ? 'default' : phase?.status === 'active' ? 'secondary' : 'outline'}
-                className="text-sm"
-              >
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
                 {phase?.status || 'pending'}
               </Badge>
               <PageHeader showNotifications={true} showLogout={true} />
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Phase Progress</span>
-              <span className="text-sm text-muted-foreground">{getCompletionPercentage()}%</span>
-            </div>
-            <Progress value={getCompletionPercentage()} className="h-2" />
-          </div>
-        </div>
+          {/* Progress Card */}
+          <Card className="mb-6">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Phase Progress</span>
+                <span className="font-bold text-lg">{calculateProgress()}%</span>
+              </div>
+              <Progress value={calculateProgress()} className="h-3" />
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{deliverables.filter(d => d.ceo_approved && d.user_approved).length} of {deliverables.length} deliverables approved</span>
+                <span>{phase?.status === 'completed' ? 'Phase Complete!' : 'In Progress'}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Start Phase Button */}
-        <StartPhaseButton
-          projectId={projectId!}
-          phaseNumber={4}
-          phaseStatus={phase?.status || 'pending'}
-          onStart={fetchPhaseData}
-        />
+          {/* Start Phase Button */}
+          <StartPhaseButton
+            projectId={projectId!}
+            phaseNumber={4}
+            phaseStatus={phase?.status || 'pending'}
+            onStart={fetchData}
+          />
 
-        {/* Deliverables Overview */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
-          {deliverables.slice(0, 4).map((deliverable) => (
-            <Card key={deliverable.id} className="bg-muted/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm">{deliverable.name}</span>
-                  {deliverable.status === 'approved' ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  ) : deliverable.status === 'in_progress' ? (
-                    <Clock className="h-4 w-4 text-yellow-500" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                  )}
-                </div>
-                <Badge variant="outline" className="text-xs">{deliverable.status}</Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          {/* Main Content Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="content-studio" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Content Studio
+              </TabsTrigger>
+              <TabsTrigger value="agent" className="gap-2">
+                <Bot className="w-4 h-4" />
+                Content Agent
+              </TabsTrigger>
+              <TabsTrigger value="deliverables" className="gap-2">
+                <Eye className="w-4 h-4" />
+                Deliverables ({deliverables.length})
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2">
+                <Play className="w-4 h-4" />
+                Live Activity ({activities.length})
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-6 w-full">
-            <TabsTrigger value="strategy" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden md:inline">Strategy</span>
-            </TabsTrigger>
-            <TabsTrigger value="copy" className="flex items-center gap-2">
-              <Type className="h-4 w-4" />
-              <span className="hidden md:inline">Website Copy</span>
-            </TabsTrigger>
-            <TabsTrigger value="blog" className="flex items-center gap-2">
-              <Newspaper className="h-4 w-4" />
-              <span className="hidden md:inline">Blog</span>
-            </TabsTrigger>
-            <TabsTrigger value="social" className="flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
-              <span className="hidden md:inline">Social</span>
-            </TabsTrigger>
-            <TabsTrigger value="seo" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              <span className="hidden md:inline">SEO</span>
-            </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden md:inline">AI Team</span>
-            </TabsTrigger>
-          </TabsList>
+            {/* Content Studio Tab - Primary Interface */}
+            <TabsContent value="content-studio">
+              <ContentGenerationStudio 
+                projectId={projectId!} 
+                project={project}
+              />
+            </TabsContent>
 
-          <TabsContent value="strategy">
-            <ContentStrategyBuilder 
-              projectId={projectId!}
-              businessName={project?.name}
-              industry={project?.industry}
-            />
-          </TabsContent>
+            {/* Single Agent Tab with Live Work Preview */}
+            <TabsContent value="agent">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Agent Card */}
+                <PhaseAgentCard
+                  phaseNumber={4}
+                  status={getAgentStatus()}
+                  currentTask={getAgentCurrentTask()}
+                  onChat={() => setShowAgentChat(true)}
+                />
 
-          <TabsContent value="copy">
-            <WebsiteCopyGenerator 
-              projectId={projectId!}
-              businessName={project?.name}
-              industry={project?.industry}
-            />
-          </TabsContent>
+                {/* Live Work Preview */}
+                <LiveAgentWorkPreview
+                  agentId={PHASE_AGENT.id}
+                  agentName={PHASE_AGENT.name}
+                  projectId={projectId!}
+                />
+              </div>
 
-          <TabsContent value="blog">
-            <BlogArticleGenerator 
-              projectId={projectId!}
-              businessName={project?.name}
-              industry={project?.industry}
-            />
-          </TabsContent>
-
-          <TabsContent value="social">
-            <SocialContentFactory 
-              projectId={projectId!}
-              businessName={project?.name}
-              industry={project?.industry}
-            />
-          </TabsContent>
-
-          <TabsContent value="seo">
-            <SEODashboard 
-              projectId={projectId!}
-            />
-          </TabsContent>
-
-          <TabsContent value="team">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5" />
-                  Content Division AI Team
-                </CardTitle>
-                <CardDescription>
-                  Meet the AI agents working on your content creation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { name: 'Content Creator Agent', role: 'Creates compelling content', status: 'active' },
-                    { name: 'SEO Optimization Agent', role: 'Optimizes for search engines', status: 'active' },
-                    { name: 'Social Media Agent', role: 'Creates social content', status: 'idle' },
-                    { name: 'Content Editor Agent', role: 'Reviews and edits content', status: 'idle' },
-                  ].map((agent, idx) => (
-                    <Card key={idx} className="bg-muted/50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                            agent.status === 'active' ? 'bg-green-500/20' : 'bg-muted'
-                          }`}>
-                            <Bot className={`h-5 w-5 ${agent.status === 'active' ? 'text-green-500' : 'text-muted-foreground'}`} />
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm">{agent.name}</div>
-                            <div className="text-xs text-muted-foreground">{agent.role}</div>
-                          </div>
-                        </div>
-                        <Badge 
-                          variant={agent.status === 'active' ? 'default' : 'secondary'}
-                          className="mt-3"
+              {/* Agent Capabilities */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Content Agent Capabilities</CardTitle>
+                    <CardDescription>Tools and skills available for content creation</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {PHASE_AGENT.capabilities.map((cap, idx) => (
+                        <div 
+                          key={idx}
+                          className="p-3 bg-muted/50 rounded-lg text-sm text-center hover:bg-muted transition-colors"
                         >
-                          {agent.status}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                          {cap}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
 
-        {/* Proceed to Next Phase Button */}
-        <ProceedToNextPhaseButton
-          projectId={projectId || ''}
-          currentPhaseNumber={4}
-          isPhaseApproved={isPhaseFullyApproved()}
-        />
+            {/* Deliverables Tab */}
+            <TabsContent value="deliverables">
+              <div className="space-y-6">
+                {deliverables.length > 0 ? (
+                  <div className="grid gap-4">
+                    {deliverables.map((deliverable) => (
+                      <DeliverableCard
+                        key={deliverable.id}
+                        deliverable={deliverable}
+                        onViewWork={() => {}}
+                        onRefresh={fetchData}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="text-muted-foreground">No deliverables yet. Start the phase to begin content creation.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Live Activity Tab */}
+            <TabsContent value="activity">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Play className="w-5 h-5 text-primary" />
+                    Live Activity Feed
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time updates from the Content Agent
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px]">
+                    {activities.length > 0 ? (
+                      <div className="space-y-3">
+                        {activities.map((activity, index) => (
+                          <motion.div
+                            key={activity.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.02 }}
+                            className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                          >
+                            <div className={`p-2 rounded-full ${
+                              activity.status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                              activity.status === 'in_progress' ? 'bg-primary/20 text-primary' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {activity.status === 'completed' ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : activity.status === 'in_progress' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Clock className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">{activity.agent_name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {activity.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {activity.action}
+                              </p>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(activity.created_at)}
+                              </span>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No activity yet. Start the phase to see agent work.</p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          {/* Proceed to Next Phase Button */}
+          <ProceedToNextPhaseButton
+            projectId={projectId || ''}
+            currentPhaseNumber={4}
+            isPhaseApproved={isPhaseFullyApproved()}
+          />
+        </div>
       </main>
+
+      {/* Agent Chat Sheet */}
+      <AgentChatSheet
+        isOpen={showAgentChat}
+        onClose={() => setShowAgentChat(false)}
+        agentId={PHASE_AGENT.id}
+        agentName={PHASE_AGENT.name}
+        agentRole={PHASE_AGENT.role}
+        projectId={projectId || ''}
+      />
     </div>
   );
 }
