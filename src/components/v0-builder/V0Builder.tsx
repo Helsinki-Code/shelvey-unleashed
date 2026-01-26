@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PanelLeftClose, PanelLeft, Rocket, Moon, Sun, Download } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Rocket, Moon, Sun, Download, Sparkles, Globe, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useTheme } from 'next-themes';
 import { ChatPanel } from './ChatPanel';
 import { PreviewPanel } from './PreviewPanel';
@@ -57,6 +58,7 @@ export function V0Builder({
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [currentGeneratingFiles, setCurrentGeneratingFiles] = useState<string[]>([]);
+  const [hasStarted, setHasStarted] = useState(false);
 
   const handleFileReceived = useCallback((file: ProjectFile) => {
     // Remove from generating list
@@ -78,6 +80,7 @@ export function V0Builder({
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
+    setHasStarted(true);
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -216,7 +219,128 @@ export function V0Builder({
     setChatCollapsed(true); // Collapse chat to show preview
   };
 
+  const handleQuickStart = () => {
+    const prompt = `Create a complete, beautiful landing page for ${project.name}. 
+Include:
+- Modern hero section with compelling headline
+- Features section highlighting key benefits
+- Testimonials section
+- Pricing section with 3 tiers
+- Call-to-action section
+- Professional footer
+
+Use the approved branding and make it fully responsive with smooth animations.`;
+    handleSendMessage(prompt);
+  };
+
   const currentFile = projectFiles.find(f => f.path === selectedFile);
+
+  // Show welcome state if no messages yet
+  if (!hasStarted && messages.length === 0) {
+    return (
+      <div className="h-[calc(100vh-200px)] min-h-[600px] flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+        {/* Welcome Header */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium text-foreground">AI Website Builder</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="h-8 w-8"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {/* Welcome Content */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-lg text-center"
+          >
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <Wand2 className="h-10 w-10 text-primary" />
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-3">
+              Ready to Build Your Website
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              Your specifications have been approved! Now let's bring your website to life with AI-powered generation.
+            </p>
+
+            {/* Quick Start Button */}
+            <Button
+              size="lg"
+              onClick={handleQuickStart}
+              className="gap-2 mb-6"
+            >
+              <Sparkles className="h-5 w-5" />
+              Generate Complete Website
+            </Button>
+
+            <p className="text-sm text-muted-foreground">
+              Or start a conversation to customize exactly what you want
+            </p>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              <Card 
+                className="cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => handleSendMessage(`Create a modern landing page for ${project.name} with hero, features, and contact sections`)}
+              >
+                <CardContent className="p-4 text-center">
+                  <Globe className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="text-sm font-medium">Landing Page</p>
+                </CardContent>
+              </Card>
+              <Card 
+                className="cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => handleSendMessage(`Create a multi-page website for ${project.name} with home, about, services, and contact pages`)}
+              >
+                <CardContent className="p-4 text-center">
+                  <Rocket className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="text-sm font-medium">Full Website</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Specs Summary */}
+            {approvedSpecs && (
+              <div className="mt-8 p-4 rounded-lg bg-muted/50 border text-left">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Based on Your Approved Specs:</p>
+                <div className="flex flex-wrap gap-2">
+                  {approvedSpecs.pages?.slice(0, 4).map((page: any, idx: number) => (
+                    <span key={idx} className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
+                      {page.name || page}
+                    </span>
+                  ))}
+                  {approvedSpecs.pages?.length > 4 && (
+                    <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                      +{approvedSpecs.pages.length - 4} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Start Custom */}
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => setHasStarted(true)}
+            >
+              Start Custom Chat
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-200px)] min-h-[600px] flex flex-col rounded-xl border border-border overflow-hidden bg-card">
