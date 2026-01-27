@@ -551,6 +551,22 @@ const Phase3Page = () => {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* Domain marketplace CTA */}
+                  <Card>
+                    <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="font-medium">Want a custom domain?</p>
+                        <p className="text-sm text-muted-foreground">
+                          Search and buy a domain inside ShelVey, then connect it during hosting setup.
+                        </p>
+                      </div>
+                      <Button variant="outline" onClick={() => navigate('/domains')} className="gap-2">
+                        <Globe className="w-4 h-4" />
+                        Buy a Domain
+                      </Button>
+                    </CardContent>
+                  </Card>
                   
                   {/* V0 Builder */}
                   <V0Builder

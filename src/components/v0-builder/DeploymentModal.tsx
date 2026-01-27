@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { ProjectFile } from './V0Builder';
+import { ensureViteScaffold } from "./vite-scaffold";
 
 interface DeploymentModalProps {
   open: boolean;
@@ -51,6 +52,8 @@ export function DeploymentModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const deployFiles = ensureViteScaffold(files, projectName);
+
       setProgress(30);
       setMessage('Building Vite project...');
 
@@ -58,7 +61,7 @@ export function DeploymentModal({
         body: {
           projectId,
           projectName,
-          files: files.map(f => ({
+          files: deployFiles.map(f => ({
             path: f.path,
             content: f.content,
             fileType: f.type,
@@ -67,6 +70,7 @@ export function DeploymentModal({
       });
 
       if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
 
       setProgress(70);
       setMessage('Deploying to Vercel...');
@@ -92,7 +96,8 @@ export function DeploymentModal({
     } catch (err) {
       console.error('Deployment error:', err);
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Deployment failed');
+      const message = err instanceof Error ? err.message : 'Deployment failed';
+      setError(message);
       toast.error('Deployment failed');
     }
   };
