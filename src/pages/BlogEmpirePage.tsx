@@ -12,6 +12,13 @@ import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { BlogEmpireCEOHeader } from "@/components/blog/BlogEmpireCEOHeader";
 import { BLOG_EMPIRE_AGENTS, BLOG_EMPIRE_PHASES } from "@/lib/blog-empire-agents";
 import BlogArticleGenerator from "@/components/BlogArticleGenerator";
+import { BrowserPublishingPanel } from "@/components/blog/BrowserPublishingPanel";
+import { SocialDistributionManager } from "@/components/blog/SocialDistributionManager";
+import { SEOMonitorDashboard } from "@/components/blog/SEOMonitorDashboard";
+import { CommentModerationPanel } from "@/components/blog/CommentModerationPanel";
+import { AnalyticsDashboard } from "@/components/blog/AnalyticsDashboard";
+import { CompetitorAnalysisPanel } from "@/components/blog/CompetitorAnalysisPanel";
+import { BacklinkMonitor } from "@/components/blog/BacklinkMonitor";
 
 const BlogEmpirePage = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -130,11 +137,13 @@ const BlogEmpirePage = () => {
 
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Blog Projects</TabsTrigger>
               <TabsTrigger value="agents">AI Team</TabsTrigger>
               <TabsTrigger value="generator">Content Generator</TabsTrigger>
               <TabsTrigger value="phases">Workflow Phases</TabsTrigger>
+              <TabsTrigger value="automation" className="bg-gradient-to-r from-blue-500/10 to-purple-500/10">🌐 Web Automation</TabsTrigger>
+              <TabsTrigger value="monitoring">📊 Monitoring</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
@@ -261,6 +270,29 @@ const BlogEmpirePage = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="automation" className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">🌐 Browser Automation Hub</h2>
+                <div className="grid grid-cols-1 gap-6">
+                  <BrowserPublishingPanel />
+                  <SocialDistributionManager />
+                  <SEOMonitorDashboard />
+                  <CommentModerationPanel />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="monitoring" className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">📊 Analytics & Intelligence</h2>
+                <div className="grid grid-cols-1 gap-6">
+                  <AnalyticsDashboard />
+                  <CompetitorAnalysisPanel />
+                  <BacklinkMonitor />
+                </div>
               </div>
             </TabsContent>
           </Tabs>

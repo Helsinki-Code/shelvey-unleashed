@@ -19,6 +19,11 @@ import { MarketDataTicker } from '@/components/trading/MarketDataTicker';
 import { QuickTradePanel } from '@/components/trading/QuickTradePanel';
 import { TradingStrategyBuilder } from '@/components/trading/TradingStrategyBuilder';
 import { StrategyList } from '@/components/trading/StrategyList';
+import { BrowserAutomationPanel } from '@/components/trading/BrowserAutomationPanel';
+import { ExchangeWebMonitor } from '@/components/trading/ExchangeWebMonitor';
+import { MarketDataScraper } from '@/components/trading/MarketDataScraper';
+import { AutoRebalanceConfig } from '@/components/trading/AutoRebalanceConfig';
+import { TradingJournalViewer } from '@/components/trading/TradingJournalViewer';
 
 interface ExchangeConfig {
   id: string;
@@ -267,7 +272,7 @@ const TradingDashboardPage = () => {
                   </CardHeader>
                   <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                      <TabsList className="grid w-full grid-cols-4">
+                      <TabsList className="grid w-full grid-cols-5">
                         <TabsTrigger value="positions">Positions</TabsTrigger>
                         <TabsTrigger value="orders">Orders</TabsTrigger>
                         <TabsTrigger value="strategies" className="flex items-center gap-1">
@@ -277,6 +282,9 @@ const TradingDashboardPage = () => {
                         <TabsTrigger value="create" className="flex items-center gap-1">
                           <Zap className="h-3 w-3" />
                           New Strategy
+                        </TabsTrigger>
+                        <TabsTrigger value="browser" className="flex items-center gap-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+                          🌐 Web Automation
                         </TabsTrigger>
                       </TabsList>
 
@@ -303,10 +311,20 @@ const TradingDashboardPage = () => {
                       </TabsContent>
 
                       <TabsContent value="create" className="mt-4">
-                        <TradingStrategyBuilder 
+                        <TradingStrategyBuilder
                           exchange={selectedExchange}
                           exchangeType={selectedExchangeConfig?.type || 'stocks'}
                         />
+                      </TabsContent>
+
+                      <TabsContent value="browser" className="mt-4 space-y-4">
+                        <BrowserAutomationPanel />
+                        <div className="grid grid-cols-2 gap-4 mt-6">
+                          <ExchangeWebMonitor />
+                          <MarketDataScraper />
+                        </div>
+                        <AutoRebalanceConfig />
+                        <TradingJournalViewer />
                       </TabsContent>
                     </Tabs>
                   </CardContent>

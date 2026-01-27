@@ -63,6 +63,7 @@ import TradingOptimizePhase from "./pages/trading/TradingOptimizePhase";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
 import BlogEmpirePage from "./pages/BlogEmpirePage";
+import BrowserAutomationHub from "./pages/BrowserAutomationHub";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,7 @@ const App = () => (
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPostPage />} />
               <Route path="/blog-empire" element={<BlogEmpirePage />} />
+              <Route path="/browser-automation" element={<BrowserAutomationHub />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </BrowserRouter>
