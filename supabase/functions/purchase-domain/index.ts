@@ -95,6 +95,8 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
+    const origin = req.headers.get("origin") || "";
+
     // Create Stripe Checkout session for domain purchase
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -118,8 +120,9 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/domains?purchased=${domain}`,
-      cancel_url: `${req.headers.get("origin")}/domains?canceled=true`,
+      // IMPORTANT: include session_id so the app can finalize the purchase.
+      success_url: `${origin}/domains?session_id={CHECKOUT_SESSION_ID}&domain=${encodeURIComponent(domain)}`,
+      cancel_url: `${origin}/domains?canceled=true`,
       metadata: {
         userId: user.id,
         domain: domain,
@@ -133,11 +136,18 @@ serve(async (req) => {
       },
     });
 
-    // Store pending domain purchase
+    // Store pending domain purchase (dedupe any previous pending attempts)
     const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    await serviceClient
+      .from("user_domains")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("domain_name", domain)
+      .in("status", ["pending_payment", "purchase_failed"]);
 
     await serviceClient.from("user_domains").insert({
       user_id: user.id,

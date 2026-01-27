@@ -113,6 +113,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
         let currentFilePath = "";
         let currentFileType = "";
         let fenceAccumulator = "";
+        let upstreamDone = false;
         
         const emitContent = (text: string) => {
           if (text) {
@@ -138,7 +139,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
         };
 
         try {
-          while (reader) {
+          outer: while (reader) {
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -150,12 +151,8 @@ CRITICAL RULES - FOLLOW EXACTLY:
               if (line.startsWith("data: ")) {
                 const data = line.slice(6).trim();
                 if (data === "[DONE]") {
-                  // Flush any remaining narrative
-                  if (narrativeBuffer.trim()) {
-                    emitContent(narrativeBuffer);
-                  }
-                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                  continue;
+                  upstreamDone = true;
+                  break;
                 }
 
                 try {
@@ -237,16 +234,35 @@ CRITICAL RULES - FOLLOW EXACTLY:
                 }
               }
             }
+
+            if (upstreamDone) {
+              break outer;
+            }
           }
           
-          // Handle any remaining content
-          if (narrativeBuffer.trim()) {
+          // If upstream sent [DONE], stop waiting on the upstream connection.
+          try {
+            if (upstreamDone && reader) {
+              await reader.cancel();
+            }
+          } catch {
+            // ignore
+          }
+
+          // Handle any remaining buffered content
+          if (narrativeBuffer) {
             emitContent(narrativeBuffer);
+            narrativeBuffer = "";
           }
           if (fileBuffer && currentFilePath) {
             emitFile(currentFilePath, currentFileType, fileBuffer);
           }
-          
+
+          // Explicitly signal completion downstream even if upstream never closes.
+          if (upstreamDone) {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          }
+
         } finally {
           controller.close();
         }

@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import { ChatPanel } from './ChatPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { DeploymentModal } from './DeploymentModal';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ProjectFile {
   path: string;
@@ -104,14 +105,22 @@ export function V0Builder({
     };
     setMessages(prev => [...prev, assistantMessage]);
 
+    const abortController = new AbortController();
+
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`,
         {
           method: 'POST',
+          signal: abortController.signal,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            // Supabase edge functions expect BOTH apikey and Authorization.
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${accessToken || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
             messages: [...messages, userMessage].map(m => ({
@@ -135,6 +144,7 @@ export function V0Builder({
       let narrativeContent = '';
       const generatedFiles: ProjectFile[] = [];
       let lineBuffer = '';
+      let doneReceived = false;
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -148,7 +158,10 @@ export function V0Builder({
           if (!line.startsWith('data: ')) continue;
           
           const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
+          if (data === '[DONE]') {
+            doneReceived = true;
+            break;
+          }
 
           try {
             const parsed = JSON.parse(data);
@@ -186,6 +199,15 @@ export function V0Builder({
             // Partial JSON, continue
           }
         }
+
+        if (doneReceived) {
+          try {
+            await reader.cancel();
+          } catch {
+            // ignore
+          }
+          break;
+        }
       }
 
       // Finalize message
@@ -203,6 +225,7 @@ export function V0Builder({
           : m
       ));
     } finally {
+      abortController.abort();
       setIsGenerating(false);
       setCurrentGeneratingFiles([]);
     }

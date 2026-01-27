@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Globe, ArrowLeft, RefreshCw, Loader2, Calendar, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,10 +30,12 @@ interface UserDomain {
 
 export default function DomainsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [domains, setDomains] = useState<UserDomain[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCompletingPurchase, setIsCompletingPurchase] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -46,6 +48,40 @@ export default function DomainsPage() {
       fetchDomains();
     }
   }, [user]);
+
+  // Finalize a domain purchase after Stripe redirects back
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    if (!user || !sessionId || isCompletingPurchase) return;
+
+    (async () => {
+      setIsCompletingPurchase(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("complete-domain-purchase", {
+          body: { sessionId },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        toast({
+          title: "Domain purchased!",
+          description: data?.domain ? `${data.domain} is now active.` : "Your domain is now active.",
+        });
+        await fetchDomains();
+      } catch (err: any) {
+        console.error("Complete purchase error:", err);
+        toast({
+          title: "Could not finalize domain purchase",
+          description: err?.message || "Please try refreshing this page.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsCompletingPurchase(false);
+        // Remove query params to prevent re-running on refresh
+        navigate("/domains", { replace: true });
+      }
+    })();
+  }, [user, searchParams, navigate, toast, isCompletingPurchase]);
 
   const fetchDomains = async () => {
     try {
