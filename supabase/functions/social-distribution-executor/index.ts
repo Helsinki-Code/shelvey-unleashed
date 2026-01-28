@@ -19,7 +19,7 @@ interface DistributionResult {
   engagement_estimate?: number;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req): Promise<Response> => {
   try {
     const {
       action,
@@ -46,19 +46,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === "post_to_twitter") {
-      return await postToTwitter(supabase, user_id, session_id, post);
+      const result = await postToTwitter(supabase, user_id, session_id, post);
+      return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
     }
 
     if (action === "post_to_linkedin") {
-      return await postToLinkedIn(supabase, user_id, session_id, post);
+      const result = await postToLinkedIn(supabase, user_id, session_id, post);
+      return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
     }
 
     if (action === "post_to_instagram") {
-      return await postToInstagram(supabase, user_id, session_id, post);
+      const result = await postToInstagram(supabase, user_id, session_id, post);
+      return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
     }
 
     if (action === "post_to_facebook") {
-      return await postToFacebook(supabase, user_id, session_id, post);
+      const result = await postToFacebook(supabase, user_id, session_id, post);
+      return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
     }
 
     if (action === "monitor_engagement") {

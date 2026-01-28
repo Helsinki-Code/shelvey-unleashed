@@ -126,7 +126,7 @@ async function generateTaxReport(
     if (tradesError) throw tradesError;
 
     // Separate short-term (< 1 year) and long-term (>= 1 year) gains
-    const taxLots: TaxLot[] = (trades || []).map((trade) => {
+    const taxLots: TaxLot[] = (trades || []).map((trade: any) => {
       const entryDate = new Date(trade.entry_date);
       const exitDate = new Date(trade.exit_date);
       const daysDiff = (exitDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -253,21 +253,21 @@ async function generateComplianceReport(
     // Calculate metrics
     const totalTrades = trades?.length || 0;
     const realizedGains = (trades || [])
-      .filter((t) => t.profit_loss_usd > 0)
-      .reduce((sum, t) => sum + t.profit_loss_usd, 0);
+      .filter((t: any) => t.profit_loss_usd > 0)
+      .reduce((sum: number, t: any) => sum + t.profit_loss_usd, 0);
 
     const realizedLosses = Math.abs(
       (trades || [])
-        .filter((t) => t.profit_loss_usd < 0)
-        .reduce((sum, t) => sum + t.profit_loss_usd, 0)
+        .filter((t: any) => t.profit_loss_usd < 0)
+        .reduce((sum: number, t: any) => sum + t.profit_loss_usd, 0)
     );
 
     const largestGain = Math.max(
-      ...(trades || []).map((t) => t.profit_loss_usd),
+      ...(trades || []).map((t: any) => t.profit_loss_usd),
       0
     );
     const largestLoss = Math.abs(
-      Math.min(...(trades || []).map((t) => t.profit_loss_usd), 0)
+      Math.min(...(trades || []).map((t: any) => t.profit_loss_usd), 0)
     );
 
     // Check for regulatory flags

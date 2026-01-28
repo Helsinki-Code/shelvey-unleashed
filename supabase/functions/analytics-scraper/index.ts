@@ -490,14 +490,14 @@ async function exportAnalyticsCSV(
     while (startDate <= endDate) {
       csvLines.push([
         startDate.toISOString().split("T")[0],
-        Math.floor(Math.random() * 10000) + 1000,
-        Math.floor(Math.random() * 5000) + 500,
-        Math.floor(Math.random() * 3000) + 300,
+        String(Math.floor(Math.random() * 10000) + 1000),
+        String(Math.floor(Math.random() * 5000) + 500),
+        String(Math.floor(Math.random() * 3000) + 300),
         (Math.random() * 60 + 20).toFixed(2),
-        Math.floor(Math.random() * 600 + 60),
-        Math.floor(Math.random() * 50) + 5,
+        String(Math.floor(Math.random() * 600 + 60)),
+        String(Math.floor(Math.random() * 50) + 5),
         (Math.random() * 10000 + 1000).toFixed(2),
-        Math.floor(Math.random() * 200) + 20,
+        String(Math.floor(Math.random() * 200) + 20),
       ]);
       startDate.setDate(startDate.getDate() + 1);
     }
