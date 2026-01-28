@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Link2,
   AlertCircle,
+  Activity,
 } from "lucide-react";
 import { BrowserPublishingPanel } from "@/components/blog/BrowserPublishingPanel";
 import { AnalyticsDashboard } from "@/components/blog/AnalyticsDashboard";

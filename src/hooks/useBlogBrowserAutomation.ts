@@ -14,12 +14,14 @@ interface PublishRequest {
   featured_image_url?: string;
   tags?: string[];
   scheduled_time?: string;
+  [key: string]: unknown;
 }
 
 interface DistributionRequest {
   blog_post_id: string;
   platforms: string[];
   customize_per_platform?: boolean;
+  [key: string]: unknown;
 }
 
 interface UseBlogBrowserAutomationReturn {

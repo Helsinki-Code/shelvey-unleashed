@@ -154,7 +154,7 @@ export const AutoRebalanceConfig = () => {
           {/* Assets Needing Rebalance */}
           {drift.length > 0 && (
             <div className="border-t pt-4">
-              <p className="text-sm font-medium mb-3">Drift > {threshold}%</p>
+              <p className="text-sm font-medium mb-3">Drift &gt; {threshold}%</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {drift.map((asset: any, idx: number) => (
                   <div
@@ -190,7 +190,7 @@ export const AutoRebalanceConfig = () => {
               <p className="text-sm font-medium">Rebalance Strategy</p>
             </div>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>✓ Rebalance when any asset drifts > {threshold}% from target</p>
+              <p>✓ Rebalance when any asset drifts &gt; {threshold}% from target</p>
               <p>✓ Execute via market orders during liquid hours</p>
               <p>✓ Minimize slippage with intelligent order execution</p>
               <p>✓ Track rebalance history & performance</p>

@@ -449,6 +449,1050 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_analytics_snapshots: {
+        Row: {
+          avg_session_duration: number | null
+          bounce_rate: number | null
+          created_at: string | null
+          goal_completions: number | null
+          id: string
+          new_users: number | null
+          pages_per_session: number | null
+          returning_users: number | null
+          revenue_usd: number | null
+          snapshot_date: string | null
+          top_pages: Json | null
+          total_pageviews: number | null
+          total_sessions: number | null
+          total_users: number | null
+          traffic_sources: Json | null
+          transactions: number | null
+          user_demographics: Json | null
+          user_id: string
+        }
+        Insert: {
+          avg_session_duration?: number | null
+          bounce_rate?: number | null
+          created_at?: string | null
+          goal_completions?: number | null
+          id?: string
+          new_users?: number | null
+          pages_per_session?: number | null
+          returning_users?: number | null
+          revenue_usd?: number | null
+          snapshot_date?: string | null
+          top_pages?: Json | null
+          total_pageviews?: number | null
+          total_sessions?: number | null
+          total_users?: number | null
+          traffic_sources?: Json | null
+          transactions?: number | null
+          user_demographics?: Json | null
+          user_id: string
+        }
+        Update: {
+          avg_session_duration?: number | null
+          bounce_rate?: number | null
+          created_at?: string | null
+          goal_completions?: number | null
+          id?: string
+          new_users?: number | null
+          pages_per_session?: number | null
+          returning_users?: number | null
+          revenue_usd?: number | null
+          snapshot_date?: string | null
+          top_pages?: Json | null
+          total_pageviews?: number | null
+          total_sessions?: number | null
+          total_users?: number | null
+          traffic_sources?: Json | null
+          transactions?: number | null
+          user_demographics?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_backlinks: {
+        Row: {
+          anchor_text: string | null
+          created_at: string | null
+          detected_date: string | null
+          domain_authority: number | null
+          id: string
+          link_type: string | null
+          lost_date: string | null
+          page_authority: number | null
+          source_domain: string
+          source_url: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          anchor_text?: string | null
+          created_at?: string | null
+          detected_date?: string | null
+          domain_authority?: number | null
+          id?: string
+          link_type?: string | null
+          lost_date?: string | null
+          page_authority?: number | null
+          source_domain: string
+          source_url?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          anchor_text?: string | null
+          created_at?: string | null
+          detected_date?: string | null
+          domain_authority?: number | null
+          id?: string
+          link_type?: string | null
+          lost_date?: string | null
+          page_authority?: number | null
+          source_domain?: string
+          source_url?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_browser_actions: {
+        Row: {
+          action: string
+          cost_usd: number | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          platform: string | null
+          result: Json | null
+          session_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          platform?: string | null
+          result?: Json | null
+          session_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          platform?: string | null
+          result?: Json | null
+          session_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_browser_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_comments: {
+        Row: {
+          ai_response: string | null
+          approved_at: string | null
+          author_email: string | null
+          author_name: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          moderation_result: Json | null
+          platform: string | null
+          post_id: string
+          sentiment: string | null
+          spam_score: number | null
+          status: string | null
+          topics: string[] | null
+          user_id: string
+        }
+        Insert: {
+          ai_response?: string | null
+          approved_at?: string | null
+          author_email?: string | null
+          author_name?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          moderation_result?: Json | null
+          platform?: string | null
+          post_id: string
+          sentiment?: string | null
+          spam_score?: number | null
+          status?: string | null
+          topics?: string[] | null
+          user_id: string
+        }
+        Update: {
+          ai_response?: string | null
+          approved_at?: string | null
+          author_email?: string | null
+          author_name?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          moderation_result?: Json | null
+          platform?: string | null
+          post_id?: string
+          sentiment?: string | null
+          spam_score?: number | null
+          status?: string | null
+          topics?: string[] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_competitor_analysis: {
+        Row: {
+          advantage_area: string | null
+          analysis_date: string | null
+          backlinks: number | null
+          competitor_domain: string
+          content_length: number | null
+          created_at: string | null
+          domain_authority: number | null
+          estimated_traffic: number | null
+          id: string
+          keywords: string[] | null
+          page_authority: number | null
+          social_shares: number | null
+          user_id: string
+        }
+        Insert: {
+          advantage_area?: string | null
+          analysis_date?: string | null
+          backlinks?: number | null
+          competitor_domain: string
+          content_length?: number | null
+          created_at?: string | null
+          domain_authority?: number | null
+          estimated_traffic?: number | null
+          id?: string
+          keywords?: string[] | null
+          page_authority?: number | null
+          social_shares?: number | null
+          user_id: string
+        }
+        Update: {
+          advantage_area?: string | null
+          analysis_date?: string | null
+          backlinks?: number | null
+          competitor_domain?: string
+          content_length?: number | null
+          created_at?: string | null
+          domain_authority?: number | null
+          estimated_traffic?: number | null
+          id?: string
+          keywords?: string[] | null
+          page_authority?: number | null
+          social_shares?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_email_lists: {
+        Row: {
+          automation_status: string | null
+          click_rate: number | null
+          created_at: string | null
+          id: string
+          list_name: string | null
+          open_rate: number | null
+          platform: string
+          platform_list_id: string | null
+          subscriber_count: number | null
+          unsubscribe_rate: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          automation_status?: string | null
+          click_rate?: number | null
+          created_at?: string | null
+          id?: string
+          list_name?: string | null
+          open_rate?: number | null
+          platform: string
+          platform_list_id?: string | null
+          subscriber_count?: number | null
+          unsubscribe_rate?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          automation_status?: string | null
+          click_rate?: number | null
+          created_at?: string | null
+          id?: string
+          list_name?: string | null
+          open_rate?: number | null
+          platform?: string
+          platform_list_id?: string | null
+          subscriber_count?: number | null
+          unsubscribe_rate?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_lead_magnets: {
+        Row: {
+          conversion_count: number | null
+          conversion_rate: number | null
+          created_at: string | null
+          description: string | null
+          file_url: string | null
+          id: string
+          title: string
+          type: string | null
+          updated_at: string | null
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          conversion_count?: number | null
+          conversion_rate?: number | null
+          created_at?: string | null
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          title: string
+          type?: string | null
+          updated_at?: string | null
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          conversion_count?: number | null
+          conversion_rate?: number | null
+          created_at?: string | null
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          title?: string
+          type?: string | null
+          updated_at?: string | null
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          excerpt: string | null
+          featured_image_url: string | null
+          id: string
+          medium_id: string | null
+          medium_url: string | null
+          meta: Json | null
+          published_at: string | null
+          reading_time_minutes: number | null
+          scheduled_for: string | null
+          seo_score: number | null
+          slug: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          word_count: number | null
+          wordpress_id: number | null
+          wordpress_url: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
+          id?: string
+          medium_id?: string | null
+          medium_url?: string | null
+          meta?: Json | null
+          published_at?: string | null
+          reading_time_minutes?: number | null
+          scheduled_for?: string | null
+          seo_score?: number | null
+          slug?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          word_count?: number | null
+          wordpress_id?: number | null
+          wordpress_url?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image_url?: string | null
+          id?: string
+          medium_id?: string | null
+          medium_url?: string | null
+          meta?: Json | null
+          published_at?: string | null
+          reading_time_minutes?: number | null
+          scheduled_for?: string | null
+          seo_score?: number | null
+          slug?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          word_count?: number | null
+          wordpress_id?: number | null
+          wordpress_url?: string | null
+        }
+        Relationships: []
+      }
+      blog_seo_monitoring: {
+        Row: {
+          clicks: number | null
+          created_at: string | null
+          ctr: number | null
+          id: string
+          impressions: number | null
+          last_updated: string | null
+          monitored_date: string | null
+          post_id: string
+          previous_rank: number | null
+          rank_change: number | null
+          recommendations: Json | null
+          search_rank: number | null
+          search_volume: number | null
+          seo_score: number | null
+          target_keyword: string | null
+          user_id: string
+        }
+        Insert: {
+          clicks?: number | null
+          created_at?: string | null
+          ctr?: number | null
+          id?: string
+          impressions?: number | null
+          last_updated?: string | null
+          monitored_date?: string | null
+          post_id: string
+          previous_rank?: number | null
+          rank_change?: number | null
+          recommendations?: Json | null
+          search_rank?: number | null
+          search_volume?: number | null
+          seo_score?: number | null
+          target_keyword?: string | null
+          user_id: string
+        }
+        Update: {
+          clicks?: number | null
+          created_at?: string | null
+          ctr?: number | null
+          id?: string
+          impressions?: number | null
+          last_updated?: string | null
+          monitored_date?: string | null
+          post_id?: string
+          previous_rank?: number | null
+          rank_change?: number | null
+          recommendations?: Json | null
+          search_rank?: number | null
+          search_volume?: number | null
+          seo_score?: number | null
+          target_keyword?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_seo_monitoring_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_social_metrics: {
+        Row: {
+          clicks: number | null
+          comments: number | null
+          created_at: string | null
+          engagement_rate: number | null
+          id: string
+          impressions: number | null
+          likes: number | null
+          metrics_date: string | null
+          platform: string
+          post_id: string
+          reach: number | null
+          reposts: number | null
+          shares: number | null
+          user_id: string
+          views: number | null
+        }
+        Insert: {
+          clicks?: number | null
+          comments?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          metrics_date?: string | null
+          platform: string
+          post_id: string
+          reach?: number | null
+          reposts?: number | null
+          shares?: number | null
+          user_id: string
+          views?: number | null
+        }
+        Update: {
+          clicks?: number | null
+          comments?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          metrics_date?: string | null
+          platform?: string
+          post_id?: string
+          reach?: number | null
+          reposts?: number | null
+          shares?: number | null
+          user_id?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_social_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      browser_automation_approvals: {
+        Row: {
+          action: string
+          approved_by: string | null
+          created_at: string | null
+          details: Json
+          expires_at: string | null
+          id: string
+          requested_at: string | null
+          responded_at: string | null
+          response_reason: string | null
+          risk_level: string | null
+          status: string | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          approved_by?: string | null
+          created_at?: string | null
+          details?: Json
+          expires_at?: string | null
+          id?: string
+          requested_at?: string | null
+          responded_at?: string | null
+          response_reason?: string | null
+          risk_level?: string | null
+          status?: string | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          approved_by?: string | null
+          created_at?: string | null
+          details?: Json
+          expires_at?: string | null
+          id?: string
+          requested_at?: string | null
+          responded_at?: string | null
+          response_reason?: string | null
+          risk_level?: string | null
+          status?: string | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "browser_automation_approvals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      browser_automation_audit: {
+        Row: {
+          action: string
+          anti_bot_detected: boolean | null
+          compliance_flags: string[] | null
+          cost_usd: number | null
+          created_at: string | null
+          domain: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          pii_detected: boolean | null
+          pii_fields: string[] | null
+          provider: string | null
+          rate_limit_warning: boolean | null
+          screenshot_captured: boolean | null
+          screenshot_url: string | null
+          session_id: string | null
+          status: string | null
+          task_id: string | null
+          tos_violation: boolean | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          anti_bot_detected?: boolean | null
+          compliance_flags?: string[] | null
+          cost_usd?: number | null
+          created_at?: string | null
+          domain?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          pii_detected?: boolean | null
+          pii_fields?: string[] | null
+          provider?: string | null
+          rate_limit_warning?: boolean | null
+          screenshot_captured?: boolean | null
+          screenshot_url?: string | null
+          session_id?: string | null
+          status?: string | null
+          task_id?: string | null
+          tos_violation?: boolean | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          anti_bot_detected?: boolean | null
+          compliance_flags?: string[] | null
+          cost_usd?: number | null
+          created_at?: string | null
+          domain?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          pii_detected?: boolean | null
+          pii_fields?: string[] | null
+          provider?: string | null
+          rate_limit_warning?: boolean | null
+          screenshot_captured?: boolean | null
+          screenshot_url?: string | null
+          session_id?: string | null
+          status?: string | null
+          task_id?: string | null
+          tos_violation?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "browser_automation_audit_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "browser_automation_audit_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      browser_automation_cost_tracking: {
+        Row: {
+          amount_usd: number
+          created_at: string | null
+          date_utc: string | null
+          id: string
+          metadata: Json | null
+          provider: string
+          session_id: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          created_at?: string | null
+          date_utc?: string | null
+          id?: string
+          metadata?: Json | null
+          provider: string
+          session_id?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string | null
+          date_utc?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string
+          session_id?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "browser_automation_cost_tracking_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "browser_automation_cost_tracking_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      browser_automation_provider_health: {
+        Row: {
+          avg_response_time_ms: number | null
+          circuit_breaker_open: boolean | null
+          consecutive_failures: number | null
+          created_at: string | null
+          error_rate_percentage: number | null
+          failed_requests: number | null
+          id: string
+          last_check: string | null
+          last_error: string | null
+          provider: string
+          status: string | null
+          successful_requests: number | null
+          total_requests: number | null
+          updated_at: string | null
+          uptime_percentage: number | null
+        }
+        Insert: {
+          avg_response_time_ms?: number | null
+          circuit_breaker_open?: boolean | null
+          consecutive_failures?: number | null
+          created_at?: string | null
+          error_rate_percentage?: number | null
+          failed_requests?: number | null
+          id?: string
+          last_check?: string | null
+          last_error?: string | null
+          provider: string
+          status?: string | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          updated_at?: string | null
+          uptime_percentage?: number | null
+        }
+        Update: {
+          avg_response_time_ms?: number | null
+          circuit_breaker_open?: boolean | null
+          consecutive_failures?: number | null
+          created_at?: string | null
+          error_rate_percentage?: number | null
+          failed_requests?: number | null
+          id?: string
+          last_check?: string | null
+          last_error?: string | null
+          provider?: string
+          status?: string | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          updated_at?: string | null
+          uptime_percentage?: number | null
+        }
+        Relationships: []
+      }
+      browser_automation_rate_limits: {
+        Row: {
+          created_at: string | null
+          current_day_count: number | null
+          current_hour_count: number | null
+          current_minute_count: number | null
+          domain: string
+          id: string
+          last_reset_day: string | null
+          last_reset_hour: string | null
+          last_reset_minute: string | null
+          requests_per_day: number | null
+          requests_per_hour: number | null
+          requests_per_minute: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_day_count?: number | null
+          current_hour_count?: number | null
+          current_minute_count?: number | null
+          domain: string
+          id?: string
+          last_reset_day?: string | null
+          last_reset_hour?: string | null
+          last_reset_minute?: string | null
+          requests_per_day?: number | null
+          requests_per_hour?: number | null
+          requests_per_minute?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_day_count?: number | null
+          current_hour_count?: number | null
+          current_minute_count?: number | null
+          domain?: string
+          id?: string
+          last_reset_day?: string | null
+          last_reset_hour?: string | null
+          last_reset_minute?: string | null
+          requests_per_day?: number | null
+          requests_per_hour?: number | null
+          requests_per_minute?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      browser_automation_rules: {
+        Row: {
+          created_at: string | null
+          domain: string
+          element_identifier: string
+          fallback_selector: string | null
+          id: string
+          last_tested: string | null
+          last_updated: string | null
+          learning_attempts: number | null
+          selectors: Json
+          status: string | null
+          success_rate_threshold: number | null
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          element_identifier: string
+          fallback_selector?: string | null
+          id?: string
+          last_tested?: string | null
+          last_updated?: string | null
+          learning_attempts?: number | null
+          selectors?: Json
+          status?: string | null
+          success_rate_threshold?: number | null
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          element_identifier?: string
+          fallback_selector?: string | null
+          id?: string
+          last_tested?: string | null
+          last_updated?: string | null
+          learning_attempts?: number | null
+          selectors?: Json
+          status?: string | null
+          success_rate_threshold?: number | null
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: []
+      }
+      browser_automation_sessions: {
+        Row: {
+          api_calls_count: number | null
+          created_at: string | null
+          domain: string
+          ended_at: string | null
+          error_count: number | null
+          id: string
+          last_activity: string | null
+          last_error: string | null
+          memory_mb: number | null
+          provider: string
+          started_at: string | null
+          status: string
+          tabs_open: number | null
+          tasks_completed: number | null
+          total_cost_usd: number | null
+          total_duration_ms: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          api_calls_count?: number | null
+          created_at?: string | null
+          domain: string
+          ended_at?: string | null
+          error_count?: number | null
+          id?: string
+          last_activity?: string | null
+          last_error?: string | null
+          memory_mb?: number | null
+          provider: string
+          started_at?: string | null
+          status?: string
+          tabs_open?: number | null
+          tasks_completed?: number | null
+          total_cost_usd?: number | null
+          total_duration_ms?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          api_calls_count?: number | null
+          created_at?: string | null
+          domain?: string
+          ended_at?: string | null
+          error_count?: number | null
+          id?: string
+          last_activity?: string | null
+          last_error?: string | null
+          memory_mb?: number | null
+          provider?: string
+          started_at?: string | null
+          status?: string
+          tabs_open?: number | null
+          tasks_completed?: number | null
+          total_cost_usd?: number | null
+          total_duration_ms?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      browser_automation_tasks: {
+        Row: {
+          action: string
+          approval_status: string | null
+          completed_at: string | null
+          cost_usd: number | null
+          created_at: string | null
+          dependencies: string[] | null
+          domain: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          max_retries: number | null
+          parameters: Json | null
+          priority: number | null
+          provider: string
+          requires_approval: boolean | null
+          result: Json | null
+          retry_count: number | null
+          scheduled_for: string | null
+          session_id: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          approval_status?: string | null
+          completed_at?: string | null
+          cost_usd?: number | null
+          created_at?: string | null
+          dependencies?: string[] | null
+          domain?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          parameters?: Json | null
+          priority?: number | null
+          provider: string
+          requires_approval?: boolean | null
+          result?: Json | null
+          retry_count?: number | null
+          scheduled_for?: string | null
+          session_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          approval_status?: string | null
+          completed_at?: string | null
+          cost_usd?: number | null
+          created_at?: string | null
+          dependencies?: string[] | null
+          domain?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          parameters?: Json | null
+          priority?: number | null
+          provider?: string
+          requires_approval?: boolean | null
+          result?: Json | null
+          retry_count?: number | null
+          scheduled_for?: string | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "browser_automation_tasks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_metrics: {
         Row: {
           id: string
@@ -2115,6 +3159,146 @@ export type Database = {
           },
         ]
       }
+      trading_alerts: {
+        Row: {
+          alert_type: string | null
+          auto_action: string | null
+          condition_type: string | null
+          condition_value: number | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          status: string | null
+          symbol: string
+          triggered_at: string | null
+          triggered_price: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type?: string | null
+          auto_action?: string | null
+          condition_type?: string | null
+          condition_value?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          status?: string | null
+          symbol: string
+          triggered_at?: string | null
+          triggered_price?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string | null
+          auto_action?: string | null
+          condition_type?: string | null
+          condition_value?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          status?: string | null
+          symbol?: string
+          triggered_at?: string | null
+          triggered_price?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trading_browser_actions: {
+        Row: {
+          action: string
+          cost_usd: number | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          exchange: string | null
+          id: string
+          result: Json | null
+          session_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          exchange?: string | null
+          id?: string
+          result?: Json | null
+          session_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          exchange?: string | null
+          id?: string
+          result?: Json | null
+          session_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_browser_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_compliance_checks: {
+        Row: {
+          check_date: string | null
+          compliance_score: number | null
+          created_at: string | null
+          flags: Json | null
+          id: string
+          insider_trading_risk: number | null
+          margin_violations: number | null
+          pdt_violations: number | null
+          short_sale_violations: number | null
+          total_violations: number | null
+          user_id: string
+        }
+        Insert: {
+          check_date?: string | null
+          compliance_score?: number | null
+          created_at?: string | null
+          flags?: Json | null
+          id?: string
+          insider_trading_risk?: number | null
+          margin_violations?: number | null
+          pdt_violations?: number | null
+          short_sale_violations?: number | null
+          total_violations?: number | null
+          user_id: string
+        }
+        Update: {
+          check_date?: string | null
+          compliance_score?: number | null
+          created_at?: string | null
+          flags?: Json | null
+          id?: string
+          insider_trading_risk?: number | null
+          margin_violations?: number | null
+          pdt_violations?: number | null
+          short_sale_violations?: number | null
+          total_violations?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       trading_executions: {
         Row: {
           action: string
@@ -2161,6 +3345,144 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trading_journals: {
+        Row: {
+          commission: number | null
+          created_at: string | null
+          entry_price: number
+          entry_time: string
+          execution_quality: string | null
+          exit_price: number | null
+          exit_time: string | null
+          id: string
+          net_pl: number | null
+          notes: string | null
+          pl_dollars: number | null
+          pl_percent: number | null
+          quantity: number
+          screenshot_url: string | null
+          setup: string | null
+          symbol: string
+          tags: string[] | null
+          trade_date: string
+          trade_duration_minutes: number | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          commission?: number | null
+          created_at?: string | null
+          entry_price: number
+          entry_time: string
+          execution_quality?: string | null
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          net_pl?: number | null
+          notes?: string | null
+          pl_dollars?: number | null
+          pl_percent?: number | null
+          quantity: number
+          screenshot_url?: string | null
+          setup?: string | null
+          symbol: string
+          tags?: string[] | null
+          trade_date: string
+          trade_duration_minutes?: number | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          commission?: number | null
+          created_at?: string | null
+          entry_price?: number
+          entry_time?: string
+          execution_quality?: string | null
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          net_pl?: number | null
+          notes?: string | null
+          pl_dollars?: number | null
+          pl_percent?: number | null
+          quantity?: number
+          screenshot_url?: string | null
+          setup?: string | null
+          symbol?: string
+          tags?: string[] | null
+          trade_date?: string
+          trade_duration_minutes?: number | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trading_market_data: {
+        Row: {
+          created_at: string | null
+          high_24h: number | null
+          id: string
+          low_24h: number | null
+          ma200: number | null
+          ma50: number | null
+          macd: number | null
+          macd_histogram: number | null
+          macd_signal: number | null
+          price: number | null
+          provider: string | null
+          rsi: number | null
+          sentiment_label: string | null
+          sentiment_score: number | null
+          symbol: string
+          timestamp: string | null
+          user_id: string
+          volume_24h: number | null
+          volume_change_24h: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          high_24h?: number | null
+          id?: string
+          low_24h?: number | null
+          ma200?: number | null
+          ma50?: number | null
+          macd?: number | null
+          macd_histogram?: number | null
+          macd_signal?: number | null
+          price?: number | null
+          provider?: string | null
+          rsi?: number | null
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          symbol: string
+          timestamp?: string | null
+          user_id: string
+          volume_24h?: number | null
+          volume_change_24h?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          high_24h?: number | null
+          id?: string
+          low_24h?: number | null
+          ma200?: number | null
+          ma50?: number | null
+          macd?: number | null
+          macd_histogram?: number | null
+          macd_signal?: number | null
+          price?: number | null
+          provider?: string | null
+          rsi?: number | null
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          symbol?: string
+          timestamp?: string | null
+          user_id?: string
+          volume_24h?: number | null
+          volume_change_24h?: number | null
+        }
+        Relationships: []
       }
       trading_orders: {
         Row: {
@@ -2239,6 +3561,65 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_portfolio_snapshots: {
+        Row: {
+          account_value: number | null
+          buying_power: number | null
+          cash_balance: number | null
+          created_at: string | null
+          day_pl: number | null
+          day_pl_percent: number | null
+          exchange: string
+          id: string
+          metadata: Json | null
+          positions: Json | null
+          session_id: string | null
+          total_pl: number | null
+          total_pl_percent: number | null
+          user_id: string
+        }
+        Insert: {
+          account_value?: number | null
+          buying_power?: number | null
+          cash_balance?: number | null
+          created_at?: string | null
+          day_pl?: number | null
+          day_pl_percent?: number | null
+          exchange: string
+          id?: string
+          metadata?: Json | null
+          positions?: Json | null
+          session_id?: string | null
+          total_pl?: number | null
+          total_pl_percent?: number | null
+          user_id: string
+        }
+        Update: {
+          account_value?: number | null
+          buying_power?: number | null
+          cash_balance?: number | null
+          created_at?: string | null
+          day_pl?: number | null
+          day_pl_percent?: number | null
+          exchange?: string
+          id?: string
+          metadata?: Json | null
+          positions?: Json | null
+          session_id?: string | null
+          total_pl?: number | null
+          total_pl_percent?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_portfolio_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "browser_automation_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -2448,6 +3829,54 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           win_rate?: number | null
+        }
+        Relationships: []
+      }
+      trading_tax_reports: {
+        Row: {
+          allowable_losses: number | null
+          created_at: string | null
+          export_format: string | null
+          file_url: string | null
+          generated_at: string | null
+          id: string
+          long_term_gains: number | null
+          report_type: string | null
+          short_term_gains: number | null
+          tax_year: number
+          total_gains: number | null
+          user_id: string
+          wash_sale_losses: number | null
+        }
+        Insert: {
+          allowable_losses?: number | null
+          created_at?: string | null
+          export_format?: string | null
+          file_url?: string | null
+          generated_at?: string | null
+          id?: string
+          long_term_gains?: number | null
+          report_type?: string | null
+          short_term_gains?: number | null
+          tax_year: number
+          total_gains?: number | null
+          user_id: string
+          wash_sale_losses?: number | null
+        }
+        Update: {
+          allowable_losses?: number | null
+          created_at?: string | null
+          export_format?: string | null
+          file_url?: string | null
+          generated_at?: string | null
+          id?: string
+          long_term_gains?: number | null
+          report_type?: string | null
+          short_term_gains?: number | null
+          tax_year?: number
+          total_gains?: number | null
+          user_id?: string
+          wash_sale_losses?: number | null
         }
         Relationships: []
       }
@@ -2927,10 +4356,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_trading_statistics: {
+        Args: { user_id_param: string }
+        Returns: Json
+      }
+      check_domain_rate_limit: {
+        Args: { domain_param: string; user_id_param: string }
+        Returns: Json
+      }
       get_admin_api_key_for_dfy: {
         Args: { _key_name: string; _user_id: string }
         Returns: string
       }
+      get_blog_performance_summary: {
+        Args: { days_back?: number; user_id_param: string }
+        Returns: Json
+      }
+      get_user_daily_cost: { Args: { user_id_param: string }; Returns: number }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {

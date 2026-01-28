@@ -3,39 +3,50 @@
  * Main interface for interacting with browser automation services
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-interface BrowserSession {
+export interface BrowserSession {
   id: string;
   user_id: string;
-  session_type:
-    | "trading"
-    | "blog"
-    | "seo"
-    | "social"
-    | "form"
-    | "visual"
-    | "general";
-  session_name?: string;
-  provider: "agent-browser" | "playwright" | "brightdata" | "fallback";
-  status: "pending" | "initializing" | "running" | "paused" | "completed" | "failed";
-  cost_usd: number;
-  api_calls: number;
-  screenshot_urls: string[];
-  created_at: string;
-  updated_at: string;
-  metadata?: Record<string, unknown>;
+  domain: string;
+  provider: string;
+  status: string;
+  started_at?: string | null;
+  ended_at?: string | null;
+  last_activity?: string | null;
+  total_cost_usd?: number | null;
+  total_duration_ms?: number | null;
+  api_calls_count?: number | null;
+  tasks_completed?: number | null;
+  error_count?: number | null;
+  last_error?: string | null;
+  memory_mb?: number | null;
+  tabs_open?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
-interface BrowserTask {
+export interface BrowserTask {
   id: string;
   session_id: string;
-  task_name: string;
-  task_category: string;
+  action: string;
+  provider: string;
   status: string;
-  result?: Record<string, unknown>;
-  error?: string;
-  requires_approval: boolean;
+  user_id: string;
+  parameters?: Record<string, unknown> | null;
+  result?: Record<string, unknown> | null;
+  error_message?: string | null;
+  requires_approval?: boolean | null;
+  domain?: string | null;
+  cost_usd?: number | null;
+  duration_ms?: number | null;
+  priority?: number | null;
+  retry_count?: number | null;
+  max_retries?: number | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface BrowserAutomationClientConfig {
@@ -44,11 +55,10 @@ interface BrowserAutomationClientConfig {
 }
 
 export class BrowserAutomationClient {
-  private supabase: ReturnType<typeof createClient>;
   private userId: string | null = null;
 
-  constructor(config: BrowserAutomationClientConfig) {
-    this.supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+  constructor(_config?: BrowserAutomationClientConfig) {
+    // Config is no longer needed since we use the shared supabase client
   }
 
   /**
@@ -75,23 +85,19 @@ export class BrowserAutomationClient {
     }
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_sessions")
         .insert({
           user_id: this.userId,
-          session_type: sessionType,
-          session_name: options?.name,
-          description: options?.description,
-          provider: "playwright", // Will be optimized based on tasks
+          domain: options?.name || sessionType,
+          provider: "playwright",
           status: "initializing",
-          metadata: options?.metadata || {},
-          tags: options?.tags || [],
         })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BrowserSession;
     } catch (error) {
       throw new Error(
         `Failed to create session: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -108,7 +114,7 @@ export class BrowserAutomationClient {
     }
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_sessions")
         .select("*")
         .eq("id", sessionId)
@@ -116,8 +122,8 @@ export class BrowserAutomationClient {
         .single();
 
       if (error) return null;
-      return data;
-    } catch (error) {
+      return data as BrowserSession;
+    } catch {
       return null;
     }
   }
@@ -134,7 +140,7 @@ export class BrowserAutomationClient {
     }
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_sessions")
         .select("*")
         .eq("user_id", this.userId)
@@ -142,7 +148,7 @@ export class BrowserAutomationClient {
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as BrowserSession[];
     } catch (error) {
       throw new Error(
         `Failed to list sessions: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -162,28 +168,26 @@ export class BrowserAutomationClient {
       const endTime = new Date().toISOString();
 
       // Mark pending tasks as skipped
-      await this.supabase
+      await supabase
         .from("browser_automation_tasks")
-        .update({ status: "skipped" })
+        .update({ status: "skipped" } as never)
         .eq("session_id", sessionId)
         .eq("status", "pending");
 
       // Close session
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_sessions")
         .update({
           status: "completed",
-          end_time: endTime,
-          completed_at: endTime,
-          updated_at: endTime,
-        })
+          ended_at: endTime,
+        } as never)
         .eq("id", sessionId)
         .eq("user_id", this.userId)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BrowserSession;
     } catch (error) {
       throw new Error(
         `Failed to close session: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -210,24 +214,23 @@ export class BrowserAutomationClient {
     }
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_tasks")
         .insert({
           session_id: sessionId,
           user_id: this.userId,
-          task_name: taskName,
-          task_category: taskCategory,
-          task_description: options?.description,
-          parameters,
+          action: `${taskCategory}:${taskName}`,
+          provider: "playwright",
+          parameters: parameters as never,
           requires_approval: options?.requires_approval || false,
           priority: options?.priority || 5,
           status: "pending",
-        })
+        } as never)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BrowserTask;
     } catch (error) {
       throw new Error(
         `Failed to add task: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -240,14 +243,14 @@ export class BrowserAutomationClient {
    */
   async getTask(taskId: string): Promise<BrowserTask | null> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_tasks")
         .select("*")
         .eq("id", taskId)
         .single();
 
       if (error) return null;
-      return data;
+      return data as BrowserTask;
     } catch {
       return null;
     }
@@ -266,33 +269,30 @@ export class BrowserAutomationClient {
       const task = await this.getTask(taskId);
       if (!task) throw new Error("Task not found");
 
-      // Determine which executor to use based on task complexity
-      const executorFunction = this.selectExecutor(task.task_category);
+      // Determine which executor to use based on action
+      const actionParts = task.action.split(":");
+      const taskCategory = actionParts[0] || "general";
+      const executorFunction = this.selectExecutor(taskCategory);
 
       // Call the executor
-      const response = await fetch(
-        `${window.location.origin}/functions/v1/${executorFunction}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await this.getAuthToken()}`,
-          },
-          body: JSON.stringify({
-            task_id: taskId,
-            session_id: sessionId,
-            user_id: this.userId,
-            task_name: task.task_name,
-            parameters: task.parameters || {},
-          }),
-        }
-      );
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
 
-      if (!response.ok) {
-        throw new Error(`Execution failed with status ${response.status}`);
+      const response = await supabase.functions.invoke(executorFunction, {
+        body: {
+          task_id: taskId,
+          session_id: sessionId,
+          user_id: this.userId,
+          action: task.action,
+          parameters: task.parameters || {},
+        },
+      });
+
+      if (response.error) {
+        throw new Error(`Execution failed: ${response.error.message}`);
       }
 
-      return await response.json();
+      return response.data;
     } catch (error) {
       throw new Error(
         `Failed to execute task: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -312,13 +312,13 @@ export class BrowserAutomationClient {
       const session = await this.getSession(sessionId);
       if (!session) return null;
 
+      const totalCost = session.total_cost_usd || 0;
+      const apiCalls = session.api_calls_count || 0;
+
       return {
-        total_cost_usd: session.cost_usd,
-        api_calls: session.api_calls,
-        cost_per_call:
-          session.api_calls > 0
-            ? session.cost_usd / session.api_calls
-            : 0,
+        total_cost_usd: totalCost,
+        api_calls: apiCalls,
+        cost_per_call: apiCalls > 0 ? totalCost / apiCalls : 0,
       };
     } catch {
       return null;
@@ -330,7 +330,7 @@ export class BrowserAutomationClient {
    */
   async getAuditTrail(sessionId: string, limit: number = 100): Promise<unknown[]> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_audit")
         .select("*")
         .eq("session_id", sessionId)
@@ -339,10 +339,8 @@ export class BrowserAutomationClient {
 
       if (error) throw error;
       return data || [];
-    } catch (error) {
-      throw new Error(
-        `Failed to get audit trail: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+    } catch {
+      return [];
     }
   }
 
@@ -360,22 +358,22 @@ export class BrowserAutomationClient {
     }
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("browser_automation_approvals")
         .insert({
-          session_id: sessionId,
           task_id: taskId,
-          requester_id: this.userId,
-          approval_type: approvalType,
-          action_description: description,
+          user_id: this.userId,
+          action: approvalType,
+          details: { description, session_id: sessionId },
           status: "pending",
           expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        })
+        } as never)
         .select()
         .single();
 
       if (error) throw error;
-      return data.id;
+      if (!data) throw new Error("Failed to create approval request");
+      return (data as { id: string }).id;
     } catch (error) {
       throw new Error(
         `Failed to request approval: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -404,25 +402,14 @@ export class BrowserAutomationClient {
         return "playwright-mcp-executor";
     }
   }
-
-  /**
-   * Get current auth token
-   */
-  private async getAuthToken(): Promise<string> {
-    const {
-      data: { session },
-    } = await this.supabase.auth.getSession();
-    if (!session) throw new Error("No active session");
-    return session.access_token;
-  }
 }
 
 /**
  * Create a browser automation client instance
  */
 export function createBrowserAutomationClient(
-  supabaseUrl: string,
-  supabaseAnonKey: string
+  supabaseUrl?: string,
+  supabaseAnonKey?: string
 ): BrowserAutomationClient {
-  return new BrowserAutomationClient({ supabaseUrl, supabaseAnonKey });
+  return new BrowserAutomationClient({ supabaseUrl: supabaseUrl || "", supabaseAnonKey: supabaseAnonKey || "" });
 }
