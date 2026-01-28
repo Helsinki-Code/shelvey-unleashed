@@ -16,6 +16,7 @@ interface ExchangeConfig {
 interface RebalanceRequest {
   symbol_allocations: Record<string, number>; // {AAPL: 30, BTC: 20, ...}
   require_approval?: boolean;
+  [key: string]: unknown;
 }
 
 interface UseTradingBrowserAutomationReturn {

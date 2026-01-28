@@ -243,7 +243,7 @@ export const BrowserAutomationPanel = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium mb-1">Risk Management</p>
                 <p className="text-xs text-muted-foreground">
-                  Trade execution requires approval for positions > $10,000. Enable MFA for maximum security.
+                  Trade execution requires approval for positions greater than $10,000. Enable MFA for maximum security.
                 </p>
               </div>
             </div>
