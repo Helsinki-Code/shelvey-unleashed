@@ -806,6 +806,7 @@ export type Database = {
       }
       blog_posts: {
         Row: {
+          blog_project_id: string | null
           content: string | null
           created_at: string | null
           excerpt: string | null
@@ -828,6 +829,7 @@ export type Database = {
           wordpress_url: string | null
         }
         Insert: {
+          blog_project_id?: string | null
           content?: string | null
           created_at?: string | null
           excerpt?: string | null
@@ -850,6 +852,7 @@ export type Database = {
           wordpress_url?: string | null
         }
         Update: {
+          blog_project_id?: string | null
           content?: string | null
           created_at?: string | null
           excerpt?: string | null
@@ -870,6 +873,65 @@ export type Database = {
           word_count?: number | null
           wordpress_id?: number | null
           wordpress_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_blog_project_id_fkey"
+            columns: ["blog_project_id"]
+            isOneToOne: false
+            referencedRelation: "blog_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_projects: {
+        Row: {
+          created_at: string | null
+          current_phase: number | null
+          domain: string | null
+          id: string
+          metadata: Json | null
+          monthly_traffic: number | null
+          name: string
+          niche: string | null
+          platform: string | null
+          status: string | null
+          total_posts: number | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_phase?: number | null
+          domain?: string | null
+          id?: string
+          metadata?: Json | null
+          monthly_traffic?: number | null
+          name: string
+          niche?: string | null
+          platform?: string | null
+          status?: string | null
+          total_posts?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_phase?: number | null
+          domain?: string | null
+          id?: string
+          metadata?: Json | null
+          monthly_traffic?: number | null
+          name?: string
+          niche?: string | null
+          platform?: string | null
+          status?: string | null
+          total_posts?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

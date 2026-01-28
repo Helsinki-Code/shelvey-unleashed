@@ -4,11 +4,14 @@ import { motion } from "framer-motion";
 import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
 import { PageHeader } from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   TrendingUp,
   TrendingDown,
@@ -19,28 +22,117 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle,
+  Plus,
+  Play,
+  Settings,
+  Trash2,
+  DollarSign,
+  Shield,
+  Target,
 } from "lucide-react";
 import { ExchangeWebMonitor } from "@/components/trading/ExchangeWebMonitor";
 import { TradingJournalViewer } from "@/components/trading/TradingJournalViewer";
 import { MarketDataScraper } from "@/components/trading/MarketDataScraper";
 import { AutoRebalanceConfig } from "@/components/trading/AutoRebalanceConfig";
 import { BrowserAutomationPanel } from "@/components/trading/BrowserAutomationPanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface TradingProject {
+  id: string;
+  name: string;
+  exchange: string;
+  mode: string;
+  status: string;
+  capital: number;
+  total_pnl: number;
+  risk_level: string;
+  current_phase: number;
+  created_at: string;
+}
 
 const TradingDashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("projects");
+  const [tradingProjects, setTradingProjects] = useState<TradingProject[]>([]);
+  const [selectedProject, setSelectedProject] = useState<TradingProject | null>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    exchange: "alpaca",
+    mode: "paper",
+    capital: "10000",
+    risk_level: "moderate",
+  });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (user) {
+      fetchTradingProjects();
       fetchMetrics();
-      const interval = setInterval(fetchMetrics, 10000); // Refresh every 10 seconds
-      return () => clearInterval(interval);
+      
+      // Real-time subscription for trading projects
+      const channel = supabase
+        .channel('trading-projects-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trading_projects',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchTradingProjects();
+          }
+        )
+        .subscribe();
+
+      const interval = setInterval(fetchMetrics, 10000);
+      return () => {
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
+
+  const fetchTradingProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('trading_projects')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTradingProjects(data || []);
+      if (data && data.length > 0 && !selectedProject) {
+        setSelectedProject(data[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching trading projects:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchMetrics = async () => {
     try {
@@ -58,7 +150,6 @@ const TradingDashboardPage = () => {
       if (response.data) {
         setMetrics(response.data);
       }
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching metrics:", error);
     } finally {
@@ -66,38 +157,115 @@ const TradingDashboardPage = () => {
     }
   };
 
+  const createTradingProject = async () => {
+    if (!newProject.name.trim()) {
+      toast.error("Please enter a project name");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      const { data, error } = await supabase
+        .from('trading_projects')
+        .insert({
+          user_id: user?.id,
+          name: newProject.name,
+          exchange: newProject.exchange,
+          mode: newProject.mode,
+          status: 'active',
+          capital: parseFloat(newProject.capital) || 10000,
+          total_pnl: 0,
+          risk_level: newProject.risk_level,
+          current_phase: 1,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success(`Trading project "${newProject.name}" created!`);
+      setNewProject({ name: "", exchange: "alpaca", mode: "paper", capital: "10000", risk_level: "moderate" });
+      setShowCreateDialog(false);
+      setSelectedProject(data);
+
+      // Log agent activity
+      await supabase.from('agent_activity_logs').insert({
+        agent_id: 'trading-ceo',
+        agent_name: 'Trading CEO',
+        action: `Created new trading project: ${newProject.name}`,
+        status: 'completed',
+        metadata: { projectId: data.id, exchange: newProject.exchange, mode: newProject.mode },
+      });
+    } catch (error: any) {
+      console.error("Error creating trading project:", error);
+      toast.error(error.message || "Failed to create trading project");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const deleteTradingProject = async (projectId: string) => {
+    if (!confirm("Are you sure you want to delete this trading project?")) return;
+
+    try {
+      const { error } = await supabase
+        .from('trading_projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      toast.success("Trading project deleted");
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
+      }
+    } catch (error: any) {
+      console.error("Error deleting trading project:", error);
+      toast.error(error.message || "Failed to delete trading project");
+    }
+  };
+
+  const totalCapital = tradingProjects.reduce((sum, p) => sum + (p.capital || 0), 0);
+  const totalPnL = tradingProjects.reduce((sum, p) => sum + (p.total_pnl || 0), 0);
+
   const statsData = [
     {
-      label: "System Health",
-      value: `${metrics?.successRate || 0}%`,
+      label: "Active Projects",
+      value: tradingProjects.filter(p => p.status === 'active').length.toString(),
       icon: Activity,
-      color: metrics?.successRate > 90 ? "text-green-500" : "text-yellow-500",
-      bgColor:
-        metrics?.successRate > 90
-          ? "bg-green-500/10"
-          : "bg-yellow-500/10",
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
     },
     {
-      label: "Avg Latency",
-      value: `${metrics?.avgLatency || 0}ms`,
-      icon: Zap,
+      label: "Total Capital",
+      value: `$${totalCapital.toLocaleString()}`,
+      icon: DollarSign,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
     },
     {
-      label: "Active Sessions",
-      value: `${metrics?.activeSessions || 0}`,
-      icon: Brain,
+      label: "Total P&L",
+      value: `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString()}`,
+      icon: totalPnL >= 0 ? TrendingUp : TrendingDown,
+      color: totalPnL >= 0 ? "text-green-500" : "text-red-500",
+      bgColor: totalPnL >= 0 ? "bg-green-500/10" : "bg-red-500/10",
+    },
+    {
+      label: "System Health",
+      value: `${metrics?.successRate || 100}%`,
+      icon: Shield,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
     },
-    {
-      label: "Monthly Cost",
-      value: `$${metrics?.monthlyCost || 0}`,
-      icon: TrendingUp,
-      color: "text-amber-500",
-      bgColor: "bg-amber-500/10",
-    },
+  ];
+
+  const phaseNames = [
+    "Research",
+    "Strategy",
+    "Setup",
+    "Execution",
+    "Monitor",
+    "Optimize",
   ];
 
   return (
@@ -114,10 +282,118 @@ const TradingDashboardPage = () => {
                   📊 Trading AI Dashboard
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                  Multi-exchange automation with AI-powered strategies
+                  Multi-exchange automation with AI-powered strategies & real-time monitoring
                 </p>
               </div>
-              <PageHeader />
+              <div className="flex items-center gap-3">
+                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create Trading Project</DialogTitle>
+                      <DialogDescription>
+                        Start a new trading project with AI-powered strategy execution.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Project Name *</Label>
+                        <Input
+                          id="name"
+                          placeholder="e.g., Crypto Momentum Strategy"
+                          value={newProject.name}
+                          onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="exchange">Exchange</Label>
+                        <Select
+                          value={newProject.exchange}
+                          onValueChange={(value) => setNewProject({ ...newProject, exchange: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select exchange" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="alpaca">Alpaca (Stocks)</SelectItem>
+                            <SelectItem value="binance">Binance (Crypto)</SelectItem>
+                            <SelectItem value="coinbase">Coinbase (Crypto)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mode">Trading Mode</Label>
+                        <Select
+                          value={newProject.mode}
+                          onValueChange={(value) => setNewProject({ ...newProject, mode: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paper">Paper Trading (Simulated)</SelectItem>
+                            <SelectItem value="live">Live Trading (Real Money)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="capital">Starting Capital ($)</Label>
+                        <Input
+                          id="capital"
+                          type="number"
+                          placeholder="10000"
+                          value={newProject.capital}
+                          onChange={(e) => setNewProject({ ...newProject, capital: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="risk">Risk Level</Label>
+                        <Select
+                          value={newProject.risk_level}
+                          onValueChange={(value) => setNewProject({ ...newProject, risk_level: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select risk level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="conservative">Conservative</SelectItem>
+                            <SelectItem value="moderate">Moderate</SelectItem>
+                            <SelectItem value="aggressive">Aggressive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {newProject.mode === "live" && (
+                        <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5" />
+                            <div className="text-sm">
+                              <p className="font-medium text-orange-500">Live Trading Warning</p>
+                              <p className="text-muted-foreground text-xs mt-1">
+                                Live trading involves real money. All trades require dual approval.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={createTradingProject} disabled={creating}>
+                        {creating ? "Creating..." : "Create Project"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <PageHeader />
+              </div>
             </div>
 
             {/* Quick Stats Grid */}
@@ -159,6 +435,10 @@ const TradingDashboardPage = () => {
             {/* Tab Navigation */}
             <div className="flex items-center justify-between">
               <TabsList className="bg-background border border-border">
+                <TabsTrigger value="projects" className="gap-2">
+                  <Target className="h-4 w-4" />
+                  Projects ({tradingProjects.length})
+                </TabsTrigger>
                 <TabsTrigger value="overview" className="gap-2">
                   <LineChart className="h-4 w-4" />
                   Overview
@@ -184,7 +464,7 @@ const TradingDashboardPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchMetrics}
+                onClick={() => { fetchTradingProjects(); fetchMetrics(); }}
                 disabled={refreshing}
               >
                 <RefreshCw
@@ -193,6 +473,144 @@ const TradingDashboardPage = () => {
                 Refresh
               </Button>
             </div>
+
+            {/* Projects Tab */}
+            <TabsContent value="projects" className="space-y-6">
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-20 bg-muted rounded" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : tradingProjects.length === 0 ? (
+                <Card className="border-dashed border-2">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <LineChart className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Trading Projects</h3>
+                    <p className="text-muted-foreground text-center mb-4">
+                      Create your first trading project and let AI handle research, strategy, and execution.
+                    </p>
+                    <Button
+                      onClick={() => setShowCreateDialog(true)}
+                      className="bg-gradient-to-r from-blue-500 to-purple-500"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Project
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {tradingProjects.map((project) => (
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Card
+                        className={`cursor-pointer transition-all ${
+                          selectedProject?.id === project.id
+                            ? "border-blue-500 bg-blue-500/5"
+                            : "hover:border-border"
+                        }`}
+                        onClick={() => setSelectedProject(project)}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <LineChart className="h-4 w-4 text-blue-500" />
+                                {project.name}
+                              </CardTitle>
+                              <CardDescription className="text-xs mt-1">
+                                {project.exchange.toUpperCase()} • {project.mode === 'paper' ? '📄 Paper' : '💰 Live'}
+                              </CardDescription>
+                            </div>
+                            <Badge
+                              className={
+                                project.status === "active"
+                                  ? "bg-green-500"
+                                  : "bg-gray-500"
+                              }
+                            >
+                              {project.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-2">
+                          <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                            <div className="p-2 bg-muted rounded">
+                              <p className="text-muted-foreground">Capital</p>
+                              <p className="font-bold">${(project.capital || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="p-2 bg-muted rounded">
+                              <p className="text-muted-foreground">P&L</p>
+                              <p className={`font-bold ${(project.total_pnl || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {(project.total_pnl || 0) >= 0 ? '+' : ''}${(project.total_pnl || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="p-2 bg-muted rounded">
+                              <p className="text-muted-foreground">Risk</p>
+                              <p className="font-bold capitalize">{project.risk_level || 'moderate'}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                            <span>Phase {project.current_phase}/6</span>
+                            <span>{phaseNames[project.current_phase - 1]}</span>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-blue-500 hover:bg-blue-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/trading/phase/${project.current_phase}`);
+                              }}
+                            >
+                              <Play className="h-3 w-3 mr-1" />
+                              Open
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Settings className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteTradingProject(project.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+
+                  {/* Add New Project Card */}
+                  <Card
+                    className="border-dashed border-2 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                    onClick={() => setShowCreateDialog(true)}
+                  >
+                    <CardContent className="flex flex-col items-center justify-center h-full py-12">
+                      <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Add New Project</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
@@ -209,10 +627,7 @@ const TradingDashboardPage = () => {
                       <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
                         Buy
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                      >
+                      <Button variant="outline" className="w-full">
                         Sell
                       </Button>
                       <Button variant="outline" className="w-full">

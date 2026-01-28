@@ -291,7 +291,7 @@ async function learnFromFailure(
     }
 
     return {
-      rule_id: rule.id,
+      rule_id: rule?.id || "",
       new_selector: bestSelector,
       selector_type: "css",
       confidence_score: highestSuccessRate,

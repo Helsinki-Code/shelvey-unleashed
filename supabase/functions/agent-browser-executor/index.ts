@@ -18,6 +18,7 @@ interface AgentBrowserResponse {
   task_id: string;
   session_id: string;
   status: "success" | "failed" | "pending";
+  success?: boolean;
   result?: Record<string, unknown>;
   error?: string;
   screenshots?: string[];
@@ -180,6 +181,7 @@ async function executeAgentBrowserTask(
     );
 
     // Step 5: Log execution completion
+    const isSuccess = executionResult.success ?? executionResult.status === "success";
     await logAuditAction(
       task.session_id,
       task.task_id,
@@ -187,7 +189,7 @@ async function executeAgentBrowserTask(
       {
         action_type: "agent_browser_complete",
         action_description: `Completed Agent-Browser task: ${task.task_name}`,
-        success: executionResult.success,
+        success: isSuccess,
         response_data: executionResult.result,
         error: executionResult.error,
         duration_ms: executionResult.execution_time_ms,
@@ -200,13 +202,13 @@ async function executeAgentBrowserTask(
     await updateTaskStatus(
       task.task_id,
       task.user_id,
-      executionResult.success ? "completed" : "failed",
+      isSuccess ? "completed" : "failed",
       executionResult.result,
       executionResult.error
     );
 
     // Step 7: Update session cost and metrics
-    if (executionResult.success) {
+    if (isSuccess) {
       await client
         .from("browser_automation_sessions")
         .update({
@@ -221,7 +223,7 @@ async function executeAgentBrowserTask(
     return {
       task_id: task.task_id,
       session_id: task.session_id,
-      status: executionResult.success ? "success" : "failed",
+      status: isSuccess ? "success" : "failed",
       result: executionResult.result,
       error: executionResult.error,
       screenshots: executionResult.screenshots,
