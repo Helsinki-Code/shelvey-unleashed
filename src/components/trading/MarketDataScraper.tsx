@@ -1,188 +1,203 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Download, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Activity, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 
-interface MarketData {
-  symbol: string;
-  current_price: number;
-  rsi: number;
-  macd: number;
-  moving_avg_50: number;
-  moving_avg_200: number;
-  sentiment_score: number;
-  volume_24h: number;
-}
+export const MarketDataScraper = () => {
+  const { user } = useAuth();
+  const [marketData, setMarketData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-interface MarketDataScraperProps {
-  onScrape?: (symbols: string[]) => Promise<void>;
-  isLoading?: boolean;
-  data?: MarketData[];
-}
+  useEffect(() => {
+    if (user) {
+      fetchMarketData();
+      const interval = setInterval(fetchMarketData, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
-export function MarketDataScraper({
-  onScrape,
-  isLoading = false,
-  data = [],
-}: MarketDataScraperProps) {
-  const [symbols, setSymbols] = useState("AAPL,BTC,MSFT,TSLA");
-  const [refreshInterval, setRefreshInterval] = useState("30");
+  const fetchMarketData = async () => {
+    try {
+      setRefreshing(true);
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) return;
 
-  const handleScrape = async () => {
-    if (onScrape) {
-      const symbolList = symbols.split(",").map((s) => s.trim());
-      await onScrape(symbolList);
+      const response = await supabase.functions.invoke("trading-browser-agent", {
+        body: { action: "get_market_data" },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
+      });
+
+      if (response.data) {
+        setMarketData(response.data);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching market data:", error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
-  const handleExport = () => {
-    if (data.length === 0) return;
+  if (loading) {
+    return (
+      <Card className="animate-pulse">
+        <CardContent className="p-6">
+          <div className="h-40 bg-muted rounded" />
+        </CardContent>
+      </Card>
+    );
+  }
 
-    const csv = [
-      ["Symbol", "Price", "RSI", "MACD", "MA50", "MA200", "Sentiment", "Volume"],
-      ...data.map((d) => [
-        d.symbol,
-        d.current_price.toFixed(2),
-        d.rsi.toFixed(2),
-        d.macd.toFixed(4),
-        d.moving_avg_50.toFixed(2),
-        d.moving_avg_200.toFixed(2),
-        d.sentiment_score.toFixed(2),
-        d.volume_24h.toLocaleString(),
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `market-data-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-  };
+  const trendingUp = marketData?.trending?.filter((t: any) => t.change > 0) || [];
+  const trendingDown = marketData?.trending?.filter((t: any) => t.change < 0) || [];
+  const economicEvents = marketData?.economic_calendar || [];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" />
-          Market Data Scraper
-        </CardTitle>
-        <CardDescription>Real-time market data from multiple sources</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium mb-2">Symbols (comma-separated)</label>
-            <Input
-              value={symbols}
-              onChange={(e) => setSymbols(e.target.value)}
-              placeholder="AAPL,BTC,MSFT,TSLA"
-            />
+            <CardTitle className="text-base">Market Data Scraper</CardTitle>
+            <CardDescription>Real-time market trends & economic events</CardDescription>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Refresh Interval (seconds)</label>
-            <Input
-              value={refreshInterval}
-              onChange={(e) => setRefreshInterval(e.target.value)}
-              type="number"
-              min="5"
-              max="300"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleScrape}
-              disabled={isLoading}
-              className="flex-1 gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {isLoading ? "Scraping..." : "Scrape Data"}
-            </Button>
-            <Button
-              onClick={handleExport}
-              disabled={data.length === 0}
-              variant="outline"
-              className="gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fetchMarketData}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-
-        {data.length > 0 && (
-          <div className="mt-6">
-            <h3 className="font-semibold mb-3">Market Data</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium">Symbol</th>
-                    <th className="text-right py-2 font-medium">Price</th>
-                    <th className="text-right py-2 font-medium">RSI</th>
-                    <th className="text-right py-2 font-medium">MACD</th>
-                    <th className="text-right py-2 font-medium">MA50</th>
-                    <th className="text-right py-2 font-medium">MA200</th>
-                    <th className="text-right py-2 font-medium">Sentiment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((d) => {
-                    const rsiStatus =
-                      d.rsi > 70 ? "overbought" : d.rsi < 30 ? "oversold" : "neutral";
-                    const sentimentStatus =
-                      d.sentiment_score > 50 ? "bullish" : d.sentiment_score < -50 ? "bearish" : "neutral";
-
-                    return (
-                      <tr key={d.symbol} className="border-b hover:bg-gray-50">
-                        <td className="py-2 font-medium">{d.symbol}</td>
-                        <td className="text-right py-2">${d.current_price.toFixed(2)}</td>
-                        <td className="text-right py-2">
-                          <Badge
-                            variant="outline"
-                            className={
-                              rsiStatus === "overbought"
-                                ? "bg-red-50 text-red-700"
-                                : rsiStatus === "oversold"
-                                  ? "bg-green-50 text-green-700"
-                                  : "bg-blue-50 text-blue-700"
-                            }
-                          >
-                            {d.rsi.toFixed(1)}
-                          </Badge>
-                        </td>
-                        <td className="text-right py-2">{d.macd.toFixed(4)}</td>
-                        <td className="text-right py-2">${d.moving_avg_50.toFixed(2)}</td>
-                        <td className="text-right py-2">${d.moving_avg_200.toFixed(2)}</td>
-                        <td className="text-right py-2">
-                          <Badge
-                            variant="outline"
-                            className={
-                              sentimentStatus === "bullish"
-                                ? "bg-green-50 text-green-700"
-                                : sentimentStatus === "bearish"
-                                  ? "bg-red-50 text-red-700"
-                                  : "bg-gray-50 text-gray-700"
-                            }
-                          >
-                            {d.sentiment_score.toFixed(0)}
-                          </Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Market Overview */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Market Sentiment</p>
+              <p className="text-lg font-bold text-green-500">
+                {marketData?.sentiment || "Neutral"}
+              </p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Volatility Index</p>
+              <p className="text-2xl font-bold">{marketData?.vix || "0"}</p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Data Sources</p>
+              <p className="text-2xl font-bold">
+                {marketData?.sources || 0}
+              </p>
             </div>
           </div>
-        )}
+
+          {/* Trending Assets */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <p className="text-sm font-medium">Top Gainers</p>
+            </div>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {trendingUp.slice(0, 5).map((asset: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2 rounded border text-sm"
+                >
+                  <div>
+                    <p className="font-medium">{asset.symbol}</p>
+                    <p className="text-xs text-muted-foreground">{asset.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-green-500">
+                      +{asset.change?.toFixed(2)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ${asset.price?.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Biggest Losers */}
+          {trendingDown.length > 0 && (
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+                <p className="text-sm font-medium">Top Losers</p>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {trendingDown.slice(0, 5).map((asset: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 rounded border text-sm"
+                  >
+                    <div>
+                      <p className="font-medium">{asset.symbol}</p>
+                      <p className="text-xs text-muted-foreground">{asset.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-red-500">
+                        {asset.change?.toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ${asset.price?.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Economic Calendar */}
+          {economicEvents.length > 0 && (
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="h-4 w-4 text-blue-500" />
+                <p className="text-sm font-medium">Upcoming Events</p>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {economicEvents.slice(0, 5).map((event: any, idx: number) => (
+                  <div key={idx} className="p-2 rounded border text-sm">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-sm">{event.event}</p>
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                      >
+                        {event.impact || "Medium"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {event.country} • {event.time || "TBD"}
+                    </p>
+                    <p className="text-xs mt-1">
+                      Expected: <span className="font-medium">{event.expected}</span> •
+                      Previous: <span className="font-medium">{event.previous}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Scraper Stats */}
+          <div className="border-t pt-4 p-3 bg-blue-500/5 rounded-lg text-xs text-muted-foreground">
+            <p className="mb-1">Last Updated: {marketData?.last_updated || "—"}</p>
+            <p>Sources: TradingView • Finviz • StockTwits • Economic Calendar</p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
-}
+};

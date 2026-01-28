@@ -1,125 +1,135 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { TrendingUp, TrendingDown, Search } from "lucide-react";
 
-interface SEOMetric {
-  keyword: string;
-  rank: number;
-  rank_change: number;
-  search_volume: number;
-  ctr: number;
-  impressions: number;
-  clicks: number;
-}
+export const SEOMonitorDashboard = () => {
+  const { user } = useAuth();
+  const [seoData, setSeoData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const mockMetrics: SEOMetric[] = [
-  {
-    keyword: "trading strategies",
-    rank: 3,
-    rank_change: -1,
-    search_volume: 15000,
-    ctr: 8.5,
-    impressions: 2400,
-    clicks: 204,
-  },
-  {
-    keyword: "automated trading",
-    rank: 5,
-    rank_change: 2,
-    search_volume: 8900,
-    ctr: 6.2,
-    impressions: 1250,
-    clicks: 78,
-  },
-  {
-    keyword: "portfolio rebalancing",
-    rank: 7,
-    rank_change: -2,
-    search_volume: 5200,
-    ctr: 5.1,
-    impressions: 890,
-    clicks: 45,
-  },
-];
+  useEffect(() => {
+    if (user) {
+      fetchSEOData();
+      const interval = setInterval(fetchSEOData, 60000); // Refresh every 60 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
-export function SEOMonitorDashboard() {
+  const fetchSEOData = async () => {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) return;
+
+      const response = await supabase.functions.invoke("blog-publishing-executor", {
+        body: { action: "get_seo_data" },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
+      });
+
+      if (response.data) {
+        setSeoData(response.data);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching SEO data:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="animate-pulse">
+        <CardContent className="p-6">
+          <div className="h-40 bg-muted rounded" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const avgRank = seoData.length > 0
+    ? Math.round(seoData.reduce((sum: number, d: any) => sum + (d.ranking || 0), 0) / seoData.length)
+    : 0;
+
+  const topPages = seoData.sort((a: any, b: any) => (b.impressions || 0) - (a.impressions || 0)).slice(0, 5);
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            SEO Performance
-          </CardTitle>
-          <CardDescription>Keyword rankings and search performance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1 mb-4">
-            <div className="flex justify-between">
-              <p className="text-sm font-medium">Total Impressions</p>
-              <p className="text-lg font-bold">4,540</p>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">SEO Performance Monitor</CardTitle>
+        <CardDescription>Track rankings, impressions, and CTR</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Avg Ranking</p>
+              <p className="text-2xl font-bold">#{avgRank}</p>
             </div>
-            <div className="flex justify-between">
-              <p className="text-sm font-medium">Total Clicks</p>
-              <p className="text-lg font-bold">327</p>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Total Impressions</p>
+              <p className="text-2xl font-bold">
+                {seoData.reduce((sum: number, d: any) => sum + (d.impressions || 0), 0).toLocaleString()}
+              </p>
             </div>
-            <div className="flex justify-between">
-              <p className="text-sm font-medium">Average CTR</p>
-              <p className="text-lg font-bold">6.8%</p>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Tracked Keywords</p>
+              <p className="text-2xl font-bold">{seoData.length}</p>
             </div>
           </div>
 
+          {/* Top Pages */}
+          {topPages.length > 0 && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Top Ranking Pages</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {topPages.map((page: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 rounded border text-sm"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium truncate">{page.keyword || "Keyword"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        #{page.ranking || "N/A"} • {page.impressions || 0} impressions
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline" className="text-xs">
+                        {page.ctr || 0}% CTR
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SEO Score */}
+          <div className="border-t pt-4 p-4 bg-muted rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium">Overall SEO Health</p>
+              <span className="text-lg font-bold text-green-500">85/100</span>
+            </div>
+            <div className="w-full bg-background rounded-full h-2">
+              <div className="bg-green-500 h-2 rounded-full" style={{ width: "85%" }} />
+            </div>
+          </div>
+
+          {/* Recommendations */}
           <div className="border-t pt-4">
-            <h3 className="font-semibold text-sm mb-3">Top Keywords</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Keyword</th>
-                    <th className="text-right p-2 font-medium">Rank</th>
-                    <th className="text-right p-2 font-medium">Change</th>
-                    <th className="text-right p-2 font-medium">Volume</th>
-                    <th className="text-right p-2 font-medium">CTR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockMetrics.map((metric) => (
-                    <tr key={metric.keyword} className="border-b hover:bg-gray-50">
-                      <td className="p-2">{metric.keyword}</td>
-                      <td className="text-right p-2 font-semibold">#{metric.rank}</td>
-                      <td className={`text-right p-2 ${metric.rank_change > 0 ? "text-red-600" : "text-green-600"}`}>
-                        {metric.rank_change > 0 ? "↓" : "↑"} {Math.abs(metric.rank_change)}
-                      </td>
-                      <td className="text-right p-2">{(metric.search_volume / 1000).toFixed(1)}k</td>
-                      <td className="text-right p-2">{metric.ctr.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <p className="text-sm font-medium mb-2">Optimization Tips</p>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p>✓ Update meta descriptions for 3 pages</p>
+              <p>✓ Add internal links to boost authority</p>
+              <p>✓ Improve page speed for mobile users</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">SEO Improvements Suggested</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-start gap-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-            <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-yellow-800">Expand "trading strategies" post to 2000+ words</p>
-          </div>
-          <div className="flex items-start gap-2 p-2 bg-green-50 rounded border border-green-200">
-            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-green-800">Meta descriptions optimized</p>
-          </div>
-          <div className="flex items-start gap-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-            <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-yellow-800">Add internal links to portfolio rebalancing guide</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};

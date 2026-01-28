@@ -14,14 +14,16 @@ const BrowserAutomationHub = () => {
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background dark:bg-slate-950 flex">
       <SimpleDashboardSidebar />
 
       <main className="flex-1 ml-[260px] p-6">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold">🌐 Browser Automation Hub</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent dark:from-blue-400 dark:via-purple-400 dark:to-pink-400">
+              🌐 Browser Automation Hub
+            </h1>
+            <p className="text-muted-foreground dark:text-slate-400">
               Multi-provider automation engine with real-time monitoring & compliance
             </p>
           </div>

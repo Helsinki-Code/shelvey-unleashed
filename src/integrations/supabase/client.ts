@@ -5,6 +5,23 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Validate environment variables
+if (!SUPABASE_URL) {
+  console.error(
+    'Missing environment variable: VITE_SUPABASE_URL. ' +
+    'Please ensure your .env file contains: VITE_SUPABASE_URL="https://[project-id].supabase.co"'
+  );
+  throw new Error('supabaseUrl is required. Check console for details and .env configuration.');
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  console.error(
+    'Missing environment variable: VITE_SUPABASE_PUBLISHABLE_KEY. ' +
+    'Please ensure your .env file contains the Supabase publishable key.'
+  );
+  throw new Error('supabasePublicKey is required. Check console for details and .env configuration.');
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

@@ -1,359 +1,259 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw, AlertCircle, Bot, Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
-import { PageHeader } from '@/components/PageHeader';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { ExchangeConnectionCard } from '@/components/trading/ExchangeConnectionCard';
-import { PortfolioOverview } from '@/components/trading/PortfolioOverview';
-import { PositionsTable } from '@/components/trading/PositionsTable';
-import { OrdersTable } from '@/components/trading/OrdersTable';
-import { MarketDataTicker } from '@/components/trading/MarketDataTicker';
-import { QuickTradePanel } from '@/components/trading/QuickTradePanel';
-import { TradingStrategyBuilder } from '@/components/trading/TradingStrategyBuilder';
-import { StrategyList } from '@/components/trading/StrategyList';
-import { BrowserAutomationPanel } from '@/components/trading/BrowserAutomationPanel';
-import { ExchangeWebMonitor } from '@/components/trading/ExchangeWebMonitor';
-import { MarketDataScraper } from '@/components/trading/MarketDataScraper';
-import { AutoRebalanceConfig } from '@/components/trading/AutoRebalanceConfig';
-import { TradingJournalViewer } from '@/components/trading/TradingJournalViewer';
-
-interface ExchangeConfig {
-  id: string;
-  name: string;
-  icon: string;
-  mcpId: string;
-  requiredKeys: string[];
-  color: string;
-  type: 'stocks' | 'crypto';
-  testnetKey?: string;
-}
-
-const EXCHANGES: ExchangeConfig[] = [
-  { 
-    id: 'alpaca', 
-    name: 'Alpaca', 
-    icon: '📈', 
-    mcpId: 'mcp-alpaca', 
-    requiredKeys: ['ALPACA_API_KEY', 'ALPACA_SECRET_KEY'], 
-    color: 'from-yellow-500 to-yellow-600',
-    type: 'stocks',
-    testnetKey: 'ALPACA_PAPER'
-  },
-  { 
-    id: 'coinbase', 
-    name: 'Coinbase', 
-    icon: '🪙', 
-    mcpId: 'mcp-coinbase', 
-    requiredKeys: ['COINBASE_API_KEY', 'COINBASE_PRIVATE_KEY'], 
-    color: 'from-blue-500 to-blue-600',
-    type: 'crypto'
-  },
-  { 
-    id: 'binance', 
-    name: 'Binance', 
-    icon: '💹', 
-    mcpId: 'mcp-binance', 
-    requiredKeys: ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY'], 
-    color: 'from-amber-500 to-amber-600',
-    type: 'crypto',
-    testnetKey: 'BINANCE_TESTNET'
-  },
-];
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { SimpleDashboardSidebar } from "@/components/SimpleDashboardSidebar";
+import { PageHeader } from "@/components/PageHeader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Zap,
+  LineChart,
+  Brain,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+import { ExchangeWebMonitor } from "@/components/trading/ExchangeWebMonitor";
+import { TradingJournalViewer } from "@/components/trading/TradingJournalViewer";
+import { MarketDataScraper } from "@/components/trading/MarketDataScraper";
+import { AutoRebalanceConfig } from "@/components/trading/AutoRebalanceConfig";
+import { BrowserAutomationPanel } from "@/components/trading/BrowserAutomationPanel";
 
 const TradingDashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [connectedExchanges, setConnectedExchanges] = useState<Record<string, boolean>>({});
-  const [selectedExchange, setSelectedExchange] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('positions');
   const [refreshing, setRefreshing] = useState(false);
-  const [portfolioData, setPortfolioData] = useState<any>(null);
-  const [positions, setPositions] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
-      checkConnectedExchanges();
+      fetchMetrics();
+      const interval = setInterval(fetchMetrics, 10000); // Refresh every 10 seconds
+      return () => clearInterval(interval);
     }
   }, [user]);
 
-  const checkConnectedExchanges = async () => {
-    if (!user) return;
-    setLoading(true);
-    
+  const fetchMetrics = async () => {
     try {
-      const { data: userKeys } = await supabase
-        .from('user_api_keys')
-        .select('key_name, is_configured')
-        .eq('user_id', user.id);
+      setRefreshing(true);
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) return;
 
-      const configuredKeys = new Set(userKeys?.filter(k => k.is_configured).map(k => k.key_name) || []);
-      
-      const connections: Record<string, boolean> = {};
-      EXCHANGES.forEach(exchange => {
-        connections[exchange.id] = exchange.requiredKeys.every(key => configuredKeys.has(key));
+      const response = await supabase.functions.invoke("browser-monitoring", {
+        body: { action: "get_metrics" },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
       });
-      
-      setConnectedExchanges(connections);
-      
-      // Auto-select first connected exchange
-      const firstConnected = EXCHANGES.find(e => connections[e.id]);
-      if (firstConnected && !selectedExchange) {
-        setSelectedExchange(firstConnected.id);
-        fetchExchangeData(firstConnected.id);
+
+      if (response.data) {
+        setMetrics(response.data);
       }
-    } catch (error) {
-      console.error('Error checking exchange connections:', error);
-    } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchExchangeData = async (exchangeId: string) => {
-    const exchange = EXCHANGES.find(e => e.id === exchangeId);
-    if (!exchange || !user) return;
-
-    setRefreshing(true);
-    try {
-      // Fetch account/portfolio data
-      const { data: accountData, error: accountError } = await supabase.functions.invoke(exchange.mcpId, {
-        body: {
-          tool: 'get_account',
-          arguments: {},
-          userId: user.id
-        }
-      });
-
-      if (accountError) throw accountError;
-      setPortfolioData(accountData?.data || accountData);
-
-      // Fetch positions
-      const { data: positionsData } = await supabase.functions.invoke(exchange.mcpId, {
-        body: {
-          tool: 'get_positions',
-          arguments: {},
-          userId: user.id
-        }
-      });
-      // Ensure positions is always an array
-      const positionsResult = positionsData?.data || positionsData;
-      setPositions(Array.isArray(positionsResult) ? positionsResult : []);
-
-      // Fetch orders
-      const { data: ordersData } = await supabase.functions.invoke(exchange.mcpId, {
-        body: {
-          tool: 'get_orders',
-          arguments: { status: 'open', limit: 50 },
-          userId: user.id
-        }
-      });
-      // Ensure orders is always an array
-      const ordersResult = ordersData?.data || ordersData;
-      setOrders(Array.isArray(ordersResult) ? ordersResult : []);
-
-    } catch (error: any) {
-      console.error('Error fetching exchange data:', error);
-      if (error.message?.includes('credentials')) {
-        toast({
-          title: 'API Keys Required',
-          description: `Please configure your ${exchange.name} API keys in Settings.`,
-          variant: 'destructive'
-        });
-      }
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleExchangeSelect = (exchangeId: string) => {
-    if (!connectedExchanges[exchangeId]) {
-      navigate('/settings?tab=apikeys');
-      return;
-    }
-    setSelectedExchange(exchangeId);
-    setPortfolioData(null);
-    setPositions([]);
-    setOrders([]);
-    fetchExchangeData(exchangeId);
-  };
-
-  const handleRefresh = () => {
-    if (selectedExchange) {
-      fetchExchangeData(selectedExchange);
-    }
-  };
-
-  const handleOrderPlaced = () => {
-    handleRefresh();
-    toast({
-      title: 'Order Submitted',
-      description: 'Your order has been placed successfully.',
-    });
-  };
-
-  const selectedExchangeConfig = EXCHANGES.find(e => e.id === selectedExchange);
+  const statsData = [
+    {
+      label: "System Health",
+      value: `${metrics?.successRate || 0}%`,
+      icon: Activity,
+      color: metrics?.successRate > 90 ? "text-green-500" : "text-yellow-500",
+      bgColor:
+        metrics?.successRate > 90
+          ? "bg-green-500/10"
+          : "bg-yellow-500/10",
+    },
+    {
+      label: "Avg Latency",
+      value: `${metrics?.avgLatency || 0}ms`,
+      icon: Zap,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
+    {
+      label: "Active Sessions",
+      value: `${metrics?.activeSessions || 0}`,
+      icon: Brain,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+    {
+      label: "Monthly Cost",
+      value: `$${metrics?.monthlyCost || 0}`,
+      icon: TrendingUp,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background dark:bg-slate-950 flex">
       <SimpleDashboardSidebar />
-      
-      <main className="flex-1 ml-[260px] p-6">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Trading AI Agents</h1>
-            <p className="text-muted-foreground">Autonomous trading with AI-powered strategies</p>
-          </div>
-          <PageHeader />
-        </div>
 
-        {/* Exchange Connection Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {EXCHANGES.map((exchange) => (
-            <ExchangeConnectionCard
-              key={exchange.id}
-              exchange={exchange}
-              isConnected={connectedExchanges[exchange.id]}
-              isSelected={selectedExchange === exchange.id}
-              isLoading={loading}
-              onSelect={() => handleExchangeSelect(exchange.id)}
-            />
-          ))}
-        </div>
-
-        {/* Main Content Area */}
-        {selectedExchange && connectedExchanges[selectedExchange] ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            {/* Portfolio Overview */}
-            <PortfolioOverview 
-              data={portfolioData} 
-              exchangeType={selectedExchangeConfig?.type || 'stocks'}
-              isLoading={refreshing}
-            />
-
-            {/* Market Data Ticker */}
-            <MarketDataTicker 
-              exchangeId={selectedExchange}
-              mcpId={selectedExchangeConfig?.mcpId || ''}
-              exchangeType={selectedExchangeConfig?.type || 'stocks'}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Data Tabs - Takes 2 columns */}
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{selectedExchangeConfig?.icon}</span>
-                      <div>
-                        <CardTitle>{selectedExchangeConfig?.name}</CardTitle>
-                        <CardDescription>
-                          {selectedExchangeConfig?.type === 'stocks' ? 'Stock Trading' : 'Crypto Trading'}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                      <TabsList className="grid w-full grid-cols-5">
-                        <TabsTrigger value="positions">Positions</TabsTrigger>
-                        <TabsTrigger value="orders">Orders</TabsTrigger>
-                        <TabsTrigger value="strategies" className="flex items-center gap-1">
-                          <Bot className="h-3 w-3" />
-                          AI Strategies
-                        </TabsTrigger>
-                        <TabsTrigger value="create" className="flex items-center gap-1">
-                          <Zap className="h-3 w-3" />
-                          New Strategy
-                        </TabsTrigger>
-                        <TabsTrigger value="browser" className="flex items-center gap-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
-                          🌐 Web Automation
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="positions" className="mt-4">
-                        <PositionsTable 
-                          positions={positions}
-                          exchangeType={selectedExchangeConfig?.type || 'stocks'}
-                          isLoading={refreshing}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="orders" className="mt-4">
-                        <OrdersTable 
-                          orders={orders}
-                          exchangeId={selectedExchange}
-                          mcpId={selectedExchangeConfig?.mcpId || ''}
-                          onOrderCancelled={handleRefresh}
-                          isLoading={refreshing}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="strategies" className="mt-4">
-                        <StrategyList exchange={selectedExchange} />
-                      </TabsContent>
-
-                      <TabsContent value="create" className="mt-4">
-                        <TradingStrategyBuilder
-                          exchange={selectedExchange}
-                          exchangeType={selectedExchangeConfig?.type || 'stocks'}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="browser" className="mt-4 space-y-4">
-                        <BrowserAutomationPanel />
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                          <ExchangeWebMonitor />
-                          <MarketDataScraper />
-                        </div>
-                        <AutoRebalanceConfig />
-                        <TradingJournalViewer />
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
+      <main className="flex-1 ml-[260px]">
+        {/* Header Section */}
+        <div className="border-b border-border/50 bg-gradient-to-r from-blue-500/5 to-purple-500/5 dark:from-blue-500/10 dark:to-purple-500/10">
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  📊 Trading AI Dashboard
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Multi-exchange automation with AI-powered strategies
+                </p>
               </div>
-
-              {/* Quick Trade Panel - Takes 1 column */}
-              <QuickTradePanel 
-                exchangeId={selectedExchange}
-                mcpId={selectedExchangeConfig?.mcpId || ''}
-                exchangeType={selectedExchangeConfig?.type || 'stocks'}
-                onOrderPlaced={handleOrderPlaced}
-              />
+              <PageHeader />
             </div>
-          </motion.div>
-        ) : (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <TrendingUp className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Exchange Selected</h3>
-              <p className="text-muted-foreground text-center max-w-md mb-4">
-                Connect your trading accounts to enable AI-powered autonomous trading strategies.
-              </p>
-              <Button onClick={() => navigate('/settings?tab=apikeys')}>
-                Configure API Keys
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {statsData.map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                  >
+                    <Card className="border-border/30 hover:border-border/80 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {stat.label}
+                            </p>
+                            <p className="text-2xl font-bold">{stat.value}</p>
+                          </div>
+                          <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                            <Icon className={`h-5 w-5 ${stat.color}`} />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            {/* Tab Navigation */}
+            <div className="flex items-center justify-between">
+              <TabsList className="bg-background border border-border">
+                <TabsTrigger value="overview" className="gap-2">
+                  <LineChart className="h-4 w-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="portfolio" className="gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Portfolio
+                </TabsTrigger>
+                <TabsTrigger value="market" className="gap-2">
+                  <Activity className="h-4 w-4" />
+                  Market Data
+                </TabsTrigger>
+                <TabsTrigger value="journal" className="gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Journal
+                </TabsTrigger>
+                <TabsTrigger value="automation" className="gap-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+                  <Zap className="h-4 w-4" />
+                  Automation
+                </TabsTrigger>
+              </TabsList>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchMetrics}
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
               </Button>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <ExchangeWebMonitor />
+                </div>
+                <div>
+                  <Card className="h-full">
+                    <CardHeader>
+                      <CardTitle className="text-base">Quick Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
+                        Buy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Sell
+                      </Button>
+                      <Button variant="outline" className="w-full">
+                        Rebalance
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Portfolio Tab */}
+            <TabsContent value="portfolio" className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <ExchangeWebMonitor />
+                <AutoRebalanceConfig />
+              </div>
+            </TabsContent>
+
+            {/* Market Data Tab */}
+            <TabsContent value="market" className="space-y-6">
+              <MarketDataScraper />
+            </TabsContent>
+
+            {/* Journal Tab */}
+            <TabsContent value="journal" className="space-y-6">
+              <TradingJournalViewer />
+            </TabsContent>
+
+            {/* Automation Tab */}
+            <TabsContent value="automation" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <BrowserAutomationPanel />
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
     </div>
   );

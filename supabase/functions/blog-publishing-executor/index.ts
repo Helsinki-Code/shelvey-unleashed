@@ -1,522 +1,271 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.2";
 
-interface BlogPost {
-  title: string;
-  content: string;
-  excerpt?: string;
-  tags?: string[];
-  category?: string;
-  featured_image_url?: string;
-  status: "draft" | "published" | "scheduled";
-  publish_date?: string;
-  author?: string;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, content-type",
+};
+
+interface BlogRequest {
+  action:
+    | "get_posts"
+    | "publish_post"
+    | "get_seo_data"
+    | "get_comments"
+    | "get_analytics"
+    | "get_backlinks"
+    | "get_social_metrics";
+  postId?: string;
+  title?: string;
+  content?: string;
+  platforms?: string[];
 }
 
-interface PublishingResult {
-  platform: string;
-  success: boolean;
-  post_id?: string;
-  url?: string;
-  error?: string;
-  timestamp: string;
-}
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
-Deno.serve(async (req) => {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") || "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+  );
+
   try {
+    const body = (await req.json()) as BlogRequest;
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: corsHeaders,
+      });
+    }
+
     const {
-      action,
-      user_id,
-      session_id,
-      post,
-      post_id,
-      platforms,
-      blog_id,
-    } = await req.json();
+      data: { user },
+    } = await supabase.auth.getUser(token);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    if (action === "publish_to_wordpress") {
-      return await publishToWordPress(
-        supabase,
-        user_id,
-        session_id,
-        post,
-        blog_id
-      );
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: corsHeaders,
+      });
     }
 
-    if (action === "publish_to_medium") {
-      return await publishToMedium(
-        supabase,
-        user_id,
-        session_id,
-        post,
-        blog_id
-      );
-    }
+    const userId = user.id;
 
-    if (action === "publish_multiple") {
-      return await publishToMultiplePlatforms(
-        supabase,
-        user_id,
-        session_id,
-        post,
-        platforms || []
-      );
-    }
+    switch (body.action) {
+      case "get_posts": {
+        const { data, error } = await supabase
+          .from("blog_posts")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(100);
 
-    if (action === "update_post") {
-      return await updateBlogPost(
-        supabase,
-        user_id,
-        session_id,
-        post_id,
-        post
-      );
-    }
+        if (error) throw error;
 
-    if (action === "schedule_post") {
-      return await schedulePost(
-        supabase,
-        user_id,
-        session_id,
-        post,
-        platforms || []
-      );
-    }
+        return new Response(JSON.stringify(data || []), {
+          headers: corsHeaders,
+        });
+      }
 
-    return new Response(
-      JSON.stringify({ error: "Unknown action", action }),
-      { status: 400 }
-    );
+      case "publish_post": {
+        const postId = crypto.randomUUID();
+        const { error } = await supabase
+          .from("blog_posts")
+          .insert({
+            post_id: postId,
+            user_id: userId,
+            title: body.title,
+            content: body.content,
+            status: "published",
+            published_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+
+        if (error) throw error;
+
+        // Log the publishing action
+        await supabase.from("blog_browser_actions").insert({
+          user_id: userId,
+          action: "publish_to_wordpress",
+          post_id: postId,
+          status: "completed",
+          timestamp: new Date().toISOString(),
+        });
+
+        return new Response(
+          JSON.stringify({
+            status: "published",
+            postId,
+            title: body.title,
+          }),
+          { headers: corsHeaders }
+        );
+      }
+
+      case "get_seo_data": {
+        const { data, error } = await supabase
+          .from("blog_seo_monitoring")
+          .select("*")
+          .eq("user_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify(data || []), {
+          headers: corsHeaders,
+        });
+      }
+
+      case "get_comments": {
+        const { data, error } = await supabase
+          .from("blog_comments")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify(data || []), {
+          headers: corsHeaders,
+        });
+      }
+
+      case "get_analytics": {
+        const { data, error } = await supabase
+          .from("blog_analytics_snapshots")
+          .select("*")
+          .eq("user_id", userId)
+          .order("captured_at", { ascending: false })
+          .limit(30);
+
+        if (error) throw error;
+
+        // Calculate summary statistics
+        if (data && data.length > 0) {
+          const totalPageviews = data.reduce(
+            (sum, d) => sum + (d.total_pageviews || 0),
+            0
+          );
+          const totalSessions = data.reduce(
+            (sum, d) => sum + (d.total_sessions || 0),
+            0
+          );
+          const totalUsers = data.reduce(
+            (sum, d) => sum + (d.total_users || 0),
+            0
+          );
+          const avgBounceRate =
+            data.reduce((sum, d) => sum + (d.bounce_rate || 0), 0) / data.length;
+
+          return new Response(
+            JSON.stringify({
+              snapshots: data,
+              summary: {
+                totalPageviews,
+                totalSessions,
+                totalUsers,
+                avgBounceRate: Math.round(avgBounceRate * 100) / 100,
+              },
+            }),
+            { headers: corsHeaders }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            snapshots: [],
+            summary: {
+              totalPageviews: 0,
+              totalSessions: 0,
+              totalUsers: 0,
+              avgBounceRate: 0,
+            },
+          }),
+          { headers: corsHeaders }
+        );
+      }
+
+      case "get_backlinks": {
+        const { data, error } = await supabase
+          .from("blog_backlinks")
+          .select("*")
+          .eq("user_id", userId)
+          .order("discovered_at", { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+
+        // Categorize backlinks
+        if (data && data.length > 0) {
+          const activeBacklinks = data.filter((b) => b.status === "active");
+          const lostBacklinks = data.filter((b) => b.status === "lost");
+          const avgDA =
+            data.reduce((sum, b) => sum + (b.domain_authority || 0), 0) /
+            data.length;
+
+          return new Response(
+            JSON.stringify({
+              backlinks: data,
+              summary: {
+                totalBacklinks: data.length,
+                activeBacklinks: activeBacklinks.length,
+                lostBacklinks: lostBacklinks.length,
+                averageDA: Math.round(avgDA * 100) / 100,
+              },
+            }),
+            { headers: corsHeaders }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            backlinks: [],
+            summary: {
+              totalBacklinks: 0,
+              activeBacklinks: 0,
+              lostBacklinks: 0,
+              averageDA: 0,
+            },
+          }),
+          { headers: corsHeaders }
+        );
+      }
+
+      case "get_social_metrics": {
+        const { data, error } = await supabase
+          .from("blog_social_metrics")
+          .select("*")
+          .eq("user_id", userId)
+          .order("captured_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify(data || []), {
+          headers: corsHeaders,
+        });
+      }
+
+      default:
+        return new Response(JSON.stringify({ error: "Invalid action" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+    }
   } catch (error) {
-    console.error("Error in blog-publishing-executor:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });
-
-async function publishToWordPress(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  post: BlogPost,
-  blogId: string
-) {
-  const startTime = Date.now();
-
-  try {
-    // Simulate WordPress API call
-    const wpPost = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: post.title,
-      content: post.content,
-      excerpt: post.excerpt || post.content.substring(0, 100),
-      slug: post.title.toLowerCase().replace(/\s+/g, "-"),
-      status: post.status || "published",
-      date: post.publish_date || new Date().toISOString(),
-      featured_media: post.featured_image_url
-        ? { url: post.featured_image_url }
-        : null,
-      categories: post.category ? [post.category] : [],
-      tags: post.tags || [],
-      author: post.author || "Admin",
-      wordpress_url: `https://example.wordpress.com/blog/${post.title.toLowerCase().replace(/\s+/g, "-")}`,
-    };
-
-    // Store in database
-    const { error: dbError } = await supabase
-      .from("blog_posts")
-      .insert({
-        user_id: userId,
-        blog_id: blogId,
-        platform: "wordpress",
-        platform_post_id: wpPost.id,
-        title: post.title,
-        content: post.content,
-        excerpt: post.excerpt,
-        status: post.status,
-        url: wpPost.wordpress_url,
-        published_at: new Date().toISOString(),
-        meta: wpPost,
-      });
-
-    if (dbError) throw dbError;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_wordpress",
-      status: "completed",
-      details: {
-        post_title: post.title,
-        post_id: wpPost.id,
-        url: wpPost.wordpress_url,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        result: {
-          platform: "wordpress",
-          success: true,
-          post_id: wpPost.id,
-          url: wpPost.wordpress_url,
-          timestamp: new Date().toISOString(),
-        },
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_wordpress",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_title: post.title },
-    });
-
-    throw error;
-  }
-}
-
-async function publishToMedium(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  post: BlogPost,
-  blogId: string
-) {
-  const startTime = Date.now();
-
-  try {
-    // Simulate Medium API call
-    const mediumPost = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: post.title,
-      content: post.content,
-      excerpt: post.excerpt || post.content.substring(0, 100),
-      status: post.status || "published",
-      url: `https://medium.com/@shelveydash/${post.title.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substr(2, 5)}`,
-      tags: post.tags || [],
-      published_at: new Date().toISOString(),
-    };
-
-    // Store in database
-    const { error: dbError } = await supabase
-      .from("blog_posts")
-      .insert({
-        user_id: userId,
-        blog_id: blogId,
-        platform: "medium",
-        platform_post_id: mediumPost.id,
-        title: post.title,
-        content: post.content,
-        excerpt: post.excerpt,
-        status: post.status,
-        url: mediumPost.url,
-        published_at: new Date().toISOString(),
-        meta: mediumPost,
-      });
-
-    if (dbError) throw dbError;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_medium",
-      status: "completed",
-      details: {
-        post_title: post.title,
-        post_id: mediumPost.id,
-        url: mediumPost.url,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        result: {
-          platform: "medium",
-          success: true,
-          post_id: mediumPost.id,
-          url: mediumPost.url,
-          timestamp: new Date().toISOString(),
-        },
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_medium",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_title: post.title },
-    });
-
-    throw error;
-  }
-}
-
-async function publishToMultiplePlatforms(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  post: BlogPost,
-  platforms: string[]
-) {
-  const startTime = Date.now();
-  const results: PublishingResult[] = [];
-
-  try {
-    const platformMap: Record<string, () => Promise<PublishingResult>> = {
-      wordpress: async () => {
-        const res = await publishToWordPress(
-          supabase,
-          userId,
-          sessionId,
-          post,
-          ""
-        );
-        return (await res.json()).result;
-      },
-      medium: async () => {
-        const res = await publishToMedium(
-          supabase,
-          userId,
-          sessionId,
-          post,
-          ""
-        );
-        return (await res.json()).result;
-      },
-      linkedin: async () => ({
-        platform: "linkedin",
-        success: true,
-        post_id: Math.random().toString(36).substr(2, 9),
-        url: `https://linkedin.com/feed/update/${Math.random()}`,
-        timestamp: new Date().toISOString(),
-      }),
-      twitter: async () => ({
-        platform: "twitter",
-        success: true,
-        post_id: Math.random().toString(36).substr(2, 9),
-        url: `https://twitter.com/shelveydash/status/${Math.random()}`,
-        timestamp: new Date().toISOString(),
-      }),
-      facebook: async () => ({
-        platform: "facebook",
-        success: true,
-        post_id: Math.random().toString(36).substr(2, 9),
-        url: `https://facebook.com/shelveydash/posts/${Math.random()}`,
-        timestamp: new Date().toISOString(),
-      }),
-      instagram: async () => ({
-        platform: "instagram",
-        success: true,
-        post_id: Math.random().toString(36).substr(2, 9),
-        url: `https://instagram.com/p/${Math.random()}`,
-        timestamp: new Date().toISOString(),
-      }),
-      substack: async () => ({
-        platform: "substack",
-        success: true,
-        post_id: Math.random().toString(36).substr(2, 9),
-        url: `https://shelveydash.substack.com/p/${post.title.toLowerCase().replace(/\s+/g, "-")}`,
-        timestamp: new Date().toISOString(),
-      }),
-    };
-
-    for (const platform of platforms) {
-      if (platformMap[platform]) {
-        const result = await platformMap[platform]();
-        results.push(result);
-      }
-    }
-
-    const duration = Date.now() - startTime;
-    const successCount = results.filter((r) => r.success).length;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_multiple",
-      status: "completed",
-      details: {
-        post_title: post.title,
-        platforms_published: successCount,
-        total_platforms: platforms.length,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        results,
-        total: results.length,
-        successful: successCount,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_multiple",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_title: post.title, platforms },
-    });
-
-    throw error;
-  }
-}
-
-async function updateBlogPost(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  postId: string,
-  post: BlogPost
-) {
-  const startTime = Date.now();
-
-  try {
-    const { data, error } = await supabase
-      .from("blog_posts")
-      .update({
-        title: post.title,
-        content: post.content,
-        excerpt: post.excerpt,
-        status: post.status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", postId)
-      .eq("user_id", userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "update_blog_post",
-      status: "completed",
-      details: {
-        post_id: postId,
-        post_title: post.title,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({ success: true, post: data, duration_ms: duration }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "update_blog_post",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_id: postId },
-    });
-
-    throw error;
-  }
-}
-
-async function schedulePost(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  post: BlogPost,
-  platforms: string[]
-) {
-  const startTime = Date.now();
-
-  try {
-    const { data, error } = await supabase
-      .from("blog_posts")
-      .insert({
-        user_id: userId,
-        title: post.title,
-        content: post.content,
-        excerpt: post.excerpt,
-        status: "scheduled",
-        scheduled_publish_at: post.publish_date || new Date(),
-        platforms,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "schedule_post",
-      status: "completed",
-      details: {
-        post_id: data.id,
-        post_title: post.title,
-        platforms,
-        scheduled_for: post.publish_date,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        scheduled_post: data,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "schedule_post",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_title: post.title },
-    });
-
-    throw error;
-  }
-}

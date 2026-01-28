@@ -1,218 +1,215 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { BarChart3, Settings, Play, Pause } from "lucide-react";
 
-interface Allocation {
-  symbol: string;
-  target_percent: number;
-  current_percent?: number;
-}
+export const AutoRebalanceConfig = () => {
+  const { user } = useAuth();
+  const [rebalanceData, setRebalanceData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isRunning, setIsRunning] = useState(false);
 
-interface AutoRebalanceConfigProps {
-  currentAllocations?: Record<string, number>;
-  onRebalance?: (allocations: Record<string, number>) => Promise<void>;
-  isLoading?: boolean;
-}
+  useEffect(() => {
+    if (user) {
+      fetchRebalanceConfig();
+      const interval = setInterval(fetchRebalanceConfig, 60000); // Refresh every 60 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
-export function AutoRebalanceConfig({
-  currentAllocations = {},
-  onRebalance,
-  isLoading = false,
-}: AutoRebalanceConfigProps) {
-  const [allocations, setAllocations] = useState<Allocation[]>([
-    { symbol: "AAPL", target_percent: 30, current_percent: 25 },
-    { symbol: "BTC", target_percent: 20, current_percent: 15 },
-    { symbol: "MSFT", target_percent: 30, current_percent: 35 },
-    { symbol: "TSLA", target_percent: 10, current_percent: 12 },
-    { symbol: "CASH", target_percent: 10, current_percent: 13 },
-  ]);
+  const fetchRebalanceConfig = async () => {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) return;
 
-  const [newSymbol, setNewSymbol] = useState("");
-  const [newPercent, setNewPercent] = useState("");
-
-  const totalTarget = allocations.reduce((sum, a) => sum + a.target_percent, 0);
-  const isBalanced = totalTarget === 100;
-
-  const addAllocation = () => {
-    if (newSymbol && newPercent) {
-      setAllocations([
-        ...allocations,
-        {
-          symbol: newSymbol.toUpperCase(),
-          target_percent: parseFloat(newPercent),
+      const response = await supabase.functions.invoke("trading-browser-agent", {
+        body: { action: "get_portfolio" },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
         },
-      ]);
-      setNewSymbol("");
-      setNewPercent("");
+      });
+
+      if (response.data) {
+        setRebalanceData(response.data);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching rebalance config:", error);
     }
   };
 
-  const removeAllocation = (symbol: string) => {
-    setAllocations(allocations.filter((a) => a.symbol !== symbol));
+  const handleToggleAutoRebalance = async () => {
+    try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) return;
+
+      await supabase.functions.invoke("trading-browser-agent", {
+        body: {
+          action: "toggle_auto_rebalance",
+          enabled: !isRunning,
+        },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
+      });
+      setIsRunning(!isRunning);
+      fetchRebalanceConfig();
+    } catch (error) {
+      console.error("Error toggling auto rebalance:", error);
+    }
   };
 
-  const updateAllocation = (symbol: string, percent: number) => {
-    setAllocations(
-      allocations.map((a) => (a.symbol === symbol ? { ...a, target_percent: percent } : a))
+  if (loading) {
+    return (
+      <Card className="animate-pulse">
+        <CardContent className="p-6">
+          <div className="h-40 bg-muted rounded" />
+        </CardContent>
+      </Card>
     );
-  };
+  }
 
-  const handleRebalance = async () => {
-    if (onRebalance && isBalanced) {
-      const allocObj = allocations.reduce(
-        (acc, a) => {
-          acc[a.symbol] = a.target_percent;
-          return acc;
-        },
-        {} as Record<string, number>
-      );
-      await onRebalance(allocObj);
-    }
-  };
+  const allocation = rebalanceData?.allocation || [];
+  const drift = rebalanceData?.drift || [];
+  const nextRebalance = rebalanceData?.next_rebalance || "—";
+  const threshold = rebalanceData?.threshold || 5;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Portfolio Rebalancing</CardTitle>
-        <CardDescription>Configure target allocation percentages</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-700">Total Allocated</p>
-            <p className={`text-2xl font-bold ${isBalanced ? "text-green-600" : "text-orange-600"}`}>
-              {totalTarget}%
-            </p>
+            <CardTitle className="text-base">Auto-Rebalance Configuration</CardTitle>
+            <CardDescription>Maintain target asset allocation automatically</CardDescription>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-700">Positions</p>
-            <p className="text-2xl font-bold">{allocations.length}</p>
-          </div>
-          <div className="flex items-center">
-            {isBalanced ? (
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Balanced</span>
-              </div>
+          <Button
+            size="sm"
+            onClick={handleToggleAutoRebalance}
+            className={isRunning ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
+          >
+            {isRunning ? (
+              <>
+                <Pause className="h-4 w-4 mr-2" />
+                Pause
+              </>
             ) : (
-              <div className="flex items-center gap-2 text-orange-600">
-                <AlertCircle className="w-5 h-5" />
-                <span>{100 - totalTarget > 0 ? "Need" : "Over"} {Math.abs(100 - totalTarget)}%</span>
-              </div>
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                Start
+              </>
             )}
-          </div>
+          </Button>
         </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Status */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Status</p>
+              <Badge className={isRunning ? "bg-green-500" : "bg-gray-500"}>
+                {isRunning ? "Active" : "Paused"}
+              </Badge>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Drift Threshold</p>
+              <p className="text-2xl font-bold">{threshold}%</p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Next Rebalance</p>
+              <p className="text-sm font-bold">{nextRebalance}</p>
+            </div>
+          </div>
 
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left p-3 font-medium">Symbol</th>
-                <th className="text-right p-3 font-medium">Current %</th>
-                <th className="text-right p-3 font-medium">Target %</th>
-                <th className="text-right p-3 font-medium">Diff</th>
-                <th className="text-right p-3 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allocations.map((alloc) => {
-                const current = alloc.current_percent || 0;
-                const diff = alloc.target_percent - current;
-                const action = diff > 0 ? "BUY" : diff < 0 ? "SELL" : "HOLD";
+          {/* Current Allocation */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="h-4 w-4 text-blue-500" />
+              <p className="text-sm font-medium">Current Allocation</p>
+            </div>
+            <div className="space-y-2">
+              {allocation.slice(0, 6).map((asset: any, idx: number) => (
+                <div key={idx} className="p-2 rounded bg-muted">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium">{asset.symbol}</p>
+                    <p className="text-sm font-bold">{asset.current_allocation}%</p>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{ width: `${asset.current_allocation}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Target: {asset.target_allocation}%
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                return (
-                  <tr key={alloc.symbol} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-medium">{alloc.symbol}</td>
-                    <td className="p-3 text-right text-gray-600">{current.toFixed(1)}%</td>
-                    <td className="p-3 text-right">
-                      <Input
-                        type="number"
-                        value={alloc.target_percent}
-                        onChange={(e) => updateAllocation(alloc.symbol, parseFloat(e.target.value))}
-                        className="w-20 text-right"
-                        min="0"
-                        max="100"
-                      />
-                    </td>
-                    <td
-                      className={`p-3 text-right font-medium ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-600"}`}
-                    >
-                      {diff > 0 ? "+" : ""}
-                      {diff.toFixed(1)}%
-                    </td>
-                    <td className="p-3 text-right">
-                      <span
-                        className={`text-xs font-semibold px-2 py-1 rounded ${
-                          action === "BUY"
-                            ? "bg-green-100 text-green-700"
-                            : action === "SELL"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-gray-100 text-gray-700"
-                        }`}
+          {/* Assets Needing Rebalance */}
+          {drift.length > 0 && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Drift > {threshold}%</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {drift.map((asset: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded border ${
+                      asset.drift > 0
+                        ? "bg-red-500/5 border-red-500/20"
+                        : "bg-green-500/5 border-green-500/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{asset.symbol}</p>
+                      <Badge
+                        variant="outline"
+                        className={asset.drift > 0 ? "text-red-500" : "text-green-500"}
                       >
-                        {action}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {asset.drift > 0 ? "+" : ""}{asset.drift.toFixed(2)}%
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current: {asset.current}% → Target: {asset.target}%
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm font-medium">Add Position</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Symbol"
-              value={newSymbol}
-              onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-              className="flex-1"
-            />
-            <Input
-              placeholder="Percent"
-              type="number"
-              value={newPercent}
-              onChange={(e) => setNewPercent(e.target.value)}
-              min="0"
-              max="100"
-              className="w-24"
-            />
-            <Button onClick={addAllocation} variant="outline">
-              Add
-            </Button>
+          {/* Rebalance Strategy */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="h-4 w-4 text-orange-500" />
+              <p className="text-sm font-medium">Rebalance Strategy</p>
+            </div>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p>✓ Rebalance when any asset drifts > {threshold}% from target</p>
+              <p>✓ Execute via market orders during liquid hours</p>
+              <p>✓ Minimize slippage with intelligent order execution</p>
+              <p>✓ Track rebalance history & performance</p>
+            </div>
+          </div>
+
+          {/* Recent Rebalances */}
+          <div className="border-t pt-4 p-3 bg-blue-500/5 rounded-lg text-xs">
+            <p className="font-medium mb-2">Last Rebalance Actions</p>
+            <div className="space-y-1 text-muted-foreground">
+              {rebalanceData?.recent_rebalances?.slice(0, 3).map((action: any, idx: number) => (
+                <p key={idx}>
+                  • {action.symbol}: Sold {action.quantity} @ ${action.price} on {action.date}
+                </p>
+              )) || <p>No recent rebalances</p>}
+            </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={handleRebalance}
-            disabled={!isBalanced || isLoading}
-            className="bg-orange-600 hover:bg-orange-700"
-          >
-            {isLoading ? "Processing..." : "Propose Rebalancing"}
-          </Button>
-          <Button
-            onClick={() => setAllocations(allocations.filter((a) => a.symbol !== allocations[0].symbol))}
-            variant="outline"
-            disabled={allocations.length === 0}
-            className="gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear All
-          </Button>
-        </div>
-
-        {isBalanced && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-900">
-              ✓ Portfolio is balanced. Click "Propose Rebalancing" to execute trades.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
-}
+};
