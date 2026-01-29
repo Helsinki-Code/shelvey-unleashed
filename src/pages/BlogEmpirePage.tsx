@@ -37,6 +37,7 @@ import { SocialDistributionManager } from "@/components/blog/SocialDistributionM
 import { SEOMonitorDashboard } from "@/components/blog/SEOMonitorDashboard";
 import { CommentModerationPanel } from "@/components/blog/CommentModerationPanel";
 import { CompetitorAnalysisPanel } from "@/components/blog/CompetitorAnalysisPanel";
+import { RealTimeBlogAgentExecutor } from "@/components/blog/RealTimeBlogAgentExecutor";
 import {
   Dialog,
   DialogContent,
@@ -612,72 +613,99 @@ const BlogEmpirePage = () => {
 
             {/* Automation Tab */}
             <TabsContent value="automation" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Browser Automation Suite</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    AI-powered automation for content management & distribution
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Zap className="h-5 w-5 text-orange-500" />
-                        <span className="font-medium">Auto-Publish</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Automatically publish to WordPress, Medium, LinkedIn
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {selectedProject ? (
+                  <RealTimeBlogAgentExecutor
+                    projectId={selectedProject.id}
+                    projectName={selectedProject.name}
+                    currentPhase={selectedProject.current_phase}
+                    niche={selectedProject.niche}
+                    platform={selectedProject.platform}
+                    onPhaseChange={async (newPhase) => {
+                      await supabase
+                        .from("blog_projects")
+                        .update({ current_phase: newPhase })
+                        .eq("id", selectedProject.id);
+                      setSelectedProject({ ...selectedProject, current_phase: newPhase });
+                    }}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-muted-foreground">
+                        Select a blog project to run agents
                       </p>
-                    </div>
-                    <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Share2 className="h-5 w-5 text-orange-500" />
-                        <span className="font-medium">Auto-Share</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Distribute to Twitter, Facebook, Instagram
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Search className="h-5 w-5 text-orange-500" />
-                        <span className="font-medium">SEO Optimization</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Auto-optimize content for search engines
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3 mb-2">
-                        <MessageSquare className="h-5 w-5 text-orange-500" />
-                        <span className="font-medium">Comment Moderation</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        AI-powered comment filtering & responses
-                      </p>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium mb-3">Active Automations</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
-                        <span>Daily Publishing Schedule</span>
-                        <Badge className="bg-green-500">Active</Badge>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Browser Automation Suite</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      AI-powered automation for content management & distribution
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Zap className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium">Auto-Publish</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Automatically publish to WordPress, Medium, LinkedIn
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
-                        <span>Social Media Distribution</span>
-                        <Badge className="bg-green-500">Active</Badge>
+                      <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Share2 className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium">Auto-Share</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Distribute to Twitter, Facebook, Instagram
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
-                        <span>SEO Monitoring</span>
-                        <Badge className="bg-green-500">Active</Badge>
+                      <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Search className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium">SEO Optimization</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Auto-optimize content for search engines
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg hover:border-orange-500/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3 mb-2">
+                          <MessageSquare className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium">Comment Moderation</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          AI-powered comment filtering & responses
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-medium mb-3">Active Automations</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
+                          <span>Daily Publishing Schedule</span>
+                          <Badge className="bg-green-500">Active</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
+                          <span>Social Media Distribution</span>
+                          <Badge className="bg-green-500">Active</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded bg-muted text-sm">
+                          <span>SEO Monitoring</span>
+                          <Badge className="bg-green-500">Active</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

@@ -65,6 +65,10 @@ serve(async (req) => {
         result = await getPerformanceMetrics(supabase, userId);
         break;
 
+      case 'execute_phase':
+        result = await executePhase(supabase, userId, params);
+        break;
+
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {
           status: 400,
@@ -518,4 +522,31 @@ async function getPerformanceMetrics(supabase: any, userId: string) {
     winRate: winRate.toFixed(2) + '%',
     averagePnL: totalTrades > 0 ? (totalPnL / totalTrades).toFixed(2) : '0.00',
   };
+}
+
+async function executePhase(supabase: any, userId: string, params: any) {
+  const { project_id, phase, exchange, mode, capital } = params;
+  const phaseNames = ["Research", "Strategy", "Setup", "Execution", "Monitor", "Optimize"];
+  const phaseName = phaseNames[phase - 1] || "Unknown";
+
+  await supabase.from("agent_activity_logs").insert({
+    agent_id: `trading-phase-${phase}`,
+    agent_name: `${phaseName} Agent`,
+    action: `Executing ${phaseName} phase for ${exchange}`,
+    status: "started",
+    metadata: { project_id, phase, exchange, mode, capital },
+  });
+
+  // Simulate phase work
+  await new Promise((r) => setTimeout(r, 1000));
+
+  await supabase.from("agent_activity_logs").insert({
+    agent_id: `trading-phase-${phase}`,
+    agent_name: `${phaseName} Agent`,
+    action: `Completed ${phaseName} phase analysis`,
+    status: "completed",
+    metadata: { project_id, phase, exchange, mode },
+  });
+
+  return { success: true, phase, phaseName, message: `${phaseName} phase completed` };
 }

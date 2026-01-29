@@ -355,8 +355,8 @@ async function detectWashSales(
 
     if (error) throw error;
 
-    const washSales = [];
-    const losingTrades = (trades || []).filter((t) => t.profit_loss_usd < 0);
+    const washSales: Array<{ loss_trade: any; repurchase_trades: any[]; total_disallowed_loss: number }> = [];
+    const losingTrades = (trades || []).filter((t: any) => t.profit_loss_usd < 0);
 
     // Check for wash sales (same symbol bought within 30 days)
     for (const losingTrade of losingTrades) {
@@ -365,7 +365,7 @@ async function detectWashSales(
         sellDate.getTime() + 30 * 24 * 60 * 60 * 1000
       );
 
-      const repurchases = (trades || []).filter((t) => {
+      const repurchases = (trades || []).filter((t: any) => {
         const buyDate = new Date(t.entry_date);
         return (
           t.symbol === losingTrade.symbol &&
@@ -449,7 +449,7 @@ async function exportToForm8949(
     if (error) throw error;
 
     // Generate Form 8949 format
-    const form8949Data = (trades || []).map((trade) => ({
+    const form8949Data = (trades || []).map((trade: any) => ({
       description: `${trade.quantity} shares of ${trade.symbol}`,
       date_acquired: trade.entry_date,
       date_sold: trade.exit_date,

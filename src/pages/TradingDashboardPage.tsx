@@ -35,6 +35,7 @@ import { TradingJournalViewer } from "@/components/trading/TradingJournalViewer"
 import { MarketDataScraper } from "@/components/trading/MarketDataScraper";
 import { AutoRebalanceConfig } from "@/components/trading/AutoRebalanceConfig";
 import { BrowserAutomationPanel } from "@/components/trading/BrowserAutomationPanel";
+import { RealTimeAgentExecutor } from "@/components/trading/RealTimeAgentExecutor";
 import {
   Dialog,
   DialogContent,
@@ -663,7 +664,33 @@ const TradingDashboardPage = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
               >
+                {selectedProject ? (
+                  <RealTimeAgentExecutor
+                    projectId={selectedProject.id}
+                    projectName={selectedProject.name}
+                    currentPhase={selectedProject.current_phase}
+                    exchange={selectedProject.exchange}
+                    mode={selectedProject.mode as "paper" | "live"}
+                    capital={selectedProject.capital}
+                    onPhaseChange={async (newPhase) => {
+                      await supabase
+                        .from("trading_projects")
+                        .update({ current_phase: newPhase })
+                        .eq("id", selectedProject.id);
+                      setSelectedProject({ ...selectedProject, current_phase: newPhase });
+                    }}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-muted-foreground">
+                        Select a project to run agents
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <BrowserAutomationPanel />
               </motion.div>
             </TabsContent>
