@@ -7,7 +7,27 @@ const corsHeaders = {
 };
 
 // Base system prompt - CEO name and persona will be injected dynamically
-const getCEOSystemPrompt = (ceoName: string, ceoPersna: string) => `You are ${ceoName}, the AI CEO of ShelVey - an advanced AI business strategist, executor, and platform guide. Your persona is: ${ceoPersna}. You have COMPLETE knowledge of the ShelVey platform and can help users with ANYTHING.
+let cachedBlogEmpirePrompt: string | null = null;
+const getBlogEmpireCEOPrompt = () => {
+  if (cachedBlogEmpirePrompt) return cachedBlogEmpirePrompt;
+
+  try {
+    const url = new URL("../_shared/blog-empire-ceo-system-prompt.md", import.meta.url);
+    cachedBlogEmpirePrompt = Deno.readTextFileSync(url);
+    return cachedBlogEmpirePrompt;
+  } catch {
+    // Fallback (should not happen if the file is present)
+    return `You are a Blog Empire CEO - an expert auto-blog generation system. You research niches, identify keywords, create SEO-optimized content, publish to WordPress/Medium, track rankings, promote on social, and monetize through ads, affiliates, and sponsorships - all autonomously and in real time.`;
+  }
+};
+
+const getCEOSystemPrompt = (ceoName: string, ceoPersona: string, companyType?: string) => {
+  // If Blog Empire CEO, use the specialized prompt
+  if (companyType === 'blog_empire') {
+    return getBlogEmpireCEOPrompt();
+  }
+  
+  return `You are ${ceoName}, the AI CEO of ShelVey - an advanced AI business strategist, executor, and platform guide. Your persona is: ${ceoPersona}. You have COMPLETE knowledge of the ShelVey platform and can help users with ANYTHING.
 
 ## YOUR CAPABILITIES:
 
@@ -167,6 +187,7 @@ Each phase is a FULL dedicated page showing:
 - Be encouraging but maintain professional standards
 
 Remember: I'm ${ceoName}, available 24/7 on ANY page. Users can always click "Talk to CEO" to chat with me!`;
+};
 
 // Function to review a deliverable
 async function reviewDeliverable(supabase: any, deliverableId: string, openaiApiKey: string, ceoName: string): Promise<{ approved: boolean; feedback: string; qualityScore: number; perAssetReviews?: any[] }> {
@@ -519,13 +540,24 @@ serve(async (req) => {
     // Fetch the user's custom CEO
     const { data: userCeo } = await supabase
       .from('user_ceos')
-      .select('ceo_name, persona, communication_style, personality_traits')
+      .select('ceo_name, persona, communication_style, personality_traits, company_id')
       .eq('user_id', user.id)
       .single();
 
     const ceoName = userCeo?.ceo_name || 'Ava';
     const ceoPersona = userCeo?.persona || 'Professional';
     const communicationStyle = userCeo?.communication_style || 'balanced';
+
+    // Determine company type if CEO is linked to a company
+    let companyType;
+    if (userCeo?.company_id) {
+      const { data: company } = await supabase
+        .from('ai_companies')
+        .select('company_type')
+        .eq('id', userCeo.company_id)
+        .single();
+      companyType = company?.company_type;
+    }
 
     console.log(`[ceo-agent-chat] Using custom CEO: ${ceoName} with persona: ${ceoPersona}`);
 
@@ -560,8 +592,8 @@ serve(async (req) => {
       });
     }
 
-    // Build the dynamic system prompt with custom CEO data
-    let contextualPrompt = getCEOSystemPrompt(ceoName, ceoPersona);
+    // Build the dynamic system prompt with custom CEO data and company type
+    let contextualPrompt = getCEOSystemPrompt(ceoName, ceoPersona, companyType);
     
     // Add communication style context
     contextualPrompt += `\n\nCOMMUNICATION STYLE: Your communication style is ${communicationStyle}. Adjust your responses to match this style.`;
