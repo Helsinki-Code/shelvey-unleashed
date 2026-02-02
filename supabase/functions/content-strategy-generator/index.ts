@@ -22,6 +22,30 @@ serve(async (req) => {
     let systemPrompt = `You are a content strategy expert for ${businessName || 'this business'} in the ${industry || 'general'} industry. Target audience: ${targetAudience || 'general consumers'}. Brand voice: ${brandVoice || 'professional and friendly'}.`;
 
     switch (action) {
+      case 'research_niche':
+        prompt = `You are a niche research expert. For the niche "${businessName || 'blog'}" (target audience: ${targetAudience || 'general'}), provide a comprehensive niche analysis:
+
+1. Market Size & Opportunity
+2. Target Audience Profile
+3. Top 10 Keywords (with estimated search volume)
+4. Top 5 Competitors
+5. Content Gaps & Opportunities
+6. Monetization Potential
+7. Recommended Content Pillars
+
+Return as JSON:
+{
+  "niche": string,
+  "marketSize": {"estimate": string, "growth": string},
+  "audience": {"demographics": string, "painPoints": string[], "desires": string[]},
+  "keywords": [{"keyword": string, "volume": string, "difficulty": string}],
+  "competitors": [{"name": string, "strengths": string[], "weaknesses": string[]}],
+  "gaps": string[],
+  "monetization": {"methods": string[], "potential": string},
+  "pillars": [{"name": string, "description": string}]
+}`;
+        break;
+
       case 'generate_strategy':
         prompt = `Create a comprehensive 90-day content strategy for ${businessName}. Include:
 1. Content pillars (3-4 main themes)

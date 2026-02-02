@@ -542,6 +542,7 @@ const BlogEmpirePage = () => {
                               className="flex-1 bg-orange-500 hover:bg-orange-600"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setSelectedProject(project);
                                 setActiveTab("automation");
                               }}
                             >
