@@ -571,7 +571,11 @@ const TradingDashboardPage = () => {
                             <Button
                               size="sm"
                               className="flex-1 bg-blue-500 hover:bg-blue-600"
-                              onClick={() => setActiveTab("automation")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedProject(project);
+                                setActiveTab("automation");
+                              }}
                             >
                               <Play className="h-3 w-3 mr-1" />
                               Open
