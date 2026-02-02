@@ -537,7 +537,14 @@ const BlogEmpirePage = () => {
                           </div>
 
                           <div className="flex gap-2">
-                            <Button size="sm" className="flex-1 bg-orange-500 hover:bg-orange-600">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-orange-500 hover:bg-orange-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab("automation");
+                              }}
+                            >
                               <Play className="h-3 w-3 mr-1" />
                               Open
                             </Button>
