@@ -335,3 +335,30 @@ verify_jwt = false
 
 [functions.v0-website-generator]
 verify_jwt = false
+
+[functions.instagram-automation]
+verify_jwt = false
+
+[functions.social-distribution-executor]
+verify_jwt = false
+
+[functions.blog-publishing-executor]
+verify_jwt = false
+
+[functions.wordpress-automation]
+verify_jwt = false
+
+[functions.medium-automation]
+verify_jwt = false
+
+[functions.backlink-monitor]
+verify_jwt = false
+
+[functions.comment-moderator]
+verify_jwt = false
+
+[functions.seo-intelligence-agent]
+verify_jwt = false
+
+[functions.analytics-scraper]
+verify_jwt = false

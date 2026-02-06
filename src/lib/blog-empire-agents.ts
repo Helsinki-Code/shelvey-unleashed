@@ -51,10 +51,21 @@ export const BLOG_EMPIRE_AGENTS: BlogAgent[] = [
     id: 'social-distributor',
     name: 'Social Distributor',
     role: 'Distribution Specialist',
-    description: 'Distributes content across social platforms, manages repurposing, and drives traffic to blog posts.',
+    description: 'Distributes content across social platforms using browser automation, manages Instagram posts/stories, and drives traffic to blog posts.',
     icon: '📱',
-    skills: ['Social Media', 'Content Repurposing', 'Traffic Generation', 'Community Building'],
-    mcpServers: ['mcp-twitter', 'mcp-linkedin', 'mcp-facebook', 'mcp-instagram']
+    skills: [
+      'Instagram Automation',
+      'Create & Publish Posts',
+      'Upload & Manage Stories',
+      'Like & Comment on Posts',
+      'Follow/Unfollow Accounts',
+      'Search Users & Hashtags',
+      'Access Insights & Analytics',
+      'Community Engagement',
+      'Content Repurposing',
+      'Traffic Generation'
+    ],
+    mcpServers: ['mcp-twitter', 'mcp-linkedin', 'mcp-facebook', 'mcp-instagram', 'instagram-automation']
   },
   {
     id: 'analytics-reporter',
