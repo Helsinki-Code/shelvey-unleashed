@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, FileText, Loader2, Bot, CheckCircle2, Clock, 
-  Eye, MessageSquare, RefreshCw, Play, Sparkles, PenTool
+  Eye, MessageSquare, RefreshCw, Play, Sparkles, PenTool, Instagram,
+  Image, Heart, Users, Hash, MessageCircle, Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +22,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ProceedToNextPhaseButton } from '@/components/ProceedToNextPhaseButton';
 import { StartPhaseButton } from '@/components/StartPhaseButton';
 import { ContentGenerationStudio } from '@/components/ContentGenerationStudio';
+import { InstagramAutomationPanel } from '@/components/InstagramAutomationPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -309,6 +311,10 @@ export default function Phase4Page() {
                 <Sparkles className="w-4 h-4" />
                 Content Studio
               </TabsTrigger>
+              <TabsTrigger value="instagram" className="gap-2">
+                <Instagram className="w-4 h-4" />
+                Instagram
+              </TabsTrigger>
               <TabsTrigger value="agent" className="gap-2">
                 <Bot className="w-4 h-4" />
                 Content Agent
@@ -329,6 +335,11 @@ export default function Phase4Page() {
                 projectId={projectId!} 
                 project={project}
               />
+            </TabsContent>
+
+            {/* Instagram Automation Tab */}
+            <TabsContent value="instagram">
+              <InstagramAutomationPanel projectId={projectId!} projectName={project?.name} />
             </TabsContent>
 
             {/* Single Agent Tab with Live Work Preview */}

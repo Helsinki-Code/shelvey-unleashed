@@ -99,16 +99,18 @@ export const PHASE_AGENTS: PhaseAgent[] = [
   {
     id: 'content-agent',
     name: 'Content Agent',
-    role: 'Content Creation & Copywriting Specialist',
-    description: 'Creates compelling website copy, blog posts, email templates, social media content, and marketing materials optimized for conversion.',
+    role: 'Content Creation & Social Media Specialist',
+    description: 'Creates compelling website copy, blog posts, email templates, social media content, and manages Instagram automation including posts, stories, and community engagement.',
     phaseNumber: 4,
     phaseName: 'Content Creation',
     icon: FileText,
     capabilities: [
       'Website Copy', 'Blog Posts', 'Email Templates', 'Social Media Content',
-      'SEO Content', 'Product Descriptions', 'Landing Pages', 'Ad Copy'
+      'SEO Content', 'Product Descriptions', 'Landing Pages', 'Ad Copy',
+      'Instagram Posts', 'Instagram Stories', 'Hashtag Research', 'Community Engagement',
+      'Follower Growth', 'Content Scheduling', 'Analytics Insights'
     ],
-    mcpServers: ALL_MCP_SERVERS // Full access to all MCPs
+    mcpServers: [...ALL_MCP_SERVERS, 'instagram-automation'] // Full access + Instagram
   },
   {
     id: 'marketing-agent',
