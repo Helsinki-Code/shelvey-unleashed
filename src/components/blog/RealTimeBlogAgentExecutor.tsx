@@ -42,7 +42,7 @@ const BLOG_PHASES = [
   { number: 3, name: "Blog Setup", icon: Globe },
   { number: 4, name: "Content Production", icon: FileText },
   { number: 5, name: "SEO & Ranking", icon: TrendingUp },
-  { number: 6, name: "Social Promotion", icon: Share2 },
+  { number: 6, name: "Instagram & Social", icon: Share2 },
   { number: 7, name: "Monetization", icon: DollarSign },
 ];
 
@@ -52,7 +52,7 @@ const BLOG_AGENTS = {
   3: { id: "blog-setup-agent", name: "Blog Setup Agent" },
   4: { id: "content-writer", name: "Content Writer Agent" },
   5: { id: "seo-optimizer", name: "SEO Optimizer Agent" },
-  6: { id: "social-promoter", name: "Social Promotion Agent" },
+  6: { id: "instagram-agent", name: "Instagram Automation Agent" },
   7: { id: "monetization-agent", name: "Monetization Agent" },
 };
 
@@ -207,7 +207,8 @@ export const RealTimeBlogAgentExecutor = ({
             },
           });
           break;
-        case 4: // Content Production
+        case 4: // Content Production with Instagram
+          // First generate blog content
           response = await supabase.functions.invoke("blog-generator", {
             body: {
               action: "generate_article",
@@ -218,6 +219,22 @@ export const RealTimeBlogAgentExecutor = ({
               Authorization: `Bearer ${session.data.session.access_token}`,
             },
           });
+
+          // Then auto-generate Instagram content
+          if (!response?.error) {
+            const userId = session.data.session.user.id;
+            await supabase.functions.invoke("instagram-automation", {
+              body: {
+                action: "auto_generate_content",
+                user_id: userId,
+                project_id: projectId,
+                niche: niche || projectName,
+              },
+              headers: {
+                Authorization: `Bearer ${session.data.session.access_token}`,
+              },
+            });
+          }
           break;
         case 5: // SEO
           response = await supabase.functions.invoke("seo-analyzer", {
@@ -230,11 +247,55 @@ export const RealTimeBlogAgentExecutor = ({
             },
           });
           break;
-        case 6: // Social Promotion
-          response = await supabase.functions.invoke("social-distribution-executor", {
+        case 6: // Instagram & Social Promotion
+          const userId = session.data.session.user.id;
+          
+          // Step 1: Search trending hashtags
+          await supabase.from("agent_activity_logs").insert({
+            agent_id: "instagram-agent",
+            agent_name: "Instagram Automation Agent",
+            action: "Researching trending hashtags for " + (niche || projectName),
+            status: "started",
+            metadata: { projectId, niche },
+          });
+
+          await supabase.functions.invoke("instagram-automation", {
             body: {
-              action: "schedule_distribution",
-              project_id: projectId,
+              action: "search_hashtags",
+              user_id: userId,
+              hashtag: niche || projectName,
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session.access_token}`,
+            },
+          });
+
+          // Step 2: Engage with community
+          await supabase.from("agent_activity_logs").insert({
+            agent_id: "instagram-agent",
+            agent_name: "Instagram Automation Agent",
+            action: "Engaging with " + (niche || projectName) + " community",
+            status: "started",
+            metadata: { projectId, niche },
+          });
+
+          await supabase.functions.invoke("instagram-automation", {
+            body: {
+              action: "engage_community",
+              user_id: userId,
+              niche: niche || projectName,
+              count: 25,
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session.access_token}`,
+            },
+          });
+
+          // Step 3: Get insights
+          response = await supabase.functions.invoke("instagram-automation", {
+            body: {
+              action: "get_insights",
+              user_id: userId,
             },
             headers: {
               Authorization: `Bearer ${session.data.session.access_token}`,
