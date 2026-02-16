@@ -32,7 +32,7 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
       * { box-sizing: border-box; }
       html, body, #root { width: 100%; min-height: 100%; margin: 0; }
@@ -133,7 +133,10 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         };
 
         function normalizePath(path) {
-          return String(path).replace(/\\\\/g, '/').replace(/^\\.\\//, '');
+          return String(path)
+            .replace(/\\\\/g, '/')
+            .replace(/^\\.\\//, '')
+            .replace(/^\\//, '');
         }
 
         function dirname(path) {
@@ -156,6 +159,12 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         function resolveImport(fromPath, spec) {
           if (spec.startsWith('@/')) {
             return resolveFile('src/' + spec.slice(2));
+          }
+          if (spec.startsWith('src/')) {
+            return resolveFile(spec);
+          }
+          if (spec.startsWith('/')) {
+            return resolveFile(spec.slice(1));
           }
           if (spec.startsWith('./') || spec.startsWith('../')) {
             return resolveFile(joinPath(dirname(fromPath), spec));
@@ -185,7 +194,7 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         }
 
         function runModule(path) {
-          const normalized = normalizePath(path);
+          const normalized = resolveFile(path);
           if (moduleCache[normalized]) return moduleCache[normalized].exports;
 
           if (normalized.endsWith('.css')) {
@@ -203,7 +212,7 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
             if (Object.prototype.hasOwnProperty.call(builtins, spec)) return builtins[spec];
             const resolved = resolveImport(normalized, spec);
             if (Object.prototype.hasOwnProperty.call(builtins, resolved)) return builtins[resolved];
-            return runModule(resolved);
+            return runModule(resolveFile(resolved));
           };
 
           const compiled = transpile(normalized, source);
