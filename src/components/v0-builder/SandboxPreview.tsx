@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { ProjectFile } from "./V0Builder";
 
 interface SandboxPreviewProps {
@@ -7,8 +7,6 @@ interface SandboxPreviewProps {
 }
 
 export function SandboxPreview({ code, files }: SandboxPreviewProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const previewHtml = useMemo(() => {
     const fileMap: Record<string, string> = {};
     for (const file of files) fileMap[file.path] = file.content;
@@ -259,18 +257,9 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
 </html>`;
   }, [code, files]);
 
-  useEffect(() => {
-    if (!iframeRef.current) return;
-    const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-    if (!doc) return;
-    doc.open();
-    doc.write(previewHtml);
-    doc.close();
-  }, [previewHtml]);
-
   return (
     <iframe
-      ref={iframeRef}
+      srcDoc={previewHtml}
       className="w-full h-full border-0 bg-white"
       sandbox="allow-scripts"
       title="Website Preview"
