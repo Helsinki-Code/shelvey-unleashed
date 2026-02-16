@@ -143,18 +143,43 @@ serve(async (req) => {
     const deploymentUrl = `https://${deployData.url}`;
     const productionUrl = deployData.alias?.[0] ? `https://${deployData.alias[0]}` : deploymentUrl;
 
-    // Update database with deployment info
+    // Update (or create) database row with deployment info
     const supabase = createClient(supabaseUrl, supabaseKey);
-    await supabase
+    const appFile = files.find((f) => f.path === 'src/App.tsx' || f.path === 'App.tsx');
+    const now = new Date().toISOString();
+
+    const { data: existingWebsite } = await supabase
       .from('generated_websites')
-      .update({
-        deployed_url: productionUrl,
-        status: 'deployed',
-        hosting_type: 'vercel',
-        updated_at: new Date().toISOString(),
-      })
+      .select('id')
       .eq('project_id', projectId)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingWebsite?.id) {
+      await supabase
+        .from('generated_websites')
+        .update({
+          deployed_url: productionUrl,
+          status: 'deployed',
+          hosting_type: 'vercel',
+          updated_at: now,
+        })
+        .eq('id', existingWebsite.id);
+    } else {
+      await supabase
+        .from('generated_websites')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          name: `${projectName} Website`,
+          html_content: appFile?.content || '',
+          status: 'deployed',
+          deployed_url: productionUrl,
+          hosting_type: 'vercel',
+          created_at: now,
+          updated_at: now,
+        });
+    }
 
     return new Response(JSON.stringify({
       success: true,

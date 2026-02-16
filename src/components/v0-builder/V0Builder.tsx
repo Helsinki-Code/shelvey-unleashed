@@ -110,34 +110,24 @@ export function V0Builder({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      for (const file of files) {
-        // Try to update existing, if not found insert
-        const { data: existing } = await supabase
-          .from('website_pages')
-          .select('id')
-          .eq('project_id', projectId)
-          .eq('page_name', file.path)
-          .maybeSingle();
+      const rows = files.map((file) => ({
+        project_id: projectId,
+        user_id: user.id,
+        page_name: file.path,
+        page_code: file.content,
+        page_route: '/' + file.path.replace(/^src\//, '').replace(/\.(tsx|ts|css|json|html)$/, ''),
+        status: 'generated',
+        updated_at: new Date().toISOString(),
+      }));
 
-        if (existing) {
-          await supabase
-            .from('website_pages')
-            .update({ page_code: file.content, status: 'generated' })
-            .eq('id', existing.id);
-        } else {
-          await supabase
-            .from('website_pages')
-            .insert({
-              project_id: projectId,
-              user_id: user.id,
-              page_name: file.path,
-              page_code: file.content,
-              page_route: '/' + file.path.replace(/^src\//, '').replace(/\.(tsx|ts|css|json|html)$/, ''),
-              status: 'generated',
-              version: 1,
-            });
-        }
-      }
+      const { error } = await supabase
+        .from('website_pages')
+        .upsert(rows, {
+          onConflict: 'project_id,user_id,page_name',
+          ignoreDuplicates: false,
+        });
+
+      if (error) throw error;
     } catch (e) {
       console.error('Failed to save files:', e);
     }
@@ -178,8 +168,8 @@ export function V0Builder({
     }]);
 
     const abortController = new AbortController();
-    // Set a 3-minute timeout
-    const timeout = setTimeout(() => abortController.abort(), 180000);
+    // Large edits can exceed 3 minutes. Keep requests alive longer.
+    const timeout = setTimeout(() => abortController.abort(), 600000);
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -204,7 +194,11 @@ export function V0Builder({
             project,
             branding,
             specs: approvedSpecs,
-            existingFiles: projectFiles.map(f => f.path),
+            existingFiles: projectFiles.map(f => ({
+              path: f.path,
+              content: f.content,
+              type: f.type,
+            })),
           }),
         }
       );
@@ -271,7 +265,8 @@ export function V0Builder({
           if (idx >= 0) allFiles[idx] = gf;
           else allFiles.push(gf);
         }
-        saveFilesToDB(allFiles);
+        setProjectFiles(allFiles);
+        await saveFilesToDB(allFiles);
         toast.success(`${generatedFiles.length} file${generatedFiles.length > 1 ? 's' : ''} generated successfully`);
       }
 

@@ -579,7 +579,22 @@ const Phase3Page = () => {
                     branding={branding}
                     approvedSpecs={approvedSpecs}
                     onDeploymentComplete={(url) => {
-                      setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : null);
+                      setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : {
+                        id: crypto.randomUUID(),
+                        name: `${project.name} Website`,
+                        html_content: '',
+                        css_content: null,
+                        js_content: null,
+                        status: 'deployed',
+                        deployed_url: url,
+                        domain_name: null,
+                        custom_domain: null,
+                        hosting_type: 'vercel',
+                        dns_records: null,
+                        ssl_status: null,
+                        ceo_approved: null,
+                        user_approved: null,
+                      });
                       fetchData();
                     }}
                   />
