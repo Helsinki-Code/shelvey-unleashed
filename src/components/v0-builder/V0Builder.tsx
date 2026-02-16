@@ -1,25 +1,30 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  PanelLeftClose, PanelLeft, Rocket, Download, Sparkles,
-  Globe, Wand2, Code, Layout, Loader2, CheckCircle2,
-  FileCode, Layers, Monitor, Tablet, Smartphone, RefreshCw,
-  Send, MessageSquare, X, Plus, Maximize2, Minimize2, GripVertical,
-  ChevronLeft, ChevronRight, History, FileText, FolderOpen,
-  Play, Pause, RotateCcw, Share2, Settings, Trash2, Edit3,
-  Check, Copy, ExternalLink, Zap, Eye, Box, Search, Filter
+  FileCode,
+  Globe,
+  GripVertical,
+  Loader2,
+  Maximize2,
+  MessageSquare,
+  Minimize2,
+  Monitor,
+  PanelLeft,
+  PanelLeftClose,
+  RefreshCw,
+  Rocket,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { SandboxPreview } from './SandboxPreview';
+import { CodeEditor } from './CodeEditor';
+import { DeploymentModal } from './DeploymentModal';
+import { WebPreview, WebPreviewBody, WebPreviewNavigation, WebPreviewNavigationButton, WebPreviewUrl, WebPreviewViewport } from './WebPreview';
 
 export interface ProjectFile {
   path: string;
@@ -34,14 +39,6 @@ export interface Message {
   files?: ProjectFile[];
   isStreaming?: boolean;
   timestamp: Date;
-}
-
-export interface Chat {
-  id: string;
-  name?: string;
-  messages?: Message[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface V0BuilderProps {
@@ -60,926 +57,307 @@ interface V0BuilderProps {
 }
 
 type ViewMode = 'preview' | 'code';
-type Viewport = 'desktop' | 'tablet' | 'mobile';
 
-// Shelvey branding colors
-const SHELVEY_PRIMARY = '#16a34a'; // Green
-const SHELVEY_SECONDARY = '#0f766e'; // Teal
-const SHELVEY_ACCENT = '#0ea5e9'; // Sky blue
-
-export function V0Builder({
-  projectId, project, branding, approvedSpecs, onDeploymentComplete,
-}: V0BuilderProps) {
-  // Core state
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+export function V0Builder({ projectId, project, branding, approvedSpecs, onDeploymentComplete }: V0BuilderProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  
-  // UI state
-  const [viewMode, setViewMode] = useState<ViewMode>('preview');
-  const [viewport, setViewport] = useState<Viewport>('desktop');
-  const [leftPanelWidth, setLeftPanelWidth] = useState(38);
-  const [rightPanelWidth, setRightPanelWidth] = useState(38);
-  const [activePanel, setActivePanel] = useState<'files' | 'chat' | 'preview'>('chat');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobileLayout, setIsMobileLayout] = useState(false);
-  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [filesLoaded, setFilesLoaded] = useState(false);
   const [input, setInput] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Refs
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
+  const [chatOpen, setChatOpen] = useState(true);
+  const [activePanel, setActivePanel] = useState<'chat' | 'preview'>('chat');
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(36);
+  const [isSplitDragging, setIsSplitDragging] = useState(false);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [sandboxPreviewUrl, setSandboxPreviewUrl] = useState<string | null>(null);
+  const [sandboxStatus, setSandboxStatus] = useState<string | null>(null);
+  const [isSandboxBusy, setIsSandboxBusy] = useState(false);
+  const [previewEngine, setPreviewEngine] = useState<'local' | 'vercel'>('vercel');
+
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const projectFilesRef = useRef<ProjectFile[]>([]);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Computed values
-  const currentChat = useMemo(() => 
-    chats.find(c => c.id === currentChatId), 
-    [chats, currentChatId]
-  );
-  
-  const currentFile = useMemo(() => 
-    projectFiles.find(f => f.path === selectedFile),
-    [projectFiles, selectedFile]
-  );
-  
-  const filteredChats = useMemo(() => {
-    if (!searchQuery) return chats;
-    return chats.filter(chat => 
-      chat.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.messages?.some(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }, [chats, searchQuery]);
-  
-  // Brand theme
-  const brandTheme = useMemo(() => {
-    const primary = branding?.primaryColor || SHELVEY_PRIMARY;
-    const secondary = branding?.secondaryColor || SHELVEY_SECONDARY;
-    const accent = branding?.accentColor || SHELVEY_ACCENT;
-    
-    const hexToRgba = (hex: string, alpha = 1) => {
-      const clean = hex.replace('#', '').trim();
-      const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-      const int = Number.parseInt(full, 16);
-      if (Number.isNaN(int)) return `rgba(34, 197, 94, ${alpha})`;
-      const r = (int >> 16) & 255;
-      const g = (int >> 8) & 255;
-      const b = int & 255;
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    };
-    
-    return {
-      primary,
-      secondary,
-      accent,
-      panelBg: `linear-gradient(140deg, ${hexToRgba(primary, 0.08)} 0%, ${hexToRgba(secondary, 0.06)} 45%, ${hexToRgba(accent, 0.05)} 100%)`,
-      panelBorder: hexToRgba(primary, 0.2),
-      softGlow: `0 0 0 1px ${hexToRgba(primary, 0.15)}, 0 8px 24px ${hexToRgba(primary, 0.1)}`,
-      gradientText: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
-    };
-  }, [branding]);
-  
-  // Load saved chats on mount
-  useEffect(() => {
-    loadChats();
-    loadSavedFiles();
-  }, [projectId]);
-  
-  // Auto-scroll chat
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-  
-  // Handle window resize
-  useEffect(() => {
-    const onResize = () => setIsMobileLayout(window.innerWidth < 1024);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  
-  // Load chats from database
-  const loadChats = async () => {
+  const splitRef = useRef<HTMLDivElement>(null);
+  const filesRef = useRef<ProjectFile[]>([]);
+  const syncSignatureRef = useRef('');
+  const syncTimerRef = useRef<number | null>(null);
+
+  const theme = useMemo(() => ({
+    primary: branding?.primaryColor || '#16a34a',
+    border: 'rgba(22,163,74,.25)',
+    headingFont: branding?.headingFont || 'var(--font-cyber)',
+    bodyFont: branding?.bodyFont || 'var(--font-sans)',
+  }), [branding]);
+
+  const currentFile = projectFiles.find((f) => f.path === selectedFile);
+  const appFile = projectFiles.find((f) => f.path === 'src/App.tsx' || f.path === 'App.tsx');
+  const showChatPane = isMobileLayout ? activePanel === 'chat' : chatOpen;
+  const showPreviewPane = isMobileLayout ? activePanel === 'preview' : true;
+  const previewUrl = previewEngine === 'vercel' ? sandboxPreviewUrl || '' : '';
+  const hasPreview = previewEngine === 'vercel' ? Boolean(sandboxPreviewUrl) : projectFiles.length > 0;
+
+  const filesSignature = useCallback((files: ProjectFile[]) => files.map((f) => `${f.path}:${f.content.length}`).sort().join('|'), []);
+
+  const loadSavedFiles = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('v0_chats')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('updated_at', { ascending: false });
-      
-      if (data) {
-        const loadedChats: Chat[] = data.map(c => ({
-          id: c.id,
-          name: c.name,
-          messages: c.messages || [],
-          createdAt: c.created_at,
-          updatedAt: c.updated_at,
-        }));
-        setChats(loadedChats);
-        if (loadedChats.length > 0 && !currentChatId) {
-          setCurrentChatId(loadedChats[0].id);
-          setMessages(loadedChats[0].messages || []);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load chats:', error);
-    }
-  };
-  
-  // Load saved files from database
-  const loadSavedFiles = async () => {
-    try {
-      const { data } = await supabase
-        .from('website_pages')
-        .select('page_name, page_code, page_route')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: true });
-      
-      if (data && data.length > 0) {
-        const loaded: ProjectFile[] = data.map(p => ({
-          path: p.page_name,
-          content: p.page_code || '',
-          type: (p.page_name.endsWith('.css') ? 'css' : p.page_name.endsWith('.json') ? 'json' : 'tsx') as ProjectFile['type'],
-        }));
-        setProjectFiles(loaded);
-        setSelectedFile(loaded[0]?.path || null);
-      }
-    } catch (error) {
-      console.error('Failed to load saved files:', error);
-    }
-  };
-  
-  // Save chat to database
-  const saveChat = useCallback(async (chatId: string, messagesToSave: Message[]) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const firstUserMessage = messagesToSave.find(m => m.role === 'user');
-      const chatName = firstUserMessage?.content.slice(0, 50) || 'Untitled Chat';
-      
-      await supabase
-        .from('v0_chats')
-        .upsert({
-          id: chatId,
-          project_id: projectId,
-          user_id: user.id,
-          name: chatName,
-          messages: messagesToSave,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
-    } catch (error) {
-      console.error('Failed to save chat:', error);
-    }
-  }, [projectId]);
-  
-  // Save files to database
-  const saveFilesToDB = useCallback(async (files: ProjectFile[]) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const rows = files.map((file) => ({
-        project_id: projectId,
-        user_id: user.id,
-        page_name: file.path,
-        page_code: file.content,
-        page_route: '/' + file.path.replace(/^src\//, '').replace(/\.(tsx|ts|css|json|html)$/, ''),
-        status: 'generated',
-        updated_at: new Date().toISOString(),
+      const { data } = await supabase.from('website_pages').select('page_name,page_code').eq('project_id', projectId).order('created_at', { ascending: true });
+      if (!data) return;
+      const loaded = data.map((p) => ({
+        path: p.page_name,
+        content: p.page_code || '',
+        type: (p.page_name.endsWith('.css') ? 'css' : p.page_name.endsWith('.json') ? 'json' : 'tsx') as ProjectFile['type'],
       }));
-      
-      await supabase
-        .from('website_pages')
-        .upsert(rows, { onConflict: 'project_id,user_id,page_name', ignoreDuplicates: false });
-    } catch (error) {
-      console.error('Failed to save files:', error);
+      setProjectFiles(loaded);
+      filesRef.current = loaded;
+      setSelectedFile(loaded[0]?.path || null);
+    } finally {
+      setFilesLoaded(true);
     }
   }, [projectId]);
-  
-  // Create new chat
-  const createNewChat = useCallback(() => {
-    const newChatId = crypto.randomUUID();
-    const newChat: Chat = {
-      id: newChatId,
-      name: 'New Chat',
-      messages: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setChats([newChat, ...chats]);
-    setCurrentChatId(newChatId);
-    setMessages([]);
-    setShowHistory(false);
-  }, [chats]);
-  
-  // Delete chat
-  const deleteChat = useCallback(async (chatId: string) => {
-    setChats(prev => prev.filter(c => c.id !== chatId));
-    if (currentChatId === chatId) {
-      const remaining = chats.filter(c => c.id !== chatId);
-      if (remaining.length > 0) {
-        setCurrentChatId(remaining[0].id);
-        setMessages(remaining[0].messages || []);
-      } else {
-        setCurrentChatId(null);
-        setMessages([]);
+
+  const saveFiles = useCallback(async (files: ProjectFile[]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const rows = files.map((f) => ({
+      project_id: projectId,
+      user_id: user.id,
+      page_name: f.path,
+      page_code: f.content,
+      page_route: '/' + f.path.replace(/^src\//, '').replace(/\.(tsx|ts|css|json|html)$/, ''),
+      status: 'generated',
+      updated_at: new Date().toISOString(),
+    }));
+    await supabase.from('website_pages').upsert(rows, { onConflict: 'project_id,user_id,page_name', ignoreDuplicates: false });
+  }, [projectId]);
+
+  const persistSandboxSession = useCallback(async (next: { sandboxId?: string | null; previewUrl?: string | null; status?: string | null }) => {
+    const payload = { sandboxId: next.sandboxId ?? sandboxId, previewUrl: next.previewUrl ?? sandboxPreviewUrl, status: next.status ?? sandboxStatus };
+    localStorage.setItem(`phase3:sandbox:${projectId}`, JSON.stringify(payload));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !payload.sandboxId) return;
+    const sb = supabase as any;
+    await sb.from('phase3_sandbox_sessions').upsert({
+      project_id: projectId,
+      user_id: user.id,
+      sandbox_id: payload.sandboxId,
+      preview_url: payload.previewUrl,
+      status: payload.status || 'running',
+      preview_engine: 'vercel',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'project_id,user_id' });
+  }, [projectId, sandboxId, sandboxPreviewUrl, sandboxStatus]);
+
+  useEffect(() => { loadSavedFiles(); }, [loadSavedFiles]);
+  useEffect(() => { filesRef.current = projectFiles; }, [projectFiles]);
+  useEffect(() => { const onResize = () => setIsMobileLayout(window.innerWidth < 1024); onResize(); window.addEventListener('resize', onResize); return () => window.removeEventListener('resize', onResize); }, []);
+  useEffect(() => { if (!scrollRef.current) return; scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      if (!user) return;
+      const sb = supabase as any;
+      const { data } = await sb.from('phase3_sandbox_sessions').select('sandbox_id,preview_url,status').eq('project_id', projectId).eq('user_id', user.id).maybeSingle();
+      if (cancelled) return;
+      if (data?.sandbox_id) {
+        setSandboxId(data.sandbox_id); setSandboxPreviewUrl(data.preview_url || null); setSandboxStatus(data.status || null); setPreviewEngine('vercel'); return;
       }
-    }
-    try {
-      await supabase.from('v0_chats').delete().eq('id', chatId);
-    } catch (error) {
-      console.error('Failed to delete chat:', error);
-    }
-  }, [chats, currentChatId]);
-  
-  // Handle sending message
-  const handleSendMessage = useCallback(async (content: string) => {
-    const chatId = currentChatId || crypto.randomUUID();
-    
-    if (!currentChatId) {
-      const newChat: Chat = {
-        id: chatId,
-        name: content.slice(0, 50),
-        messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setChats([newChat, ...chats]);
-      setCurrentChatId(chatId);
-    }
-    
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content,
-      timestamp: new Date(),
+      const raw = localStorage.getItem(`phase3:sandbox:${projectId}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      setSandboxId(parsed.sandboxId || null); setSandboxPreviewUrl(parsed.previewUrl || null); setSandboxStatus(parsed.status || null);
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!sandboxId) return;
+    supabase.functions.invoke('vercel-sandbox-preview', { body: { action: 'get_status', sandboxId } }).then(({ data }) => {
+      if (!data?.success) return;
+      setSandboxStatus(data.status || null); setSandboxPreviewUrl(data.previewUrl || null);
+    }).catch(() => undefined);
+  }, [sandboxId]);
+
+  useEffect(() => {
+    if (previewEngine !== 'vercel' || !sandboxId || sandboxStatus === 'stopped' || projectFiles.length === 0) return;
+    const sig = filesSignature(projectFiles);
+    if (sig === syncSignatureRef.current) return;
+    if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = window.setTimeout(async () => {
+      const { data } = await supabase.functions.invoke('vercel-sandbox-preview', {
+        body: { action: 'update_files', sandboxId, projectId, projectName: project.name, files: projectFiles.map((f) => ({ path: f.path, content: f.content, type: f.type })) },
+      });
+      if (!data?.success) return;
+      syncSignatureRef.current = sig;
+      setSandboxStatus(data.status || sandboxStatus);
+      if (data.previewUrl) setSandboxPreviewUrl(data.previewUrl);
+      await persistSandboxSession({ status: data.status, previewUrl: data.previewUrl });
+    }, 1000);
+    return () => { if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current); };
+  }, [previewEngine, sandboxId, sandboxStatus, projectFiles, projectId, project.name, filesSignature, persistSandboxSession]);
+
+  useEffect(() => {
+    if (!isSplitDragging) return;
+    const onMove = (e: MouseEvent) => {
+      if (!splitRef.current) return;
+      const rect = splitRef.current.getBoundingClientRect();
+      const next = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftPanelWidth(Math.max(24, Math.min(58, next)));
     };
-    
-    setMessages(prev => {
-      const updated = [...prev, userMessage];
-      saveChat(chatId, updated);
-      return updated;
-    });
-    setIsGenerating(true);
-    setInput('');
-    
+    const onUp = () => setIsSplitDragging(false);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  }, [isSplitDragging]);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!input.trim() || isGenerating) return;
+    const content = input.trim();
+    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content, timestamp: new Date() };
     const assistantId = crypto.randomUUID();
-    setMessages(prev => [...prev, {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-      timestamp: new Date(),
-      files: [],
-    }]);
-    
+    setMessages((prev) => [...prev, userMessage, { id: assistantId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), files: [] }]);
+    setInput('');
+    setIsGenerating(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${accessToken || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage].map(m => ({
-              role: m.role,
-              content: m.content,
-            })),
-            projectId,
-            project,
-            branding,
-            specs: approvedSpecs,
-            existingFiles: projectFiles.map(f => ({
-              path: f.path,
-              content: f.content,
-              type: f.type,
-            })),
-          }),
-        }
-      );
-      
+      const token = sessionData.session?.access_token;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map((m) => ({ role: m.role, content: m.content })),
+          projectId, project, branding, specs: approvedSpecs, existingFiles: projectFiles.map((f) => ({ path: f.path, content: f.content, type: f.type })),
+        }),
+      });
       if (!response.ok) throw new Error('Generation failed');
-      
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let narrativeContent = '';
-      let lineBuffer = '';
-      let doneReceived = false;
-      let fileBuffer: ProjectFile[] = [];
-      
+      const reader = response.body?.getReader(); const decoder = new TextDecoder();
+      let narrative = ''; let buffer = ''; const generated: ProjectFile[] = [];
       while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        lineBuffer += decoder.decode(value, { stream: true });
-        const lines = lineBuffer.split('\n');
-        lineBuffer = lines.pop() || '';
-        
+        const { done, value } = await reader.read(); if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n'); buffer = lines.pop() || '';
         for (const line of lines) {
-          if (!line.trim() || line.startsWith(':')) continue;
           if (!line.startsWith('data: ')) continue;
-          
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') {
-            doneReceived = true;
-            continue;
-          }
-          
-          let event;
-          try {
-            event = JSON.parse(jsonStr);
-          } catch {
-            continue;
-          }
-          
-          if (event.type === 'narrative') {
-            narrativeContent += event.content || '';
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastIdx = updated.findLastIndex(m => m.id === assistantId);
-              if (lastIdx >= 0) {
-                updated[lastIdx] = {
-                  ...updated[lastIdx],
-                  content: narrativeContent,
-                };
-              }
-              return updated;
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') continue;
+          const parsed = JSON.parse(raw);
+          if (parsed.type === 'content') {
+            narrative += parsed.content;
+            setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: narrative } : m));
+          } else if (parsed.type === 'file') {
+            const file = parsed.file as ProjectFile;
+            generated.push(file);
+            setProjectFiles((prev) => {
+              const idx = prev.findIndex((f) => f.path === file.path);
+              const next = idx >= 0 ? prev.map((f, i) => i === idx ? file : f) : [...prev, file];
+              filesRef.current = next;
+              return next;
             });
-          } else if (event.type === 'file') {
-            const file: ProjectFile = {
-              path: event.path,
-              content: event.content || event.code || '',
-              type: (event.path.endsWith('.css') ? 'css' : 
-                     event.path.endsWith('.json') ? 'json' : 
-                     event.path.endsWith('.html') ? 'html' : 'tsx') as ProjectFile['type'],
-            };
-            fileBuffer.push(file);
-            projectFilesRef.current = [...projectFilesRef.current, file];
-            setProjectFiles(prev => {
-              const existing = prev.findIndex(f => f.path === file.path);
-              return existing >= 0
-                ? prev.map((f, i) => i === existing ? file : f)
-                : [...prev, file];
-            });
-            setSelectedFile(prev => prev || file.path);
-          } else if (event.type === 'complete') {
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastIdx = updated.findLastIndex(m => m.id === assistantId);
-              if (lastIdx >= 0) {
-                updated[lastIdx] = {
-                  ...updated[lastIdx],
-                  isStreaming: false,
-                  files: fileBuffer,
-                };
-              }
-              return updated;
-            });
-            await saveChat(chatId, [...messages, userMessage, {
-              id: assistantId,
-              role: 'assistant',
-              content: narrativeContent,
-              files: fileBuffer,
-              isStreaming: false,
-              timestamp: new Date(),
-            }]);
-            await saveFilesToDB([...projectFiles, ...fileBuffer]);
-            if (event.url) {
-              onDeploymentComplete?.(event.url);
-            }
-          } else if (event.type === 'error') {
-            throw new Error(event.error || 'Generation error');
+            setSelectedFile((p) => p || file.path);
           }
-        }
-        
-        if (doneReceived && !narrativeContent) {
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastIdx = updated.findLastIndex(m => m.id === assistantId);
-            if (lastIdx >= 0) {
-              updated[lastIdx] = {
-                ...updated[lastIdx],
-                isStreaming: false,
-                content: 'Generation complete! Check the preview panel.',
-              };
-            }
-            return updated;
-          });
-          break;
         }
       }
-    } catch (error) {
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastIdx = updated.findLastIndex(m => m.id === assistantId);
-        if (lastIdx >= 0) {
-          updated[lastIdx] = {
-            ...updated[lastIdx],
-            isStreaming: false,
-            content: error instanceof Error ? error.message : 'An error occurred',
-          };
-        }
-        return updated;
-      });
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: narrative, isStreaming: false, files: generated } : m));
+      if (generated.length > 0) await saveFiles(filesRef.current);
+    } catch {
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: 'Generation failed. Retry.', isStreaming: false } : m));
     } finally {
       setIsGenerating(false);
     }
-  }, [currentChatId, messages, projectFiles, projectId, project, branding, approvedSpecs, saveChat, saveFilesToDB, onDeploymentComplete]);
-  
-  // Handle file selection
-  const handleFileSelect = (filePath: string) => {
-    setSelectedFile(filePath);
-    setActivePanel('preview');
-  };
-  
-  // Get file icon
-  const getFileIcon = (path: string) => {
-    if (path.endsWith('.tsx') || path.endsWith('.ts')) return '⚛️';
-    if (path.endsWith('.css')) return '🎨';
-    if (path.endsWith('.json')) return '📋';
-    if (path.endsWith('.html')) return '🌐';
-    return '📄';
-  };
-  
-  // Format file size
-  const formatFileSize = (content: string) => {
-    const bytes = new Blob([content]).size;
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-  
+  }, [input, isGenerating, messages, projectId, project, branding, approvedSpecs, projectFiles, saveFiles]);
+
+  const launchSandbox = useCallback(async () => {
+    if (filesRef.current.length === 0) return toast.error('Generate files first');
+    setIsSandboxBusy(true);
+    try {
+      const action = sandboxId && sandboxStatus !== 'stopped' ? 'update_files' : 'provision_preview';
+      const { data } = await supabase.functions.invoke('vercel-sandbox-preview', { body: { action, sandboxId, projectId, projectName: project.name, files: filesRef.current } });
+      if (!data?.success) throw new Error(data?.error || 'Sandbox failed');
+      const nextId = data.sandboxId || sandboxId; const nextUrl = data.previewUrl || sandboxPreviewUrl; const nextStatus = data.status || 'running';
+      setSandboxId(nextId); setSandboxPreviewUrl(nextUrl); setSandboxStatus(nextStatus); setPreviewEngine('vercel');
+      syncSignatureRef.current = filesSignature(filesRef.current);
+      await persistSandboxSession({ sandboxId: nextId, previewUrl: nextUrl, status: nextStatus });
+      toast.success('Sandbox ready');
+    } catch (e: any) {
+      toast.error(e?.message || 'Sandbox failed');
+    } finally { setIsSandboxBusy(false); }
+  }, [sandboxId, sandboxStatus, sandboxPreviewUrl, projectId, project.name, filesSignature, persistSandboxSession]);
+
+  if (!filesLoaded) return <div className="h-[calc(100vh-220px)] min-h-[500px] rounded-xl border flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+
   return (
-    <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
-      {/* Left Sidebar - Chat History */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.aside
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            className="border-r border-gray-800 bg-gray-900/50 flex flex-col overflow-hidden"
-          >
-            <div className="p-4 border-b border-gray-800">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <History className="w-5 h-5" style={{ color: brandTheme.primary }} />
-                  Chat History
-                </h2>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setShowHistory(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <Input
-                  placeholder="Search chats..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-gray-800/50 border-gray-700 h-9"
-                />
-              </div>
-            </div>
-            
-            <ScrollArea className="flex-1 p-2">
-              <div className="space-y-1">
-                {filteredChats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={cn(
-                      'group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors',
-                      currentChatId === chat.id
-                        ? 'bg-gray-800'
-                        : 'hover:bg-gray-800/50'
-                    )}
-                    onClick={() => {
-                      setCurrentChatId(chat.id);
-                      setMessages(chat.messages || []);
-                      setShowHistory(false);
-                    }}
-                  >
-                    <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {chat.name || 'Untitled Chat'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(chat.updatedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="opacity-0 group-hover:opacity-100 h-7 w-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteChat(chat.id);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3 text-gray-500" />
-                    </Button>
-                  </div>
-                ))}
-                
-                {filteredChats.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <p className="text-sm">No chats yet</p>
-                    <Button
-                      variant="link"
-                      className="mt-2"
-                      onClick={createNewChat}
-                    >
-                      Create your first chat
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-            
-            <div className="p-3 border-t border-gray-800">
-              <Button
-                className="w-full"
-                onClick={createNewChat}
-                style={{
-                  background: brandTheme.gradientText,
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Chat
-              </Button>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-      
-      {/* Toggle Sidebar Button */}
-      <Button
-        size="icon"
-        variant="ghost"
-        className="absolute left-2 top-4 z-50 h-8 w-8 bg-gray-900/80"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
-        {isSidebarOpen ? (
-          <ChevronLeft className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-      </Button>
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-14 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900/30">
-          <div className="flex items-center gap-3">
-            <div 
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: brandTheme.gradientText }}
-            >
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-semibold">{project.name}</h1>
-              <p className="text-xs text-gray-500">AI Website Builder</p>
-            </div>
+    <div className="h-[calc(100vh-220px)] min-h-[500px] flex flex-col rounded-xl border overflow-hidden" style={{ borderColor: theme.border, fontFamily: theme.bodyFont }}>
+      <div className="h-11 shrink-0 border-b flex items-center justify-between px-2 bg-background/70" style={{ borderColor: theme.border }}>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => isMobileLayout ? setActivePanel((p) => p === 'chat' ? 'preview' : 'chat') : setChatOpen((v) => !v)}>
+            {isMobileLayout ? (activePanel === 'chat' ? <Monitor className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />) : (chatOpen ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeft className="h-3.5 w-3.5" />)}
+          </Button>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-xs font-semibold" style={{ fontFamily: theme.headingFont }}>{project.name}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="flex items-center bg-muted rounded-md p-0.5">
+            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', viewMode === 'preview' && 'bg-background shadow-sm')} onClick={() => setViewMode('preview')}>Preview</Button>
+            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', viewMode === 'code' && 'bg-background shadow-sm')} onClick={() => setViewMode('code')}>Code</Button>
           </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Viewport selector */}
-            <div className="flex items-center bg-gray-800 rounded-lg p-1">
-              <Button
-                size="icon"
-                variant={viewport === 'desktop' ? 'secondary' : 'ghost'}
-                className="h-7 w-7"
-                onClick={() => setViewport('desktop')}
-              >
-                <Monitor className="w-4 h-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant={viewport === 'tablet' ? 'secondary' : 'ghost'}
-                className="h-7 w-7"
-                onClick={() => setViewport('tablet')}
-              >
-                <Tablet className="w-4 h-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant={viewport === 'mobile' ? 'secondary' : 'ghost'}
-                className="h-7 w-7"
-                onClick={() => setViewport('mobile')}
-              >
-                <Smartphone className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            {/* View mode toggle */}
-            <div className="flex items-center bg-gray-800 rounded-lg p-1">
-              <Button
-                variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
-                className="h-7 px-3"
-                onClick={() => setViewMode('preview')}
-              >
-                <Eye className="w-4 h-4 mr-1" />
-                Preview
-              </Button>
-              <Button
-                variant={viewMode === 'code' ? 'secondary' : 'ghost'}
-                className="h-7 px-3"
-                onClick={() => setViewMode('code')}
-              >
-                <Code className="w-4 h-4 mr-1" />
-                Code
-              </Button>
-            </div>
-            
-            <Separator orientation="vertical" className="h-6 bg-gray-700" />
-            
-            {/* Action buttons */}
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Share2 className="w-4 h-4" />
-            </Button>
-            <Button
-              className="h-8"
-              style={{ background: brandTheme.primary }}
-            >
-              <Rocket className="w-4 h-4 mr-2" />
-              Deploy
-            </Button>
+          <div className="flex items-center bg-muted rounded-md p-0.5">
+            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', previewEngine === 'local' && 'bg-background shadow-sm')} onClick={() => setPreviewEngine('local')}>Local</Button>
+            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', previewEngine === 'vercel' && 'bg-background shadow-sm')} onClick={() => setPreviewEngine('vercel')}>Vercel</Button>
           </div>
-        </header>
-        
-        {/* Main Split View */}
-        <div className="flex-1 flex overflow-hidden" ref={splitContainerRef}>
-          {/* Left Panel - Chat Input */}
-          <motion.div
-            className="flex flex-col border-r border-gray-800 bg-gray-900/20"
-            style={{ width: `${leftPanelWidth}%` }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0}
-            onDragEnd={(e, { offset, velocity }) => {
-              if (Math.abs(offset.x) > 50) {
-                setLeftPanelWidth(Math.min(Math.max(leftPanelWidth + offset.x / 10, 25), 55));
-              }
-            }}
-          >
-            {/* Files List */}
-            <div className="h-1/3 border-b border-gray-800 overflow-hidden">
-              <div className="p-3 bg-gray-900/50 border-b border-gray-800">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4 text-gray-500" />
-                    Project Files
-                  </h3>
-                  <Badge variant="secondary" className="text-xs">
-                    {projectFiles.length} files
-                  </Badge>
-                </div>
-              </div>
-              <ScrollArea className="h-[calc(100%-40px)]">
-                <div className="p-2 space-y-1">
-                  {projectFiles.map((file) => (
-                    <div
-                      key={file.path}
-                      className={cn(
-                        'flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors',
-                        selectedFile === file.path
-                          ? 'bg-gray-800'
-                          : 'hover:bg-gray-800/50'
-                      )}
-                      onClick={() => handleFileSelect(file.path)}
-                    >
-                      <span className="text-sm">{getFileIcon(file.path)}</span>
-                      <span className="flex-1 text-sm truncate">{file.path}</span>
-                      <span className="text-xs text-gray-500">
-                        {formatFileSize(file.content)}
-                      </span>
-                    </div>
-                  ))}
-                  {projectFiles.length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      <p className="text-xs">No files generated yet</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-            
-            {/* Chat Messages */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <ScrollArea className="flex-1" ref={scrollRef}>
-                <div className="p-4 space-y-4">
-                  {messages.map((message) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      key={message.id}
-                      className={cn(
-                        'flex gap-3',
-                        message.role === 'user' && 'flex-row-reverse'
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                          message.role === 'user'
-                            ? 'bg-gray-700'
-                            : 'bg-gradient-to-br from-green-500 to-teal-600'
-                        )}
-                      >
-                        {message.role === 'user' ? (
-                          <span className="text-sm">👤</span>
-                        ) : (
-                          <Sparkles className="w-4 h-4 text-white" />
-                        )}
-                      </div>
-                      
-                      <div
-                        className={cn(
-                          'max-w-[80%] rounded-2xl px-4 py-2',
-                          message.role === 'user'
-                            ? 'bg-gray-800'
-                            : 'bg-gray-800/50'
-                        )}
-                      >
-                        {message.role === 'assistant' && message.isStreaming && (
-                          <div className="flex items-center gap-1 mb-1">
-                            <Loader2 className="w-3 h-3 animate-spin" style={{ color: brandTheme.primary }} />
-                            <span className="text-xs text-gray-500">Generating...</span>
-                          </div>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap">
-                          {message.content || (message.isStreaming && (
-                            <span className="inline-block w-2 h-4 ml-1 bg-gray-500 animate-pulse" />
-                          ))}
-                        </p>
-                        
-                        {message.files && message.files.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {message.files.map((file) => (
-                              <Badge
-                                key={file.path}
-                                variant="outline"
-                                className="text-xs cursor-pointer hover:bg-gray-700"
-                                onClick={() => handleFileSelect(file.path)}
-                              >
-                                {getFileIcon(file.path)} {file.path}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              {/* Chat Input */}
-              <div className="p-4 border-t border-gray-800">
-                <div className="relative">
-                  <Textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Describe what you want to build..."
-                    className="min-h-[60px] max-h-[120px] pr-12 bg-gray-800/50 border-gray-700 resize-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (input.trim()) {
-                          handleSendMessage(input);
-                        }
-                      }
-                    }}
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute bottom-2 right-2 h-8 w-8"
-                    disabled={!input.trim() || isGenerating}
-                    onClick={() => input.trim() && handleSendMessage(input)}
-                    style={{ background: brandTheme.primary }}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Press Enter to send, Shift+Enter for new line
-                </p>
-              </div>
-            </div>
-          </motion.div>
-          
-          {/* Resize Handle */}
-          <div
-            className="w-1 bg-gray-800 hover:bg-gray-700 cursor-col-resize flex items-center justify-center"
-            onMouseDown={(e) => {
-              const startX = e.clientX;
-              const startWidth = leftPanelWidth;
-              
-              const onMove = (moveEvent: MouseEvent) => {
-                const diff = ((moveEvent.clientX - startX) / window.innerWidth) * 100;
-                setLeftPanelWidth(Math.min(Math.max(startWidth + diff, 25), 55));
-              };
-              
-              const onUp = () => {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-              };
-              
-              document.addEventListener('mousemove', onMove);
-              document.addEventListener('mouseup', onUp);
-            }}
-          >
-            <div className="w-0.5 h-8 bg-gray-600 rounded-full" />
-          </div>
-          
-          {/* Right Panel - Preview */}
-          <motion.div
-            className="flex flex-col bg-gray-950"
-            style={{ width: `${100 - leftPanelWidth - 2}%` }}
-          >
-            {/* Preview Toolbar */}
-            <div className="h-10 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900/30">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Preview</span>
-                {selectedFile && (
-                  <>
-                    <span className="text-gray-600">/</span>
-                    <span className="text-xs">{selectedFile}</span>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
-                >
-                  {isPreviewFullscreen ? (
-                    <Minimize2 className="w-4 h-4" />
-                  ) : (
-                    <Maximize2 className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-            
-            {/* Preview Frame */}
-            <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-              <div
-                className={cn(
-                  'transition-all duration-300 bg-white rounded-lg overflow-hidden shadow-2xl',
-                  viewport === 'desktop' && 'w-full h-full',
-                  viewport === 'tablet' && 'w-[768px] h-[1024px]',
-                  viewport === 'mobile' && 'w-[375px] h-[667px]'
-                )}
-              >
-                {selectedFile ? (
-                  <SandboxPreview
-                    code={currentFile?.content || ''}
-                    files={projectFiles}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <div className="text-center">
-                      <Eye className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>Select a file to preview</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={launchSandbox} disabled={isSandboxBusy || projectFiles.length === 0}>{isSandboxBusy ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Globe className="h-3 w-3 mr-1" />{sandboxId ? 'Sync' : 'Launch'}</Button>
+          <Button size="sm" className="h-7 text-xs" onClick={() => setShowDeployModal(true)} disabled={projectFiles.length === 0}><Rocket className="h-3 w-3 mr-1" />Deploy</Button>
         </div>
       </div>
+
+      {viewMode === 'preview' ? (
+        <div ref={splitRef} className="relative flex-1 flex overflow-hidden">
+          {showChatPane && (
+            <div className="flex flex-col border-r min-h-0" style={{ borderColor: theme.border, width: isMobileLayout ? '100%' : `${leftPanelWidth}%` }}>
+              <div className="h-9 border-b shrink-0 flex items-center px-3" style={{ borderColor: theme.border }}><span className="text-xs font-semibold">Chat</span>{isGenerating && <Badge variant="secondary" className="ml-2 text-[10px]">Generating</Badge>}</div>
+              <ScrollArea className="flex-1 px-3" ref={scrollRef}><div className="py-3 space-y-3">{messages.map((m) => <div key={m.id} className={cn('text-xs', m.role === 'user' && 'text-right')}><div className={cn('inline-block max-w-[95%] px-3 py-2 rounded-lg', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>{m.content || (m.isStreaming ? '...' : '')}</div></div>)}</div></ScrollArea>
+              <div className="p-2 border-t shrink-0" style={{ borderColor: theme.border }}>
+                <div className="relative">
+                  <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder={isGenerating ? 'Generating...' : 'Continue the conversation...'} className="min-h-[60px] max-h-[120px] pr-10 resize-none text-xs" />
+                  <Button size="icon" className="absolute bottom-1.5 right-1.5 h-7 w-7" disabled={!input.trim() || isGenerating} onClick={handleSendMessage}>{isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          {!isMobileLayout && showChatPane && showPreviewPane && <button type="button" className="relative w-1 bg-border/70 hover:bg-border" onMouseDown={() => setIsSplitDragging(true)}><GripVertical className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /></button>}
+          {showPreviewPane && (
+            <div className={cn('flex-1 min-h-0', isPreviewFullscreen && !isMobileLayout && 'fixed inset-4 z-50 rounded-xl border bg-background shadow-2xl')} style={isPreviewFullscreen && !isMobileLayout ? { borderColor: theme.border } : undefined}>
+              <WebPreview defaultUrl={previewUrl}>
+                <WebPreviewNavigation>
+                  <WebPreviewNavigationButton onClick={() => setRefreshKey((k) => k + 1)} tooltip="Refresh" disabled={!hasPreview}><RefreshCw className="h-4 w-4" /></WebPreviewNavigationButton>
+                  <WebPreviewUrl readOnly value={previewUrl} />
+                  <WebPreviewViewport />
+                  <WebPreviewNavigationButton onClick={() => setIsPreviewFullscreen((v) => !v)} tooltip={isPreviewFullscreen ? 'Exit' : 'Fullscreen'}>{isPreviewFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</WebPreviewNavigationButton>
+                </WebPreviewNavigation>
+                <WebPreviewBody key={refreshKey} src={previewUrl || undefined} localPreview={previewEngine !== 'vercel'} localCode={appFile?.content || ''} localFiles={projectFiles} />
+              </WebPreview>
+            </div>
+          )}
+          {isMobileLayout && <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20"><div className="flex items-center bg-background/90 border rounded-lg p-1" style={{ borderColor: theme.border }}><button onClick={() => setActivePanel('chat')} className={cn('h-8 px-3 rounded-md text-xs font-medium', activePanel === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Chat</button><button onClick={() => setActivePanel('preview')} className={cn('h-8 px-3 rounded-md text-xs font-medium', activePanel === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Preview</button></div></div>}
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          <div className="w-56 border-r bg-muted/20 overflow-auto shrink-0">
+            <div className="p-2">
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Files</div>
+              {projectFiles.map((f) => <button key={f.path} onClick={() => setSelectedFile(f.path)} className={cn('w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] text-left', selectedFile === f.path ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><FileCode className="h-3 w-3 shrink-0" /><span className="truncate">{f.path}</span></button>)}
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden"><CodeEditor code={currentFile?.content || '// Select a file to view'} language={selectedFile?.endsWith('.css') ? 'css' : 'typescript'} filename={selectedFile || undefined} /></div>
+        </div>
+      )}
+
+      <DeploymentModal open={showDeployModal} onOpenChange={setShowDeployModal} projectId={projectId} projectName={project.name} files={projectFiles} onSuccess={(url) => { onDeploymentComplete?.(url); toast.success(`Deployed: ${url}`); }} />
     </div>
   );
 }
