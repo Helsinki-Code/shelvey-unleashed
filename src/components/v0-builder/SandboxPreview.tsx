@@ -9,7 +9,10 @@ interface SandboxPreviewProps {
 export function SandboxPreview({ code, files }: SandboxPreviewProps) {
   const previewHtml = useMemo(() => {
     const fileMap: Record<string, string> = {};
-    for (const file of files) fileMap[file.path] = file.content;
+    for (const file of files) {
+      const normalizedPath = file.path.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
+      fileMap[normalizedPath] = file.content;
+    }
 
     if (code) {
       if (fileMap["src/App.tsx"]) fileMap["src/App.tsx"] = code;

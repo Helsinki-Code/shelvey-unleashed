@@ -1,554 +1,320 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 interface MediumPost {
   title: string;
   content: string;
-  tags: string[];
-  published: boolean;
+  tags?: string[];
+  published?: boolean;
   canonical_url?: string;
   publish_status?: "draft" | "published" | "unlisted";
 }
 
-interface MediumPublication {
-  id: string;
-  name: string;
-  description: string;
-  followers: number;
-  image_url: string;
-  publication_url: string;
+type JsonRecord = Record<string, unknown>;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function assertRequired(value: unknown, name: string) {
+  if (!value || (typeof value === "string" && !value.trim())) {
+    throw new Error(`${name} is required`);
+  }
+}
+
+function toSlug(input: string) {
+  return input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+async function getMcpCredentials(supabase: any, userId: string, mcpServerId: string) {
+  const { data, error } = await supabase.functions.invoke("get-mcp-credentials", {
+    body: { userId, mcpServerId },
+  });
+
+  if (error) throw error;
+  if (!data?.success || !data?.credentials) {
+    throw new Error(data?.error || `Credentials not configured for ${mcpServerId}`);
+  }
+
+  return data.credentials as Record<string, string>;
+}
+
+async function invokeMcpMedium(
+  supabase: any,
+  userId: string,
+  tool: string,
+  args: JsonRecord = {},
+) {
+  const credentials = await getMcpCredentials(supabase, userId, "mcp-medium");
+  const { data, error } = await supabase.functions.invoke("mcp-medium", {
+    body: { tool, arguments: args, credentials },
+  });
+
+  if (error) throw error;
+  if (!data?.success) throw new Error(data?.error || `mcp-medium ${tool} failed`);
+
+  return data.data;
+}
+
+async function logAudit(args: {
+  supabase: any;
+  userId?: string;
+  sessionId?: string;
+  action: string;
+  status: "success" | "error" | "warning";
+  durationMs?: number;
+  errorMessage?: string;
+}) {
+  if (!args.userId) return;
+  await args.supabase.from("browser_automation_audit").insert({
+    user_id: args.userId,
+    session_id: args.sessionId || null,
+    provider: "mcp-medium",
+    action: args.action,
+    status: args.status,
+    duration_ms: args.durationMs ?? null,
+    error_message: args.errorMessage ?? null,
+  });
 }
 
 Deno.serve(async (req) => {
-  try {
-    const {
-      action,
-      user_id,
-      session_id,
-      post,
-      post_id,
-      access_token,
-      publication_id,
-    } = await req.json();
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const started = Date.now();
+
+  try {
+    const { action, user_id, session_id, post, post_id, publication_id } = await req.json();
+    assertRequired(action, "action");
+    assertRequired(user_id, "user_id");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) throw new Error("Supabase environment is missing");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (action === "authenticate_medium") {
-      return await authenticateMedium(
+    if (action === "authenticate_medium" || action === "get_user_profile") {
+      const profile = await invokeMcpMedium(supabase, user_id, "get_user");
+      await logAudit({
         supabase,
-        user_id,
-        session_id,
-        access_token
-      );
-    }
-
-    if (action === "publish_to_medium") {
-      return await publishToMedium(
-        supabase,
-        user_id,
-        session_id,
-        post
-      );
-    }
-
-    if (action === "update_post") {
-      return await updateMediumPost(
-        supabase,
-        user_id,
-        session_id,
-        post_id,
-        post
-      );
-    }
-
-    if (action === "delete_post") {
-      return await deleteMediumPost(
-        supabase,
-        user_id,
-        session_id,
-        post_id
-      );
+        userId: user_id,
+        sessionId: session_id,
+        action: action === "authenticate_medium" ? "authenticate_medium" : "get_user_profile",
+        status: "success",
+        durationMs: Date.now() - started,
+      });
+      return jsonResponse({ success: true, profile, duration_ms: Date.now() - started });
     }
 
     if (action === "get_publications") {
-      return await getPublications(supabase, user_id, session_id);
+      const publications = await invokeMcpMedium(supabase, user_id, "get_publications");
+      await logAudit({
+        supabase,
+        userId: user_id,
+        sessionId: session_id,
+        action: "get_publications",
+        status: "success",
+        durationMs: Date.now() - started,
+      });
+      return jsonResponse({ success: true, publications });
+    }
+
+    if (action === "publish_to_medium") {
+      assertRequired(post?.title, "post.title");
+      assertRequired(post?.content, "post.content");
+
+      const mcpResult = await invokeMcpMedium(supabase, user_id, "create_post", {
+        title: post.title,
+        content: post.content,
+        content_format: "html",
+        publish_status: post.publish_status || (post.published ? "public" : "draft"),
+        tags: Array.isArray(post.tags) ? post.tags.slice(0, 5) : [],
+        canonical_url: post.canonical_url,
+      });
+
+      const mediumPost = (mcpResult?.data || mcpResult || {}) as JsonRecord;
+      const postUrl = String(mediumPost.url || "");
+      const mediumId = String(mediumPost.id || post_id || "");
+
+      const { data: savedPost, error: saveError } = await supabase
+        .from("blog_posts")
+        .insert({
+          user_id: user_id,
+          title: String(post.title),
+          slug: toSlug(String(post.title)),
+          content: String(post.content),
+          excerpt: String(post.content).replace(/<[^>]+>/g, "").slice(0, 300),
+          status: "published",
+          published_at: new Date().toISOString(),
+          medium_id: mediumId || null,
+          medium_url: postUrl || null,
+          meta: {
+            platform: "medium",
+            tags: post.tags || [],
+            canonical_url: post.canonical_url || null,
+            mcp_response: mcpResult,
+          },
+        })
+        .select()
+        .single();
+
+      if (saveError) throw saveError;
+
+      await logAudit({
+        supabase,
+        userId: user_id,
+        sessionId: session_id,
+        action: "publish_to_medium",
+        status: "success",
+        durationMs: Date.now() - started,
+      });
+
+      return jsonResponse({
+        success: true,
+        post: savedPost,
+        medium_result: mcpResult,
+        duration_ms: Date.now() - started,
+      });
     }
 
     if (action === "publish_to_publication") {
-      return await publishToPublication(
+      assertRequired(publication_id, "publication_id");
+      assertRequired(post?.title, "post.title");
+      assertRequired(post?.content, "post.content");
+
+      const credentials = await getMcpCredentials(supabase, user_id, "mcp-medium");
+      const token = credentials.MEDIUM_INTEGRATION_TOKEN;
+      if (!token) throw new Error("MEDIUM_INTEGRATION_TOKEN missing");
+
+      const response = await fetch(`https://api.medium.com/v1/publications/${publication_id}/posts`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          title: post.title,
+          contentFormat: "html",
+          content: post.content,
+          publishStatus: post.publish_status || (post.published ? "public" : "draft"),
+          tags: Array.isArray(post.tags) ? post.tags.slice(0, 5) : [],
+          canonicalUrl: post.canonical_url || undefined,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(`Medium publication publish failed (${response.status})`);
+
+      await logAudit({
         supabase,
-        user_id,
-        session_id,
-        publication_id,
-        post
-      );
+        userId: user_id,
+        sessionId: session_id,
+        action: "publish_to_publication",
+        status: "success",
+        durationMs: Date.now() - started,
+      });
+
+      return jsonResponse({ success: true, publication_id, result, duration_ms: Date.now() - started });
+    }
+
+    if (action === "update_post") {
+      assertRequired(post_id, "post_id");
+      assertRequired(post?.title, "post.title");
+
+      const { data, error } = await supabase
+        .from("blog_posts")
+        .update({
+          title: post.title,
+          slug: toSlug(post.title),
+          content: post.content || null,
+          excerpt: post.content ? String(post.content).replace(/<[^>]+>/g, "").slice(0, 300) : null,
+          updated_at: new Date().toISOString(),
+          meta: {
+            update_note: "Medium API does not support post editing via public integration token API.",
+            requested_publish_status: post.publish_status || null,
+            requested_tags: post.tags || [],
+          },
+        })
+        .eq("id", post_id)
+        .eq("user_id", user_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await logAudit({
+        supabase,
+        userId: user_id,
+        sessionId: session_id,
+        action: "update_medium_post",
+        status: "warning",
+        durationMs: Date.now() - started,
+      });
+
+      return jsonResponse({
+        success: true,
+        post: data,
+        warning: "Remote Medium post update is not supported by current Medium API; local record was updated.",
+      });
+    }
+
+    if (action === "delete_post") {
+      assertRequired(post_id, "post_id");
+      const { error } = await supabase.from("blog_posts").delete().eq("id", post_id).eq("user_id", user_id);
+      if (error) throw error;
+
+      await logAudit({
+        supabase,
+        userId: user_id,
+        sessionId: session_id,
+        action: "delete_medium_post",
+        status: "warning",
+        durationMs: Date.now() - started,
+      });
+
+      return jsonResponse({
+        success: true,
+        deleted_local: true,
+        warning: "Medium API does not support deleting posts via public integration token API.",
+      });
     }
 
     if (action === "get_post_stats") {
-      return await getPostStats(supabase, user_id, session_id, post_id);
+      assertRequired(post_id, "post_id");
+      const { data, error } = await supabase
+        .from("blog_posts")
+        .select("id,title,medium_id,medium_url,published_at,meta")
+        .eq("id", post_id)
+        .eq("user_id", user_id)
+        .single();
+      if (error) throw error;
+
+      return jsonResponse({
+        success: true,
+        stats: {
+          post_id: data.id,
+          medium_id: data.medium_id,
+          medium_url: data.medium_url,
+          published_at: data.published_at,
+          note: "Live Medium engagement metrics are not available from current Medium API.",
+        },
+      });
     }
 
-    if (action === "get_user_profile") {
-      return await getUserProfile(supabase, user_id, session_id);
-    }
-
-    return new Response(
-      JSON.stringify({ error: "Unknown action", action }),
-      { status: 400 }
-    );
+    return jsonResponse({ success: false, error: "Unknown action", action }, 400);
   } catch (error) {
     console.error("Error in medium-automation:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
+    return jsonResponse(
+      { success: false, error: error instanceof Error ? error.message : "Unknown error" },
+      500,
     );
   }
 });
-
-async function authenticateMedium(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  accessToken: string
-) {
-  const startTime = Date.now();
-
-  try {
-    // Simulate Medium API auth validation
-    const userProfile = {
-      id: Math.random().toString(36).substr(2, 9),
-      username: "shelveydash",
-      name: "ShelVey Dashboard",
-      email: "hello@shelveydash.com",
-      image_url: "https://example.com/avatar.jpg",
-      bio: "Trading and investment strategies",
-      twitter_username: "shelveydash",
-      followers: Math.floor(Math.random() * 50000) + 10000,
-      following: Math.floor(Math.random() * 5000) + 500,
-    };
-
-    // Store authentication
-    const { error: dbError } = await supabase
-      .from("blog_publishing_configs")
-      .insert({
-        user_id: userId,
-        platform: "medium",
-        access_token: accessToken,
-        config: userProfile,
-        is_authenticated: true,
-        authenticated_at: new Date().toISOString(),
-      });
-
-    if (dbError) throw dbError;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "authenticate_medium",
-      status: "completed",
-      details: {
-        username: userProfile.username,
-        followers: userProfile.followers,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user_profile: userProfile,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "authenticate_medium",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-
-    throw error;
-  }
-}
-
-async function publishToMedium(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  post: MediumPost
-) {
-  const startTime = Date.now();
-
-  try {
-    const mediumPost = {
-      id: Math.random().toString(36).substr(2, 12),
-      title: post.title,
-      author: "shelveydash",
-      clap_count: Math.floor(Math.random() * 1000) + 10,
-      response_count: Math.floor(Math.random() * 50) + 1,
-      reading_time: Math.ceil(post.content.split(/\s+/).length / 200),
-      published_at: new Date().toISOString(),
-      canonical_url: post.canonical_url || null,
-      url: `https://medium.com/@shelveydash/${post.title.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substr(2, 5)}`,
-      status: "published",
-      tags: post.tags || [],
-    };
-
-    // Store in database
-    const { error: dbError } = await supabase
-      .from("blog_posts")
-      .insert({
-        user_id: userId,
-        platform: "medium",
-        platform_post_id: mediumPost.id,
-        title: post.title,
-        content: post.content,
-        status: "published",
-        url: mediumPost.url,
-        published_at: new Date().toISOString(),
-        meta: mediumPost,
-      });
-
-    if (dbError) throw dbError;
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_medium",
-      status: "completed",
-      details: {
-        post_id: mediumPost.id,
-        title: post.title,
-        url: mediumPost.url,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        post: mediumPost,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_medium",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { title: post.title },
-    });
-
-    throw error;
-  }
-}
-
-async function updateMediumPost(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  postId: string,
-  post: MediumPost
-) {
-  const startTime = Date.now();
-
-  try {
-    const updatedPost = {
-      id: postId,
-      title: post.title,
-      content: post.content,
-      tags: post.tags,
-      status: post.publish_status || "published",
-      updated_at: new Date().toISOString(),
-    };
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "update_medium_post",
-      status: "completed",
-      details: {
-        post_id: postId,
-        title: post.title,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        post: updatedPost,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "update_medium_post",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_id: postId },
-    });
-
-    throw error;
-  }
-}
-
-async function deleteMediumPost(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  postId: string
-) {
-  const startTime = Date.now();
-
-  try {
-    const result = {
-      id: postId,
-      deleted: true,
-      message: `Post ${postId} has been deleted from Medium`,
-    };
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "delete_medium_post",
-      status: "completed",
-      details: {
-        post_id: postId,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        result,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "delete_medium_post",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { post_id: postId },
-    });
-
-    throw error;
-  }
-}
-
-async function getPublications(
-  supabase: any,
-  userId: string,
-  sessionId: string
-) {
-  try {
-    const publications: MediumPublication[] = [
-      {
-        id: "pub1",
-        name: "Trading Insights",
-        description:
-          "A publication for professional traders and investors sharing strategies and insights",
-        followers: Math.floor(Math.random() * 100000) + 10000,
-        image_url: "https://example.com/pub1.jpg",
-        publication_url: "https://medium.com/trading-insights",
-      },
-      {
-        id: "pub2",
-        name: "Automated Trading",
-        description:
-          "Latest strategies in automated and algorithmic trading",
-        followers: Math.floor(Math.random() * 50000) + 5000,
-        image_url: "https://example.com/pub2.jpg",
-        publication_url: "https://medium.com/automated-trading",
-      },
-      {
-        id: "pub3",
-        name: "Finance Weekly",
-        description: "Weekly financial market analysis and tips",
-        followers: Math.floor(Math.random() * 150000) + 20000,
-        image_url: "https://example.com/pub3.jpg",
-        publication_url: "https://medium.com/finance-weekly",
-      },
-    ];
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        publications,
-        total: publications.length,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error getting publications:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
-  }
-}
-
-async function publishToPublication(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  publicationId: string,
-  post: MediumPost
-) {
-  const startTime = Date.now();
-
-  try {
-    const pubPost = {
-      id: Math.random().toString(36).substr(2, 12),
-      title: post.title,
-      publication_id: publicationId,
-      status: "published",
-      url: `https://medium.com/${publicationId}/${post.title.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substr(2, 5)}`,
-      published_at: new Date().toISOString(),
-    };
-
-    const duration = Date.now() - startTime;
-
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_publication",
-      status: "completed",
-      details: {
-        publication_id: publicationId,
-        post_id: pubPost.id,
-        title: post.title,
-        duration_ms: duration,
-      },
-      duration_ms: duration,
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        post: pubPost,
-        duration_ms: duration,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    await supabase.from("browser_automation_audit").insert({
-      session_id: sessionId,
-      user_id: userId,
-      action: "publish_to_publication",
-      status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { publication_id: publicationId },
-    });
-
-    throw error;
-  }
-}
-
-async function getPostStats(
-  supabase: any,
-  userId: string,
-  sessionId: string,
-  postId: string
-) {
-  try {
-    const stats = {
-      post_id: postId,
-      claps: Math.floor(Math.random() * 5000) + 100,
-      reads: Math.floor(Math.random() * 50000) + 1000,
-      responses: Math.floor(Math.random() * 200) + 5,
-      highlights: Math.floor(Math.random() * 500) + 10,
-      shares: Math.floor(Math.random() * 100) + 5,
-      avg_read_time_percent: Math.random() * 100,
-      unique_readers: Math.floor(Math.random() * 30000) + 500,
-      followers_gained: Math.floor(Math.random() * 500) + 10,
-    };
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        stats,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error getting post stats:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
-  }
-}
-
-async function getUserProfile(
-  supabase: any,
-  userId: string,
-  sessionId: string
-) {
-  try {
-    const profile = {
-      id: Math.random().toString(36).substr(2, 9),
-      username: "shelveydash",
-      name: "ShelVey Dashboard",
-      email: "hello@shelveydash.com",
-      image_url: "https://example.com/avatar.jpg",
-      bio: "Trading and investment strategies",
-      followers: Math.floor(Math.random() * 50000) + 10000,
-      following: Math.floor(Math.random() * 5000) + 500,
-      total_claps_received: Math.floor(Math.random() * 500000) + 50000,
-      total_reads: Math.floor(Math.random() * 1000000) + 100000,
-      publications: Math.floor(Math.random() * 20) + 3,
-      average_reading_time: Math.floor(Math.random() * 15) + 3,
-    };
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        profile,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error getting user profile:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
-  }
-}
