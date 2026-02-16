@@ -60,6 +60,11 @@ export function V0Builder({
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
+  const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [sandboxPreviewUrl, setSandboxPreviewUrl] = useState<string | null>(null);
+  const [sandboxStatus, setSandboxStatus] = useState<string | null>(null);
+  const [isSandboxBusy, setIsSandboxBusy] = useState(false);
+  const [previewEngine, setPreviewEngine] = useState<'local' | 'vercel'>('vercel');
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [viewport, setViewport] = useState<Viewport>('desktop');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -69,11 +74,178 @@ export function V0Builder({
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const projectFilesRef = useRef<ProjectFile[]>([]);
+  const lastSyncedSignatureRef = useRef<string>('');
+  const autoSyncTimerRef = useRef<number | null>(null);
+
+  const buildFilesSignature = useCallback((files: ProjectFile[]) => {
+    return files
+      .map((f) => `${f.path}:${f.content.length}:${f.content.slice(0, 64)}`)
+      .sort()
+      .join('|');
+  }, []);
+
+  const persistSandboxSession = useCallback(async (data: { sandboxId?: string | null; previewUrl?: string | null; status?: string | null }) => {
+    const next = {
+      sandboxId: data.sandboxId ?? sandboxId,
+      previewUrl: data.previewUrl ?? sandboxPreviewUrl,
+      status: data.status ?? sandboxStatus,
+    };
+    localStorage.setItem(`phase3:sandbox:${projectId}`, JSON.stringify(next));
+
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      if (!user || !next.sandboxId) return;
+
+      const sb = supabase as any;
+      await sb
+        .from('phase3_sandbox_sessions')
+        .upsert(
+          {
+            project_id: projectId,
+            user_id: user.id,
+            sandbox_id: next.sandboxId,
+            preview_url: next.previewUrl,
+            status: next.status || 'running',
+            preview_engine: 'vercel',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'project_id,user_id' },
+        );
+    } catch (e) {
+      console.error('Failed to persist sandbox session in DB:', e);
+    }
+  }, [projectId, sandboxId, sandboxPreviewUrl, sandboxStatus]);
 
   // Load previously saved files from DB on mount
   useEffect(() => {
     loadSavedFiles();
   }, [projectId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        if (!user) return;
+
+        const sb = supabase as any;
+        const { data } = await sb
+          .from('phase3_sandbox_sessions')
+          .select('sandbox_id, preview_url, status')
+          .eq('project_id', projectId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (data?.sandbox_id) {
+          setSandboxId(data.sandbox_id);
+          setSandboxPreviewUrl(data.preview_url || null);
+          setSandboxStatus(data.status || null);
+          setPreviewEngine('vercel');
+          localStorage.setItem(`phase3:sandbox:${projectId}`, JSON.stringify({
+            sandboxId: data.sandbox_id,
+            previewUrl: data.preview_url,
+            status: data.status,
+          }));
+          return;
+        }
+      } catch (e) {
+        console.error('Failed loading sandbox session from DB:', e);
+      }
+
+      const raw = localStorage.getItem(`phase3:sandbox:${projectId}`);
+      if (!raw || cancelled) return;
+      try {
+        const parsed = JSON.parse(raw) as { sandboxId?: string; previewUrl?: string; status?: string };
+        if (parsed?.sandboxId) setSandboxId(parsed.sandboxId);
+        if (parsed?.previewUrl) setSandboxPreviewUrl(parsed.previewUrl);
+        if (parsed?.status) setSandboxStatus(parsed.status);
+        setPreviewEngine('vercel');
+      } catch {
+        // ignore malformed local storage
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!sandboxId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('vercel-sandbox-preview', {
+          body: { action: 'get_status', sandboxId },
+        });
+        if (cancelled || error || !data?.success) return;
+
+        const nextStatus = data.status || null;
+        const nextPreviewUrl = data.previewUrl || null;
+        if (nextStatus) setSandboxStatus(nextStatus);
+        if (nextPreviewUrl) setSandboxPreviewUrl(nextPreviewUrl);
+        persistSandboxSession({ status: nextStatus, previewUrl: nextPreviewUrl });
+      } catch {
+        // Keep local cached session if status check fails.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sandboxId, persistSandboxSession]);
+
+  useEffect(() => {
+    if (previewEngine !== 'vercel') return;
+    if (!sandboxId || sandboxStatus === 'stopped') return;
+    if (projectFiles.length === 0) return;
+
+    const nextSignature = buildFilesSignature(projectFiles);
+    if (nextSignature === lastSyncedSignatureRef.current) return;
+
+    if (autoSyncTimerRef.current) {
+      window.clearTimeout(autoSyncTimerRef.current);
+    }
+
+    autoSyncTimerRef.current = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('vercel-sandbox-preview', {
+          body: {
+            action: 'update_files',
+            sandboxId,
+            projectId,
+            projectName: project.name,
+            files: projectFiles.map((f) => ({
+              path: f.path,
+              content: f.content,
+              type: f.type,
+            })),
+          },
+        });
+        if (error || !data?.success) {
+          throw error || new Error(data?.error || 'Sandbox auto-sync failed');
+        }
+        lastSyncedSignatureRef.current = nextSignature;
+        if (data?.status) setSandboxStatus(data.status);
+        if (data?.previewUrl) setSandboxPreviewUrl(data.previewUrl);
+        await persistSandboxSession({ status: data?.status, previewUrl: data?.previewUrl });
+      } catch (e) {
+        console.error('Sandbox auto-sync failed:', e);
+      }
+    }, 1200);
+
+    return () => {
+      if (autoSyncTimerRef.current) {
+        window.clearTimeout(autoSyncTimerRef.current);
+      }
+    };
+  }, [previewEngine, sandboxId, sandboxStatus, projectFiles, buildFilesSignature, projectId, project.name, persistSandboxSession]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -86,14 +258,31 @@ export function V0Builder({
     projectFilesRef.current = projectFiles;
   }, [projectFiles]);
 
+  // Auto-save interval during generation
   useEffect(() => {
     if (!isGenerating) return;
-    const handler = (e: BeforeUnloadEvent) => {
+    
+    const interval = setInterval(async () => {
+      if (projectFilesRef.current.length > 0) {
+        await saveFilesToDB(projectFilesRef.current);
+        console.log('Auto-saved files');
+      }
+    }, 10000); // Auto-save every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [isGenerating, projectId]);
+
+  // Navigation blocker during generation
+  useEffect(() => {
+    if (!isGenerating) return;
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = 'Website generation is in progress. Are you sure you want to leave?';
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isGenerating]);
 
   const loadSavedFiles = async () => {
@@ -301,6 +490,70 @@ export function V0Builder({
     onDeploymentComplete?.(url);
   };
 
+  const handleLaunchVercelSandbox = useCallback(async () => {
+    if (projectFilesRef.current.length === 0) {
+      toast.error('Generate files first before launching Vercel Sandbox.');
+      return;
+    }
+    setIsSandboxBusy(true);
+    try {
+      const action = sandboxId && sandboxStatus !== 'stopped' ? 'update_files' : 'provision_preview';
+      const { data, error } = await supabase.functions.invoke('vercel-sandbox-preview', {
+        body: {
+          action,
+          sandboxId,
+          projectId,
+          projectName: project.name,
+          files: projectFilesRef.current.map((f) => ({
+            path: f.path,
+            content: f.content,
+            type: f.type,
+          })),
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Sandbox launch failed');
+
+      const nextSandboxId = data.sandboxId || sandboxId;
+      const nextPreviewUrl = data.previewUrl || sandboxPreviewUrl;
+      const nextStatus = data.status || 'running';
+
+      setSandboxId(nextSandboxId);
+      setSandboxPreviewUrl(nextPreviewUrl);
+      setSandboxStatus(nextStatus);
+      setPreviewEngine('vercel');
+      lastSyncedSignatureRef.current = buildFilesSignature(projectFilesRef.current);
+      persistSandboxSession({ sandboxId: nextSandboxId, previewUrl: nextPreviewUrl, status: nextStatus });
+      toast.success('Vercel Sandbox preview is ready.');
+    } catch (e) {
+      console.error('Failed to launch Vercel Sandbox:', e);
+      toast.error(e instanceof Error ? e.message : 'Failed to launch Vercel Sandbox');
+    } finally {
+      setIsSandboxBusy(false);
+    }
+  }, [sandboxId, sandboxStatus, projectId, project.name, persistSandboxSession, sandboxPreviewUrl, buildFilesSignature]);
+
+  const handleStopVercelSandbox = useCallback(async () => {
+    if (!sandboxId) return;
+    setIsSandboxBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vercel-sandbox-preview', {
+        body: { action: 'stop', sandboxId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to stop sandbox');
+
+      setSandboxStatus('stopped');
+      persistSandboxSession({ status: 'stopped' });
+      toast.success('Vercel Sandbox stopped.');
+    } catch (e) {
+      console.error('Failed to stop Vercel Sandbox:', e);
+      toast.error(e instanceof Error ? e.message : 'Failed to stop Vercel Sandbox');
+    } finally {
+      setIsSandboxBusy(false);
+    }
+  }, [sandboxId, persistSandboxSession]);
+
   const handleSubmit = () => {
     if (!input.trim() || isGenerating) return;
     handleSendMessage(input.trim());
@@ -466,6 +719,46 @@ export function V0Builder({
           <Badge variant="secondary" className="text-[10px] h-5">
             {projectFiles.length} file{projectFiles.length !== 1 ? 's' : ''}
           </Badge>
+          <Separator orientation="vertical" className="h-4" />
+          <div className="flex items-center bg-muted rounded-md p-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPreviewEngine('local')}
+              className={cn("h-6 px-2 text-[10px] rounded", previewEngine === 'local' && "bg-background shadow-sm")}
+            >
+              Local
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPreviewEngine('vercel')}
+              className={cn("h-6 px-2 text-[10px] rounded", previewEngine === 'vercel' && "bg-background shadow-sm")}
+            >
+              Vercel
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleLaunchVercelSandbox}
+            disabled={isSandboxBusy || projectFiles.length === 0}
+            className="gap-1.5 h-7 text-xs"
+          >
+            {isSandboxBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+            {sandboxId ? 'Sync Sandbox' : 'Launch Sandbox'}
+          </Button>
+          {sandboxId && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleStopVercelSandbox}
+              disabled={isSandboxBusy}
+              className="gap-1 h-7 text-xs"
+            >
+              Stop
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={() => setShowDeployModal(true)}
@@ -577,13 +870,23 @@ export function V0Builder({
                 style={{ width: viewportWidths[viewport], maxWidth: '100%' }}
                 className="h-full bg-background rounded-lg shadow-lg border border-border overflow-hidden transition-all duration-200"
               >
-                {projectFiles.length > 0 ? (
+                {previewEngine === 'vercel' && sandboxPreviewUrl ? (
+                  <iframe
+                    src={sandboxPreviewUrl}
+                    className="w-full h-full border-0 bg-white"
+                    title="Vercel Sandbox Preview"
+                  />
+                ) : projectFiles.length > 0 ? (
                   <SandboxPreview key={refreshKey} code={appFile?.content || ''} files={projectFiles} />
                 ) : (
                   <div className="h-full flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
                       <Layout className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                      <p className="text-xs">Generate a website to see the preview</p>
+                      <p className="text-xs">
+                        {previewEngine === 'vercel'
+                          ? 'Launch Vercel Sandbox to see live preview'
+                          : 'Generate a website to see the preview'}
+                      </p>
                     </div>
                   </div>
                 )}

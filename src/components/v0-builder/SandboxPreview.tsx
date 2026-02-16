@@ -234,28 +234,34 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
             const maybeComponent = normalized.split('/').pop() || normalized;
             const componentName = maybeComponent.replace(/\.(tsx|ts|jsx|js)$/i, '');
             if (/^[A-Z]/.test(componentName)) {
-              moduleCache[normalized] = {
-                exports: {
-                  __esModule: true,
-                  default: function MissingModuleComponent() {
-                    return React.createElement(
-                      'div',
-                      {
-                        style: {
-                          border: '1px solid #fca5a5',
-                          background: '#fef2f2',
-                          color: '#991b1b',
-                          padding: '8px 10px',
-                          borderRadius: '8px',
-                          margin: '8px',
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                          fontSize: '12px',
-                        },
-                      },
-                      'Missing module: ' + normalized
-                    );
+              const MissingComponent = function MissingModuleComponent() {
+                return React.createElement(
+                  'div',
+                  {
+                    style: {
+                      border: '1px solid #fca5a5',
+                      background: '#fef2f2',
+                      color: '#991b1b',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      margin: '8px',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                      fontSize: '12px',
+                    },
                   },
-                },
+                  'Missing module: ' + normalized
+                );
+              };
+              moduleCache[normalized] = {
+                exports: new Proxy(
+                  { __esModule: true, default: MissingComponent },
+                  {
+                    get: function(target, prop) {
+                      if (prop in target) return target[prop];
+                      return MissingComponent;
+                    },
+                  }
+                ),
               };
               return moduleCache[normalized].exports;
             }

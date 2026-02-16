@@ -150,6 +150,7 @@ CRITICAL RULES:
         let fenceAccumulator = "";
         let upstreamDone = false;
         let filesEmitted = 0;
+        let fullAssistantText = "";
 
         const emitContent = (text: string) => {
           if (!text) return;
@@ -200,6 +201,7 @@ CRITICAL RULES:
                 }
 
                 if (!content) continue;
+                fullAssistantText += content;
                 for (const char of content) {
                   switch (parseState) {
                     case ParseState.NARRATIVE:
@@ -278,6 +280,39 @@ CRITICAL RULES:
 
           if (narrativeBuffer) emitContent(narrativeBuffer);
           if (fileBuffer && currentFilePath) emitFile(currentFilePath, currentFileType, fileBuffer);
+
+          // Fallback parser: some model responses may skip strict `tsx:path` fence headers.
+          if (filesEmitted === 0 && fullAssistantText.trim()) {
+            const seen = new Set<string>();
+
+            const strictBlockRegex = /```([a-zA-Z0-9]+):([^\n]+)\n([\s\S]*?)```/g;
+            for (const match of fullAssistantText.matchAll(strictBlockRegex)) {
+              const type = (match[1] || "tsx").trim();
+              const path = (match[2] || "").trim();
+              const content = (match[3] || "").trim();
+              if (!path || !content || seen.has(path)) continue;
+              seen.add(path);
+              emitFile(path, type, content);
+            }
+
+            const inferredBlockRegex = /```([a-zA-Z0-9]+)\n(?:\/\/\s*File:\s*([^\n]+)|\/\*\s*File:\s*([^*\n]+)\*\/|#\s*File:\s*([^\n]+)|--\s*File:\s*([^\n]+))\n([\s\S]*?)```/g;
+            for (const match of fullAssistantText.matchAll(inferredBlockRegex)) {
+              const type = (match[1] || "tsx").trim();
+              const path = (match[2] || match[3] || match[4] || match[5] || "").trim();
+              const content = (match[6] || "").trim();
+              if (!path || !content || seen.has(path)) continue;
+              seen.add(path);
+              emitFile(path, type, content);
+            }
+
+            if (filesEmitted === 0) {
+              const genericCodeBlock = fullAssistantText.match(/```(?:tsx|ts|jsx|js)\n([\s\S]*?)```/);
+              const genericContent = genericCodeBlock?.[1]?.trim();
+              if (genericContent) {
+                emitFile("src/App.tsx", "tsx", genericContent);
+              }
+            }
+          }
 
           emitContent(`\n\nGeneration complete - ${filesEmitted} file${filesEmitted !== 1 ? "s" : ""} created.`);
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
