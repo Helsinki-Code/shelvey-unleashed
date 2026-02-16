@@ -68,6 +68,7 @@ export function V0Builder({
   const [filesLoaded, setFilesLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const projectFilesRef = useRef<ProjectFile[]>([]);
 
   // Load previously saved files from DB on mount
   useEffect(() => {
@@ -80,6 +81,20 @@ export function V0Builder({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    projectFilesRef.current = projectFiles;
+  }, [projectFiles]);
+
+  useEffect(() => {
+    if (!isGenerating) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isGenerating]);
 
   const loadSavedFiles = async () => {
     try {
@@ -133,18 +148,21 @@ export function V0Builder({
     }
   }, [projectId]);
 
-  const handleFileReceived = useCallback((file: ProjectFile) => {
-    setProjectFiles(prev => {
-      const existing = prev.findIndex(f => f.path === file.path);
-      if (existing >= 0) {
-        const updated = [...prev];
-        updated[existing] = file;
-        return updated;
-      }
-      return [...prev, file];
-    });
-    setSelectedFile(prev => prev || file.path);
-  }, []);
+  const handleFileReceived = useCallback(async (file: ProjectFile, persist = false) => {
+    const prev = projectFilesRef.current;
+    const existing = prev.findIndex(f => f.path === file.path);
+    const next = existing >= 0
+      ? prev.map((f, idx) => idx === existing ? file : f)
+      : [...prev, file];
+
+    projectFilesRef.current = next;
+    setProjectFiles(next);
+    setSelectedFile(prevPath => prevPath || file.path);
+
+    if (persist) {
+      await saveFilesToDB(next);
+    }
+  }, [saveFilesToDB]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const userMessage: Message = {
@@ -235,7 +253,7 @@ export function V0Builder({
             } else if (parsed.type === 'file') {
               const file = parsed.file as ProjectFile;
               generatedFiles.push(file);
-              handleFileReceived(file);
+              await handleFileReceived(file, true);
               setMessages(prev => prev.map(m =>
                 m.id === assistantId ? { ...m, files: [...(m.files || []), file] } : m
               ));
@@ -258,15 +276,8 @@ export function V0Builder({
 
       // Save all files to DB
       if (generatedFiles.length > 0) {
-        // Merge with existing
-        const allFiles = [...projectFiles];
-        for (const gf of generatedFiles) {
-          const idx = allFiles.findIndex(f => f.path === gf.path);
-          if (idx >= 0) allFiles[idx] = gf;
-          else allFiles.push(gf);
-        }
-        setProjectFiles(allFiles);
-        await saveFilesToDB(allFiles);
+        // Ensure final state is saved even if stream had transient issues.
+        await saveFilesToDB(projectFilesRef.current);
         toast.success(`${generatedFiles.length} file${generatedFiles.length > 1 ? 's' : ''} generated successfully`);
       }
 

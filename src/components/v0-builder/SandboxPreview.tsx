@@ -51,6 +51,8 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         const VIRTUAL_FILES = ${safeFiles};
         const AGGREGATED_CSS = ${safeCss};
         const moduleCache = {};
+        const FILE_PATHS = Object.keys(VIRTUAL_FILES);
+        const FILE_PATHS_LOWER = new Map(FILE_PATHS.map((p) => [String(p).toLowerCase(), p]));
 
         function flattenClass(input) {
           if (!input) return [];
@@ -177,9 +179,30 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
 
         function resolveFile(basePath) {
           const p = normalizePath(basePath);
-          const candidates = [p, p + '.tsx', p + '.ts', p + '.jsx', p + '.js', p + '.css', p + '/index.tsx', p + '/index.ts', p + '/index.jsx', p + '/index.js'];
+          const alt = p.startsWith('src/') ? p.slice(4) : ('src/' + p);
+          const candidates = [
+            p,
+            p + '.tsx', p + '.ts', p + '.jsx', p + '.js', p + '.css',
+            p + '/index.tsx', p + '/index.ts', p + '/index.jsx', p + '/index.js',
+            alt,
+            alt + '.tsx', alt + '.ts', alt + '.jsx', alt + '.js', alt + '.css',
+            alt + '/index.tsx', alt + '/index.ts', alt + '/index.jsx', alt + '/index.js',
+          ];
           for (const c of candidates) {
             if (Object.prototype.hasOwnProperty.call(VIRTUAL_FILES, c)) return c;
+            const lower = FILE_PATHS_LOWER.get(String(c).toLowerCase());
+            if (lower) return lower;
+          }
+
+          // Last-resort fallback: match by basename to avoid hard crash on path drift.
+          const targetBase = p.split('/').pop();
+          if (targetBase) {
+            const loose = FILE_PATHS.find((fp) => {
+              const base = fp.split('/').pop() || '';
+              if (base === targetBase) return true;
+              return base.replace(/\.(tsx|ts|jsx|js|css)$/i, '') === targetBase.replace(/\.(tsx|ts|jsx|js|css)$/i, '');
+            });
+            if (loose) return loose;
           }
           return p;
         }
@@ -206,7 +229,38 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
           }
 
           const source = VIRTUAL_FILES[normalized];
-          if (typeof source !== 'string') throw new Error('Module not found: ' + normalized);
+          if (typeof source !== 'string') {
+            // Graceful placeholder for missing imports so the preview remains usable.
+            const maybeComponent = normalized.split('/').pop() || normalized;
+            const componentName = maybeComponent.replace(/\.(tsx|ts|jsx|js)$/i, '');
+            if (/^[A-Z]/.test(componentName)) {
+              moduleCache[normalized] = {
+                exports: {
+                  __esModule: true,
+                  default: function MissingModuleComponent() {
+                    return React.createElement(
+                      'div',
+                      {
+                        style: {
+                          border: '1px solid #fca5a5',
+                          background: '#fef2f2',
+                          color: '#991b1b',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          margin: '8px',
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                          fontSize: '12px',
+                        },
+                      },
+                      'Missing module: ' + normalized
+                    );
+                  },
+                },
+              };
+              return moduleCache[normalized].exports;
+            }
+            throw new Error('Module not found: ' + normalized);
+          }
 
           const module = { exports: {} };
           moduleCache[normalized] = module;
@@ -231,6 +285,14 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         }
 
         try {
+          window.addEventListener('error', function(ev) {
+            const msg = String((ev && ev.message) || '');
+            // Ignore cross-origin access noise from third-party scripts/components in sandbox.
+            if (msg.includes('Blocked a frame with origin') && msg.includes("named property 'document'")) {
+              ev.preventDefault();
+            }
+          });
+
           if (AGGREGATED_CSS) {
             const style = document.createElement('style');
             style.textContent = AGGREGATED_CSS;

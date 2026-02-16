@@ -501,7 +501,7 @@ const Phase3Page = () => {
             </TabsList>
 
             {/* Website Builder Tab */}
-            <TabsContent value="builder">
+            <TabsContent value="builder" forceMount>
               {!specsApproved ? (
                 <Card className="border-amber-500/30 bg-amber-500/5">
                   <CardContent className="py-12 text-center">
