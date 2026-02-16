@@ -33,6 +33,12 @@ function toSlug(input: string) {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function normalizeMediumStatus(input?: string, published?: boolean) {
+  if (!input) return published ? "public" : "draft";
+  if (input === "published") return "public";
+  return input;
+}
+
 async function getMcpCredentials(supabase: any, userId: string, mcpServerId: string) {
   const { data, error } = await supabase.functions.invoke("get-mcp-credentials", {
     body: { userId, mcpServerId },
@@ -134,7 +140,7 @@ Deno.serve(async (req) => {
         title: post.title,
         content: post.content,
         content_format: "html",
-        publish_status: post.publish_status || (post.published ? "public" : "draft"),
+        publish_status: normalizeMediumStatus(post.publish_status, post.published),
         tags: Array.isArray(post.tags) ? post.tags.slice(0, 5) : [],
         canonical_url: post.canonical_url,
       });
@@ -204,7 +210,7 @@ Deno.serve(async (req) => {
           title: post.title,
           contentFormat: "html",
           content: post.content,
-          publishStatus: post.publish_status || (post.published ? "public" : "draft"),
+          publishStatus: normalizeMediumStatus(post.publish_status, post.published),
           tags: Array.isArray(post.tags) ? post.tags.slice(0, 5) : [],
           canonicalUrl: post.canonical_url || undefined,
         }),
