@@ -568,36 +568,40 @@ const Phase3Page = () => {
                     </CardContent>
                   </Card>
                   
-                  {/* V0 Builder */}
-                  <V0Builder
-                    projectId={projectId!}
-                    project={{
-                      name: project.name,
-                      industry: project.industry || 'General',
-                      description: project.description || '',
-                    }}
-                    branding={branding}
-                    approvedSpecs={approvedSpecs}
-                    onDeploymentComplete={(url) => {
-                      setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : {
-                        id: crypto.randomUUID(),
-                        name: `${project.name} Website`,
-                        html_content: '',
-                        css_content: null,
-                        js_content: null,
-                        status: 'deployed',
-                        deployed_url: url,
-                        domain_name: null,
-                        custom_domain: null,
-                        hosting_type: 'vercel',
-                        dns_records: null,
-                        ssl_status: null,
-                        ceo_approved: null,
-                        user_approved: null,
-                      });
-                      fetchData();
-                    }}
-                  />
+                  {/* V0 Builder - Full Screen Mode */}
+                  <div className="fixed inset-0 left-64 top-0 z-40 bg-background">
+                    <div className="h-full">
+                      <V0Builder
+                        projectId={projectId!}
+                        project={{
+                          name: project.name,
+                          industry: project.industry || 'General',
+                          description: project.description || '',
+                        }}
+                        branding={branding}
+                        approvedSpecs={approvedSpecs}
+                        onDeploymentComplete={(url) => {
+                          setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : {
+                            id: crypto.randomUUID(),
+                            name: `${project.name} Website`,
+                            html_content: '',
+                            css_content: null,
+                            js_content: null,
+                            status: 'deployed',
+                            deployed_url: url,
+                            domain_name: null,
+                            custom_domain: null,
+                            hosting_type: 'vercel',
+                            dns_records: null,
+                            ssl_status: null,
+                            ceo_approved: null,
+                            user_approved: null,
+                          });
+                          fetchData();
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </TabsContent>
