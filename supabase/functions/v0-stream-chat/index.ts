@@ -5,11 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Streaming state machine states
 enum ParseState {
-  NARRATIVE,    // Normal text - emit as content
-  FENCE_START,  // Detected ``` - check for file block
-  FILE_BLOCK,   // Inside file block - buffer content
+  NARRATIVE,
+  FENCE_START,
+  FILE_BLOCK,
 }
 
 serve(async (req) => {
@@ -18,27 +17,36 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, projectId, project, branding, specs } = await req.json();
+    const { messages, projectId, project, branding, specs, existingFiles } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Updated system prompt - instructs AI to generate ALL files at once
+    // Build context about existing files so the AI doesn't regenerate everything
+    let existingFilesContext = "";
+    if (existingFiles && existingFiles.length > 0) {
+      existingFilesContext = `\n\nEXISTING PROJECT FILES (already generated - DO NOT regenerate these unless the user asks to modify them):
+${existingFiles.map((f: string) => `- ${f}`).join("\n")}
+
+IMPORTANT: Only generate NEW files or files the user explicitly asks to change. Reference existing files by import but do NOT regenerate them.`;
+    }
+
     const systemPrompt = `You are an expert React/TypeScript website builder. Generate complete, production-ready React applications.
 
-Project: ${project?.name || 'Website'}
-Industry: ${project?.industry || 'General'}
-Description: ${project?.description || ''}
-${branding ? `Branding: Primary color: ${branding.primaryColor}, Secondary: ${branding.secondaryColor}` : ''}
-${specs ? `Specifications: ${JSON.stringify(specs)}` : ''}
+Project: ${project?.name || "Website"}
+Industry: ${project?.industry || "General"}
+Description: ${project?.description || ""}
+${branding ? `Branding: Primary color: ${branding.primaryColor}, Secondary: ${branding.secondaryColor}, Accent: ${branding.accentColor}` : ""}
+${specs ? `Specifications: ${JSON.stringify(specs)}` : ""}
+${existingFilesContext}
 
-CRITICAL RULES - FOLLOW EXACTLY:
+CRITICAL RULES:
 
-1. GENERATE ALL FILES IN ONE RESPONSE - Never ask the user to "continue" or split generation across multiple messages. Complete the ENTIRE application in a single response.
+1. GENERATE ALL FILES IN ONE RESPONSE. Never ask to "continue". Complete EVERYTHING in a single response.
 
-2. Keep explanation EXTREMELY BRIEF (1-2 sentences max): "Creating a complete landing page with hero, features, pricing, and contact sections."
+2. Keep explanation EXTREMELY BRIEF (1-2 sentences max).
 
 3. NEVER paste code in your explanation. ONLY use file blocks.
 
@@ -49,29 +57,19 @@ CRITICAL RULES - FOLLOW EXACTLY:
 \`\`\`
 
 \`\`\`tsx:src/components/Hero.tsx
-// complete file content  
+// complete file content
 \`\`\`
 
-\`\`\`css:src/index.css
-/* styles */
-\`\`\`
+5. REQUIRED FILES FOR A NEW WEBSITE:
+   - src/App.tsx (main app component)
+   - src/index.css (Tailwind + global styles)
+   - All section/page components
 
-5. REQUIRED FILES FOR ANY WEBSITE:
-   - src/App.tsx (main app with routing)
-   - src/index.css (global styles)
-   - All page components
-   - All section components (Hero, Features, Footer, etc.)
-   - Shared components (Button, Card, etc.)
-
-6. Generate EVERYTHING the user needs in ONE response. If they ask for a landing page, include ALL sections, header, footer, and every component.
-
-7. NEVER say "continue" or "I'll create more files next" - finish completely.
-
-8. Use React 18, Tailwind CSS, Framer Motion, and Lucide icons.
-
-9. Make all components fully responsive with beautiful, modern UI.
-
-10. Include smooth animations and micro-interactions.`;
+6. Use React 18, Tailwind CSS, and Lucide icons.
+7. Make all components fully responsive with beautiful, modern UI.
+8. Include smooth hover effects and transitions.
+9. Use semantic HTML and proper accessibility.
+10. Do NOT use framer-motion imports - use plain CSS transitions/animations.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -86,12 +84,13 @@ CRITICAL RULES - FOLLOW EXACTLY:
           ...messages,
         ],
         stream: true,
+        max_completion_tokens: 32000,
       }),
     });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -103,7 +102,6 @@ CRITICAL RULES - FOLLOW EXACTLY:
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
-    // Create a ReadableStream that processes and filters the response
     const stream = new ReadableStream({
       async start(controller) {
         let buffer = "";
@@ -114,7 +112,8 @@ CRITICAL RULES - FOLLOW EXACTLY:
         let currentFileType = "";
         let fenceAccumulator = "";
         let upstreamDone = false;
-        
+        let filesEmitted = 0;
+
         const emitContent = (text: string) => {
           if (text) {
             controller.enqueue(encoder.encode(
@@ -122,16 +121,17 @@ CRITICAL RULES - FOLLOW EXACTLY:
             ));
           }
         };
-        
+
         const emitFile = (path: string, type: string, content: string) => {
+          filesEmitted++;
           controller.enqueue(encoder.encode(
-            `data: ${JSON.stringify({ 
-              type: "file", 
-              file: { path: path.trim(), content: content.trim(), type } 
+            `data: ${JSON.stringify({
+              type: "file",
+              file: { path: path.trim(), content: content.trim(), type },
             })}\n\n`
           ));
         };
-        
+
         const emitStatus = (label: string) => {
           controller.enqueue(encoder.encode(
             `data: ${JSON.stringify({ type: "status", label })}\n\n`
@@ -158,9 +158,14 @@ CRITICAL RULES - FOLLOW EXACTLY:
                 try {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices?.[0]?.delta?.content;
-                  
+                  const finishReason = parsed.choices?.[0]?.finish_reason;
+
+                  if (finishReason === "stop" || finishReason === "length") {
+                    upstreamDone = true;
+                    break;
+                  }
+
                   if (content) {
-                    // Process character by character for file block detection
                     for (const char of content) {
                       switch (parseState) {
                         case ParseState.NARRATIVE:
@@ -176,18 +181,15 @@ CRITICAL RULES - FOLLOW EXACTLY:
                               fenceAccumulator = "";
                             }
                             narrativeBuffer += char;
-                            
-                            // Emit content in small chunks for real-time feel
-                            if (narrativeBuffer.length >= 10 || char === '\n') {
+                            if (narrativeBuffer.length >= 15 || char === '\n') {
                               emitContent(narrativeBuffer);
                               narrativeBuffer = "";
                             }
                           }
                           break;
-                          
+
                         case ParseState.FENCE_START:
                           if (char === '\n') {
-                            // Parse the file header: "tsx:src/App.tsx" or just language
                             const headerParts = fenceAccumulator.split(':');
                             if (headerParts.length >= 2) {
                               currentFileType = headerParts[0].trim();
@@ -196,7 +198,6 @@ CRITICAL RULES - FOLLOW EXACTLY:
                               fileBuffer = "";
                               emitStatus(`Generating ${currentFilePath}...`);
                             } else {
-                              // Just a regular code block, not a file
                               narrativeBuffer += "```" + fenceAccumulator + char;
                               parseState = ParseState.NARRATIVE;
                             }
@@ -205,12 +206,11 @@ CRITICAL RULES - FOLLOW EXACTLY:
                             fenceAccumulator += char;
                           }
                           break;
-                          
+
                         case ParseState.FILE_BLOCK:
                           if (char === '`') {
                             fenceAccumulator += char;
                             if (fenceAccumulator === '```') {
-                              // End of file block - emit the file
                               emitFile(currentFilePath, currentFileType, fileBuffer);
                               parseState = ParseState.NARRATIVE;
                               fenceAccumulator = "";
@@ -230,43 +230,34 @@ CRITICAL RULES - FOLLOW EXACTLY:
                     }
                   }
                 } catch {
-                  // Partial JSON, continue
+                  // Partial JSON
                 }
               }
             }
 
-            if (upstreamDone) {
-              break outer;
-            }
-          }
-          
-          // If upstream sent [DONE], stop waiting on the upstream connection.
-          try {
-            if (upstreamDone && reader) {
-              await reader.cancel();
-            }
-          } catch {
-            // ignore
+            if (upstreamDone) break outer;
           }
 
-          // Handle any remaining buffered content
+          try {
+            if (reader) await reader.cancel();
+          } catch { /* ignore */ }
+
+          // Flush remaining
           if (narrativeBuffer) {
             emitContent(narrativeBuffer);
-            narrativeBuffer = "";
           }
           if (fileBuffer && currentFilePath) {
             emitFile(currentFilePath, currentFileType, fileBuffer);
           }
 
-          // Explicitly signal completion downstream even if upstream never closes.
-          if (upstreamDone) {
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          }
+          // Emit completion summary
+          emitContent(`\n\n✅ Generation complete — ${filesEmitted} file${filesEmitted !== 1 ? 's' : ''} created.`);
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
 
         } finally {
           controller.close();
         }
-      }
+      },
     });
 
     return new Response(stream, {
