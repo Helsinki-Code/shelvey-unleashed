@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowUp,
   Code2,
   Eye,
   Loader2,
@@ -268,12 +267,7 @@ export function V0Builder({
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? {
-                  ...m,
-                  content: narrative,
-                  isStreaming: false,
-                  files: generated,
-                }
+              ? { ...m, content: narrative, isStreaming: false, files: generated }
               : m
           )
         );
@@ -284,11 +278,7 @@ export function V0Builder({
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? {
-                  ...m,
-                  content: 'Something went wrong. Please try again.',
-                  isStreaming: false,
-                }
+              ? { ...m, content: 'Something went wrong. Please try again.', isStreaming: false }
               : m
           )
         );
@@ -297,16 +287,7 @@ export function V0Builder({
         setCurrentGeneratingFiles([]);
       }
     },
-    [
-      isGenerating,
-      messages,
-      projectId,
-      project,
-      branding,
-      approvedSpecs,
-      projectFiles,
-      saveFiles,
-    ]
+    [isGenerating, messages, projectId, project, branding, approvedSpecs, projectFiles, saveFiles]
   );
 
   const handleFileClick = useCallback((path: string) => {
@@ -314,7 +295,7 @@ export function V0Builder({
     setViewMode('code');
   }, []);
 
-  // ── Loading state ─────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────
   if (!filesLoaded) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
@@ -376,7 +357,6 @@ export function V0Builder({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* View mode toggle */}
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             {[
               { mode: 'preview' as ViewMode, icon: Eye, label: 'Preview' },
@@ -398,7 +378,6 @@ export function V0Builder({
             ))}
           </div>
 
-          {/* Viewport switcher */}
           <AnimatePresence>
             {viewMode === 'preview' && (
               <motion.div
@@ -451,7 +430,6 @@ export function V0Builder({
 
       {/* ── Main layout ──────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat sidebar */}
         <AnimatePresence initial={false}>
           {sidebarOpen && (
             <motion.div
@@ -474,7 +452,6 @@ export function V0Builder({
           )}
         </AnimatePresence>
 
-        {/* Preview / Code panel */}
         <div className="flex-1 min-w-0 overflow-hidden">
           <PreviewPanel
             files={projectFiles}
@@ -490,7 +467,6 @@ export function V0Builder({
         </div>
       </div>
 
-      {/* Deploy modal */}
       <DeploymentModal
         open={showDeployModal}
         onOpenChange={setShowDeployModal}
