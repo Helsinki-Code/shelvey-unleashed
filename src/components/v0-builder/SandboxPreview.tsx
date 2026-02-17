@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import type { ProjectFile } from "./V0Builder";
+import { useMemo } from 'react';
+import type { ProjectFile } from './V0Builder';
 
 interface SandboxPreviewProps {
   code: string;
@@ -10,22 +10,25 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
   const previewHtml = useMemo(() => {
     const fileMap: Record<string, string> = {};
     for (const file of files) {
-      const normalizedPath = file.path.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "");
+      const normalizedPath = file.path
+        .replace(/\\/g, '/')
+        .replace(/^\.\/+/, '')
+        .replace(/^\/+/, '');
       fileMap[normalizedPath] = file.content;
     }
 
     if (code) {
-      if (fileMap["src/App.tsx"]) fileMap["src/App.tsx"] = code;
-      else if (fileMap["App.tsx"]) fileMap["App.tsx"] = code;
+      if (fileMap['src/App.tsx']) fileMap['src/App.tsx'] = code;
+      else if (fileMap['App.tsx']) fileMap['App.tsx'] = code;
     }
 
     const cssContent = files
-      .filter((f) => f.path.endsWith(".css"))
+      .filter((f) => f.path.endsWith('.css'))
       .map((f) => f.content)
-      .join("\n\n");
+      .join('\n\n');
 
-    const safeFiles = JSON.stringify(fileMap).replace(/</g, "\\u003c");
-    const safeCss = JSON.stringify(cssContent).replace(/</g, "\\u003c");
+    const safeFiles = JSON.stringify(fileMap).replace(/</g, '\\u003c');
+    const safeCss = JSON.stringify(cssContent).replace(/</g, '\\u003c');
 
     return `<!doctype html>
 <html>
@@ -46,19 +49,19 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
     <div id="root"></div>
     <script>
       (function () {
-        const React = window.React;
-        const ReactDOM = window.ReactDOM;
-        const VIRTUAL_FILES = ${safeFiles};
-        const AGGREGATED_CSS = ${safeCss};
-        const moduleCache = {};
-        const FILE_PATHS = Object.keys(VIRTUAL_FILES);
-        const FILE_PATHS_LOWER = new Map(FILE_PATHS.map((p) => [String(p).toLowerCase(), p]));
+        var React = window.React;
+        var ReactDOM = window.ReactDOM;
+        var VIRTUAL_FILES = ${safeFiles};
+        var AGGREGATED_CSS = ${safeCss};
+        var moduleCache = {};
+        var FILE_PATHS = Object.keys(VIRTUAL_FILES);
+        var FILE_PATHS_LOWER = new Map(FILE_PATHS.map(function(p) { return [String(p).toLowerCase(), p]; }));
 
         function flattenClass(input) {
           if (!input) return [];
           if (typeof input === 'string') return [input];
           if (Array.isArray(input)) return input.flatMap(flattenClass);
-          if (typeof input === 'object') return Object.keys(input).filter((k) => input[k]);
+          if (typeof input === 'object') return Object.keys(input).filter(function(k) { return input[k]; });
           return [];
         }
 
@@ -68,54 +71,42 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
 
         function createLucideIcon(name) {
           return function Icon(props) {
-            const p = props || {};
-            const size = p.size || 24;
-            const className = p.className || '';
+            var p = props || {};
+            var size = p.size || 24;
+            var className = p.className || '';
             return React.createElement(
               'svg',
               {
-                width: size,
-                height: size,
-                viewBox: '0 0 24 24',
-                fill: 'none',
-                stroke: 'currentColor',
-                strokeWidth: 2,
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round',
-                className,
+                width: size, height: size, viewBox: '0 0 24 24',
+                fill: 'none', stroke: 'currentColor', strokeWidth: 2,
+                strokeLinecap: 'round', strokeLinejoin: 'round', className: className,
               },
               React.createElement('circle', { cx: 12, cy: 12, r: 10 }),
-              React.createElement('text', { x: 12, y: 16, textAnchor: 'middle', fontSize: 8, fill: 'currentColor', stroke: 'none' }, (name || '?').slice(0, 1))
+              React.createElement('text', {
+                x: 12, y: 16, textAnchor: 'middle', fontSize: 8,
+                fill: 'currentColor', stroke: 'none'
+              }, (name || '?').slice(0, 1))
             );
           };
         }
 
-        const motion = new Proxy({}, {
+        var motion = new Proxy({}, {
           get: function(_, tag) {
             return function MotionComponent(props) {
-              const p = Object.assign({}, props);
-              delete p.initial;
-              delete p.animate;
-              delete p.exit;
-              delete p.transition;
-              delete p.variants;
-              delete p.whileHover;
-              delete p.whileTap;
-              delete p.whileInView;
+              var p = Object.assign({}, props);
+              ['initial','animate','exit','transition','variants','whileHover','whileTap','whileInView'].forEach(function(k) { delete p[k]; });
               return React.createElement(String(tag), p, p.children);
             };
           }
         });
 
-        const builtins = {
+        var builtins = {
           react: React,
           'react-dom/client': { createRoot: ReactDOM.createRoot },
           'lucide-react': new Proxy({}, { get: function(_, name) { return createLucideIcon(String(name)); } }),
           'framer-motion': {
             motion: motion,
-            AnimatePresence: function AnimatePresence(props) {
-              return React.createElement(React.Fragment, null, props.children);
-            },
+            AnimatePresence: function(props) { return React.createElement(React.Fragment, null, props.children); },
             useInView: function() { return true; },
             useAnimation: function() { return { start: function(){}, stop: function(){} }; },
             useMotionValue: function(v) { return { get: function(){ return v; }, set: function(){} }; },
@@ -126,11 +117,11 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
           clsx: clsx,
           'tailwind-merge': { twMerge: function() { return Array.from(arguments).filter(Boolean).join(' '); } },
           'react-router-dom': {
-            BrowserRouter: function BrowserRouter(props) { return React.createElement(React.Fragment, null, props.children); },
-            Routes: function Routes(props) { return React.createElement(React.Fragment, null, props.children); },
-            Route: function Route(props) { return React.createElement(React.Fragment, null, props.element || props.children); },
-            Link: function Link(props) { return React.createElement('a', { href: props.to || '#', className: props.className }, props.children); },
-            NavLink: function NavLink(props) { return React.createElement('a', { href: props.to || '#', className: props.className }, props.children); },
+            BrowserRouter: function(props) { return React.createElement(React.Fragment, null, props.children); },
+            Routes: function(props) { return React.createElement(React.Fragment, null, props.children); },
+            Route: function(props) { return React.createElement(React.Fragment, null, props.element || props.children); },
+            Link: function(props) { return React.createElement('a', { href: props.to || '#', className: props.className }, props.children); },
+            NavLink: function(props) { return React.createElement('a', { href: props.to || '#', className: props.className }, props.children); },
             useNavigate: function() { return function() {}; },
             useLocation: function() { return { pathname: '/' }; },
             useParams: function() { return {}; },
@@ -138,69 +129,54 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         };
 
         function normalizePath(path) {
-          return String(path)
-            .replace(/\\\\/g, '/')
-            .replace(/^\\.\\//, '')
-            .replace(/^\\//, '');
+          return String(path).replace(/\\\\\\\\/g, '/').replace(/^\\\\.\\\\//, '').replace(/^\\\\//, '');
         }
 
         function dirname(path) {
-          const p = normalizePath(path);
-          const idx = p.lastIndexOf('/');
+          var p = normalizePath(path);
+          var idx = p.lastIndexOf('/');
           return idx === -1 ? '' : p.slice(0, idx);
         }
 
         function joinPath(base, rel) {
-          const stack = normalizePath(base).split('/').filter(Boolean);
-          const parts = normalizePath(rel).split('/').filter(Boolean);
-          for (const part of parts) {
-            if (part === '.') continue;
-            if (part === '..') stack.pop();
-            else stack.push(part);
+          var stack = normalizePath(base).split('/').filter(Boolean);
+          var parts = normalizePath(rel).split('/').filter(Boolean);
+          for (var i = 0; i < parts.length; i++) {
+            if (parts[i] === '.') continue;
+            if (parts[i] === '..') stack.pop();
+            else stack.push(parts[i]);
           }
           return stack.join('/');
         }
 
         function resolveImport(fromPath, spec) {
-          if (spec.startsWith('@/')) {
-            return resolveFile('src/' + spec.slice(2));
-          }
-          if (spec.startsWith('src/')) {
-            return resolveFile(spec);
-          }
-          if (spec.startsWith('/')) {
-            return resolveFile(spec.slice(1));
-          }
-          if (spec.startsWith('./') || spec.startsWith('../')) {
-            return resolveFile(joinPath(dirname(fromPath), spec));
-          }
+          if (spec.startsWith('@/')) return resolveFile('src/' + spec.slice(2));
+          if (spec.startsWith('src/')) return resolveFile(spec);
+          if (spec.startsWith('/')) return resolveFile(spec.slice(1));
+          if (spec.startsWith('./') || spec.startsWith('../')) return resolveFile(joinPath(dirname(fromPath), spec));
           return spec;
         }
 
         function resolveFile(basePath) {
-          const p = normalizePath(basePath);
-          const alt = p.startsWith('src/') ? p.slice(4) : ('src/' + p);
-          const candidates = [
-            p,
-            p + '.tsx', p + '.ts', p + '.jsx', p + '.js', p + '.css',
-            p + '/index.tsx', p + '/index.ts', p + '/index.jsx', p + '/index.js',
-            alt,
-            alt + '.tsx', alt + '.ts', alt + '.jsx', alt + '.js', alt + '.css',
-            alt + '/index.tsx', alt + '/index.ts', alt + '/index.jsx', alt + '/index.js',
+          var p = normalizePath(basePath);
+          var alt = p.startsWith('src/') ? p.slice(4) : ('src/' + p);
+          var candidates = [
+            p, p+'.tsx', p+'.ts', p+'.jsx', p+'.js', p+'.css',
+            p+'/index.tsx', p+'/index.ts', p+'/index.jsx', p+'/index.js',
+            alt, alt+'.tsx', alt+'.ts', alt+'.jsx', alt+'.js', alt+'.css',
+            alt+'/index.tsx', alt+'/index.ts', alt+'/index.jsx', alt+'/index.js',
           ];
-          for (const c of candidates) {
-            if (Object.prototype.hasOwnProperty.call(VIRTUAL_FILES, c)) return c;
-            const lower = FILE_PATHS_LOWER.get(String(c).toLowerCase());
+          for (var i = 0; i < candidates.length; i++) {
+            if (Object.prototype.hasOwnProperty.call(VIRTUAL_FILES, candidates[i])) return candidates[i];
+            var lower = FILE_PATHS_LOWER.get(String(candidates[i]).toLowerCase());
             if (lower) return lower;
           }
-
-          // Last-resort fallback: match by basename to avoid hard crash on path drift.
-          const targetBase = p.split('/').pop();
+          var targetBase = p.split('/').pop();
           if (targetBase) {
-            const loose = FILE_PATHS.find((fp) => {
-              const base = fp.split('/').pop() || '';
+            var loose = FILE_PATHS.find(function(fp) {
+              var base = fp.split('/').pop() || '';
               if (base === targetBase) return true;
-              return base.replace(/\.(tsx|ts|jsx|js|css)$/i, '') === targetBase.replace(/\.(tsx|ts|jsx|js|css)$/i, '');
+              return base.replace(/\\.(tsx|ts|jsx|js|css)$/i, '') === targetBase.replace(/\\.(tsx|ts|jsx|js|css)$/i, '');
             });
             if (loose) return loose;
           }
@@ -220,111 +196,70 @@ export function SandboxPreview({ code, files }: SandboxPreviewProps) {
         }
 
         function runModule(path) {
-          const normalized = resolveFile(path);
+          var normalized = resolveFile(path);
           if (moduleCache[normalized]) return moduleCache[normalized].exports;
-
           if (normalized.endsWith('.css')) {
             moduleCache[normalized] = { exports: {} };
             return moduleCache[normalized].exports;
           }
-
-          const source = VIRTUAL_FILES[normalized];
+          var source = VIRTUAL_FILES[normalized];
           if (typeof source !== 'string') {
-            // Graceful placeholder for missing imports so the preview remains usable.
-            const maybeComponent = normalized.split('/').pop() || normalized;
-            const componentName = maybeComponent.replace(/\.(tsx|ts|jsx|js)$/i, '');
+            var maybeComponent = normalized.split('/').pop() || normalized;
+            var componentName = maybeComponent.replace(/\\.(tsx|ts|jsx|js)$/i, '');
             if (/^[A-Z]/.test(componentName)) {
-              const MissingComponent = function MissingModuleComponent() {
-                return React.createElement(
-                  'div',
-                  {
-                    style: {
-                      border: '1px solid #fca5a5',
-                      background: '#fef2f2',
-                      color: '#991b1b',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      margin: '8px',
-                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                      fontSize: '12px',
-                    },
-                  },
-                  'Missing module: ' + normalized
-                );
+              var MissingComponent = function() {
+                return React.createElement('div', {
+                  style: { border: '1px solid #fca5a5', background: '#fef2f2', color: '#991b1b', padding: '8px 10px', borderRadius: '8px', margin: '8px', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }
+                }, 'Missing module: ' + normalized);
               };
               moduleCache[normalized] = {
-                exports: new Proxy(
-                  { __esModule: true, default: MissingComponent },
-                  {
-                    get: function(target, prop) {
-                      if (prop in target) return target[prop];
-                      return MissingComponent;
-                    },
-                  }
-                ),
+                exports: new Proxy({ __esModule: true, default: MissingComponent }, {
+                  get: function(t, prop) { return prop in t ? t[prop] : MissingComponent; }
+                })
               };
               return moduleCache[normalized].exports;
             }
             throw new Error('Module not found: ' + normalized);
           }
-
-          const module = { exports: {} };
-          moduleCache[normalized] = module;
-
-          const localRequire = function(spec) {
+          var mod = { exports: {} };
+          moduleCache[normalized] = mod;
+          var localRequire = function(spec) {
             if (Object.prototype.hasOwnProperty.call(builtins, spec)) return builtins[spec];
-            const resolved = resolveImport(normalized, spec);
+            var resolved = resolveImport(normalized, spec);
             if (Object.prototype.hasOwnProperty.call(builtins, resolved)) return builtins[resolved];
             return runModule(resolveFile(resolved));
           };
-
-          const compiled = transpile(normalized, source);
-          const fn = new Function('require', 'module', 'exports', compiled);
-          fn(localRequire, module, module.exports);
-          return module.exports;
+          var compiled = transpile(normalized, source);
+          var fn = new Function('require', 'module', 'exports', compiled);
+          fn(localRequire, mod, mod.exports);
+          return mod.exports;
         }
 
         function renderError(title, err) {
-          const root = document.getElementById('root');
-          root.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">'
-            + '<strong>' + title + '</strong><pre style="white-space:pre-wrap;margin-top:8px;">' + String(err && (err.stack || err.message || err)) + '</pre></div>';
+          var root = document.getElementById('root');
+          root.innerHTML = '<div style="padding:16px;color:#b91c1c;font-family:ui-monospace,monospace;"><strong>' + title + '</strong><pre style="white-space:pre-wrap;margin-top:8px;">' + String(err && (err.stack || err.message || err)) + '</pre></div>';
         }
 
         try {
           window.addEventListener('error', function(ev) {
-            const msg = String((ev && ev.message) || '');
-            // Ignore cross-origin access noise from third-party scripts/components in sandbox.
-            if (msg.includes('Blocked a frame with origin') && msg.includes("named property 'document'")) {
-              ev.preventDefault();
-            }
+            var msg = String((ev && ev.message) || '');
+            if (msg.includes('Blocked a frame with origin')) ev.preventDefault();
           });
-
           if (AGGREGATED_CSS) {
-            const style = document.createElement('style');
+            var style = document.createElement('style');
             style.textContent = AGGREGATED_CSS;
             document.head.appendChild(style);
           }
-
-          const entry = [
-            'src/main.tsx',
-            'src/main.jsx',
-            'main.tsx',
-            'main.jsx',
-            'src/App.tsx',
-            'src/App.jsx',
-            'App.tsx',
-            'App.jsx',
-          ].find((p) => Object.prototype.hasOwnProperty.call(VIRTUAL_FILES, p));
-
-          if (!entry) throw new Error('No entry file found. Expected src/main.tsx or src/App.tsx');
-
-          if (entry.endsWith('/main.tsx') || entry.endsWith('/main.jsx') || entry === 'main.tsx' || entry === 'main.jsx') {
+          var entry = ['src/main.tsx','src/main.jsx','main.tsx','main.jsx','src/App.tsx','src/App.jsx','App.tsx','App.jsx']
+            .find(function(p) { return Object.prototype.hasOwnProperty.call(VIRTUAL_FILES, p); });
+          if (!entry) throw new Error('No entry file found');
+          if (entry.indexOf('main.') !== -1) {
             runModule(entry);
           } else {
-            const appExports = runModule(entry);
-            const App = appExports.default || appExports.App || appExports;
-            if (typeof App !== 'function') throw new Error('App component export not found in ' + entry);
-            const root = ReactDOM.createRoot(document.getElementById('root'));
+            var appExports = runModule(entry);
+            var App = appExports.default || appExports.App || appExports;
+            if (typeof App !== 'function') throw new Error('App component not found in ' + entry);
+            var root = ReactDOM.createRoot(document.getElementById('root'));
             root.render(React.createElement(App));
           }
         } catch (err) {

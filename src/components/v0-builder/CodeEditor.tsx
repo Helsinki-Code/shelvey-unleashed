@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
@@ -12,8 +11,21 @@ interface CodeEditorProps {
   filename?: string;
 }
 
-export function CodeEditor({ code, language = 'typescript', filename }: CodeEditorProps) {
-  const { theme } = useTheme();
+const LANG_MAP: Record<string, string> = {
+  tsx: 'typescript',
+  ts: 'typescript',
+  jsx: 'javascript',
+  js: 'javascript',
+  css: 'css',
+  json: 'json',
+  html: 'html',
+};
+
+export function CodeEditor({
+  code,
+  language = 'typescript',
+  filename,
+}: CodeEditorProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -22,31 +34,27 @@ export function CodeEditor({ code, language = 'typescript', filename }: CodeEdit
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Map file extensions to languages
-  const getLanguage = (filename?: string): string => {
-    if (!filename) return language;
-    if (filename.endsWith('.tsx') || filename.endsWith('.ts')) return 'typescript';
-    if (filename.endsWith('.jsx') || filename.endsWith('.js')) return 'javascript';
-    if (filename.endsWith('.css')) return 'css';
-    if (filename.endsWith('.json')) return 'json';
-    if (filename.endsWith('.html')) return 'html';
-    return language;
-  };
+  const resolvedLanguage = filename
+    ? LANG_MAP[filename.split('.').pop() || ''] || language
+    : language;
 
   return (
-    <div className="h-full flex flex-col bg-[#1e1e1e] dark:bg-[#0d0d0d]">
+    <div className="h-full flex flex-col bg-[#1e1e1e]">
       {/* Header */}
       {filename && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/20 bg-[#252526]">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <FileCode className="h-4 w-4" />
-            <span className="text-sm font-mono">{filename}</span>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#252526] shrink-0">
+          <div className="flex items-center gap-2 text-neutral-400 min-w-0">
+            <FileCode className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-mono truncate">{filename}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            className={cn(
+              'h-7 text-xs shrink-0',
+              'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
+            )}
           >
             {copied ? (
               <>
@@ -63,10 +71,10 @@ export function CodeEditor({ code, language = 'typescript', filename }: CodeEdit
         </div>
       )}
 
-      {/* Code */}
+      {/* Code area */}
       <div className="flex-1 overflow-auto">
         <SyntaxHighlighter
-          language={getLanguage(filename)}
+          language={resolvedLanguage}
           style={oneDark}
           showLineNumbers
           customStyle={{
@@ -74,13 +82,13 @@ export function CodeEditor({ code, language = 'typescript', filename }: CodeEdit
             padding: '1rem',
             background: 'transparent',
             fontSize: '13px',
-            lineHeight: '1.5',
+            lineHeight: '1.6',
             minHeight: '100%',
           }}
           lineNumberStyle={{
             minWidth: '3em',
             paddingRight: '1em',
-            color: '#6b7280',
+            color: '#4b5563',
             userSelect: 'none',
           }}
         >

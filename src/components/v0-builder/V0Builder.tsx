@@ -3,7 +3,6 @@ import {
   ArrowUp,
   Code2,
   Eye,
-  FileCode,
   Loader2,
   Monitor,
   PanelLeftClose,
@@ -15,13 +14,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { CodeEditor } from './CodeEditor';
-import { FileTree } from './FileTree';
-import { SandboxPreview } from './SandboxPreview';
+import { ChatPanel } from './ChatPanel';
+import { PreviewPanel } from './PreviewPanel';
 import { DeploymentModal } from './DeploymentModal';
 
 export interface ProjectFile {
@@ -63,39 +60,31 @@ const VIEWPORT_WIDTHS: Record<Viewport, string> = {
   mobile: '375px',
 };
 
-const SUGGESTIONS = [
-  'Create a modern landing page with hero, features, and footer',
-  'Build a multi-page site with navigation',
-  'Add a pricing section with 3 tiers',
-  'Create a contact page with a form',
-];
-
-export function V0Builder({ projectId, project, branding, approvedSpecs, onDeploymentComplete }: V0BuilderProps) {
-  // Core state
+export function V0Builder({
+  projectId,
+  project,
+  branding,
+  approvedSpecs,
+  onDeploymentComplete,
+}: V0BuilderProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
-  const [input, setInput] = useState('');
+  const [currentGeneratingFiles, setCurrentGeneratingFiles] = useState<string[]>([]);
 
-  // UI state
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [viewport, setViewport] = useState<Viewport>('desktop');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Refs
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const filesRef = useRef<ProjectFile[]>([]);
 
-  // Derived state
-  const appFile = projectFiles.find(f => f.path === 'src/App.tsx' || f.path === 'App.tsx');
-  const currentFile = projectFiles.find(f => f.path === selectedFile);
+  const currentFile = projectFiles.find((f) => f.path === selectedFile);
 
-  // ── Data loading ──────────────────────────────────────────────
+  // ── Load saved files ──────────────────────────────────────────
   const loadSavedFiles = useCallback(async () => {
     try {
       const { data } = await supabase
@@ -103,12 +92,19 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
         .select('page_name,page_code')
         .eq('project_id', projectId)
         .order('created_at', { ascending: true });
+
       if (!data) return;
-      const loaded: ProjectFile[] = data.map(p => ({
+
+      const loaded: ProjectFile[] = data.map((p) => ({
         path: p.page_name,
         content: p.page_code || '',
-        type: (p.page_name.endsWith('.css') ? 'css' : p.page_name.endsWith('.json') ? 'json' : 'tsx') as ProjectFile['type'],
+        type: (p.page_name.endsWith('.css')
+          ? 'css'
+          : p.page_name.endsWith('.json')
+            ? 'json'
+            : 'tsx') as ProjectFile['type'],
       }));
+
       setProjectFiles(loaded);
       filesRef.current = loaded;
       if (loaded.length > 0) setSelectedFile(loaded[0].path);
@@ -117,127 +113,215 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
     }
   }, [projectId]);
 
-  const saveFiles = useCallback(async (files: ProjectFile[]) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const rows = files.map(f => ({
-      project_id: projectId,
-      user_id: user.id,
-      page_name: f.path,
-      page_code: f.content,
-      page_route: '/' + f.path.replace(/^src\//, '').replace(/\.(tsx|ts|css|json|html)$/, ''),
-      status: 'generated',
-      updated_at: new Date().toISOString(),
-    }));
-    await supabase.from('website_pages').upsert(rows, { onConflict: 'project_id,user_id,page_name', ignoreDuplicates: false });
-  }, [projectId]);
+  const saveFiles = useCallback(
+    async (files: ProjectFile[]) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
-  useEffect(() => { loadSavedFiles(); }, [loadSavedFiles]);
-  useEffect(() => { filesRef.current = projectFiles; }, [projectFiles]);
+      const rows = files.map((f) => ({
+        project_id: projectId,
+        user_id: user.id,
+        page_name: f.path,
+        page_code: f.content,
+        page_route:
+          '/' +
+          f.path
+            .replace(/^src\//, '')
+            .replace(/\.(tsx|ts|css|json|html)$/, ''),
+        status: 'generated',
+        updated_at: new Date().toISOString(),
+      }));
+
+      await supabase.from('website_pages').upsert(rows, {
+        onConflict: 'project_id,user_id,page_name',
+        ignoreDuplicates: false,
+      });
+    },
+    [projectId]
+  );
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    loadSavedFiles();
+  }, [loadSavedFiles]);
+
+  useEffect(() => {
+    filesRef.current = projectFiles;
+  }, [projectFiles]);
 
   // ── Streaming chat ────────────────────────────────────────────
-  const handleSend = useCallback(async (content?: string) => {
-    const text = (content || input).trim();
-    if (!text || isGenerating) return;
+  const handleSend = useCallback(
+    async (content: string) => {
+      const text = content.trim();
+      if (!text || isGenerating) return;
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
-    const assistantId = crypto.randomUUID();
-    setMessages(prev => [
-      ...prev,
-      userMsg,
-      { id: assistantId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), files: [] },
-    ]);
-    setInput('');
-    setIsGenerating(true);
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: text,
+        timestamp: new Date(),
+      };
+      const assistantId = crypto.randomUUID();
 
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          isStreaming: true,
+          timestamp: new Date(),
+          files: [],
         },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
-          projectId,
-          project,
-          branding,
-          specs: approvedSpecs,
-          existingFiles: projectFiles.map(f => ({ path: f.path, content: f.content, type: f.type })),
-        }),
-      });
+      ]);
+      setIsGenerating(true);
+      setCurrentGeneratingFiles([]);
 
-      if (!res.ok) throw new Error('Generation failed');
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
 
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let narrative = '';
-      let buffer = '';
-      const generated: ProjectFile[] = [];
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (raw === '[DONE]') {
-            try { await reader.cancel(); } catch {}
-            break;
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              messages: [...messages, userMsg].map((m) => ({
+                role: m.role,
+                content: m.content,
+              })),
+              projectId,
+              project,
+              branding,
+              specs: approvedSpecs,
+              existingFiles: projectFiles.map((f) => ({
+                path: f.path,
+                content: f.content,
+                type: f.type,
+              })),
+            }),
           }
+        );
 
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed.type === 'content') {
-              narrative += parsed.content;
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: narrative } : m));
-            } else if (parsed.type === 'file') {
-              const file = parsed.file as ProjectFile;
-              generated.push(file);
-              setProjectFiles(prev => {
-                const idx = prev.findIndex(f => f.path === file.path);
-                const next = idx >= 0 ? prev.map((f, i) => i === idx ? file : f) : [...prev, file];
-                filesRef.current = next;
-                return next;
-              });
-              setSelectedFile(p => p || file.path);
+        if (!res.ok) throw new Error('Generation failed');
+
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let narrative = '';
+        let buffer = '';
+        const generated: ProjectFile[] = [];
+
+        while (reader) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') {
+              try {
+                await reader.cancel();
+              } catch {}
+              break;
             }
-          } catch {}
-        }
-      }
 
-      setMessages(prev =>
-        prev.map(m => m.id === assistantId ? { ...m, content: narrative, isStreaming: false, files: generated } : m),
-      );
-      if (generated.length > 0) await saveFiles(filesRef.current);
-    } catch {
-      setMessages(prev =>
-        prev.map(m => m.id === assistantId ? { ...m, content: 'Something went wrong. Please try again.', isStreaming: false } : m),
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [input, isGenerating, messages, projectId, project, branding, approvedSpecs, projectFiles, saveFiles]);
+            try {
+              const parsed = JSON.parse(raw);
+              if (parsed.type === 'content') {
+                narrative += parsed.content;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: narrative } : m
+                  )
+                );
+              } else if (parsed.type === 'file') {
+                const file = parsed.file as ProjectFile;
+                setCurrentGeneratingFiles((prev) => [...prev, file.path]);
+                generated.push(file);
+                setProjectFiles((prev) => {
+                  const idx = prev.findIndex((f) => f.path === file.path);
+                  const next =
+                    idx >= 0
+                      ? prev.map((f, i) => (i === idx ? file : f))
+                      : [...prev, file];
+                  filesRef.current = next;
+                  return next;
+                });
+                setSelectedFile((p) => p || file.path);
+                setRefreshKey((k) => k + 1);
+              }
+            } catch {}
+          }
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: narrative,
+                  isStreaming: false,
+                  files: generated,
+                }
+              : m
+          )
+        );
+        setCurrentGeneratingFiles([]);
+
+        if (generated.length > 0) await saveFiles(filesRef.current);
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: 'Something went wrong. Please try again.',
+                  isStreaming: false,
+                }
+              : m
+          )
+        );
+      } finally {
+        setIsGenerating(false);
+        setCurrentGeneratingFiles([]);
+      }
+    },
+    [
+      isGenerating,
+      messages,
+      projectId,
+      project,
+      branding,
+      approvedSpecs,
+      projectFiles,
+      saveFiles,
+    ]
+  );
+
+  const handleFileClick = useCallback((path: string) => {
+    setSelectedFile(path);
+    setViewMode('code');
+  }, []);
 
   // ── Loading state ─────────────────────────────────────────────
   if (!filesLoaded) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading project…</p>
+        </div>
       </div>
     );
   }
@@ -246,77 +330,113 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
 
   return (
     <div className="h-full flex flex-col bg-background">
-      {/* ── Top toolbar ────────────────────────────────────────── */}
-      <div className="h-12 shrink-0 border-b border-border flex items-center justify-between px-3 bg-background">
+      {/* ── Toolbar ──────────────────────────────────────────── */}
+      <header className="h-12 shrink-0 border-b border-border flex items-center justify-between px-3 bg-background/95 backdrop-blur-sm z-10">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setSidebarOpen(v => !v)}
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label={sidebarOpen ? 'Close chat panel' : 'Open chat panel'}
           >
-            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeft className="h-4 w-4" />
+            )}
           </Button>
+
           <div className="h-5 w-px bg-border" />
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">{project.name}</span>
-          {isGenerating && (
-            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Generating...
+
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold truncate max-w-[200px]">
+              {project.name}
             </span>
-          )}
+          </div>
+
+          <AnimatePresence>
+            {isGenerating && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex items-center gap-1.5 ml-2"
+              >
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground font-medium">
+                  Generating…
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="flex items-center gap-1.5">
           {/* View mode toggle */}
           <div className="flex items-center bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => setViewMode('preview')}
-              className={cn(
-                'h-7 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
-                viewMode === 'preview' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Preview
-            </button>
-            <button
-              onClick={() => setViewMode('code')}
-              className={cn(
-                'h-7 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
-                viewMode === 'code' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              Code
-            </button>
+            {[
+              { mode: 'preview' as ViewMode, icon: Eye, label: 'Preview' },
+              { mode: 'code' as ViewMode, icon: Code2, label: 'Code' },
+            ].map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={cn(
+                  'h-7 px-3 rounded-md text-xs font-medium transition-all flex items-center gap-1.5',
+                  viewMode === mode
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Viewport switcher (preview only) */}
-          {viewMode === 'preview' && (
-            <>
-              <div className="h-5 w-px bg-border" />
-              <div className="flex items-center gap-0.5">
-                {(['desktop', 'tablet', 'mobile'] as Viewport[]).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setViewport(v)}
-                    className={cn(
-                      'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                      viewport === v ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {v === 'desktop' && <Monitor className="h-3.5 w-3.5" />}
-                    {v === 'tablet' && <Tablet className="h-3.5 w-3.5" />}
-                    {v === 'mobile' && <Smartphone className="h-3.5 w-3.5" />}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          {/* Viewport switcher */}
+          <AnimatePresence>
+            {viewMode === 'preview' && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                className="flex items-center gap-1 overflow-hidden"
+              >
+                <div className="h-5 w-px bg-border" />
+                <div className="flex items-center gap-0.5">
+                  {(
+                    [
+                      { v: 'desktop' as Viewport, icon: Monitor },
+                      { v: 'tablet' as Viewport, icon: Tablet },
+                      { v: 'mobile' as Viewport, icon: Smartphone },
+                    ] as const
+                  ).map(({ v, icon: Icon }) => (
+                    <button
+                      key={v}
+                      onClick={() => setViewport(v)}
+                      className={cn(
+                        'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                        viewport === v
+                          ? 'bg-muted text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      )}
+                      aria-label={`${v} viewport`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="h-5 w-px bg-border" />
+
           <Button
             size="sm"
             className="h-7 text-xs gap-1.5"
@@ -327,197 +447,57 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
             Deploy
           </Button>
         </div>
-      </div>
+      </header>
 
-      {/* ── Main content area ──────────────────────────────────── */}
+      {/* ── Main layout ──────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* ── Chat sidebar ─────────────────────────────────────── */}
+        {/* Chat sidebar */}
         <AnimatePresence initial={false}>
           {sidebarOpen && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 380, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="shrink-0 border-r border-border flex flex-col bg-background overflow-hidden"
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="shrink-0 border-r border-border overflow-hidden"
             >
-              {/* Messages */}
-              <ScrollArea className="flex-1" ref={scrollRef}>
-                <div className="p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    /* Welcome screen */
-                    <div className="py-12 flex flex-col items-center text-center px-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-                        <Sparkles className="h-7 w-7 text-primary" />
-                      </div>
-                      <h3 className="text-base font-semibold mb-1.5">What do you want to build?</h3>
-                      <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">
-                        Describe your website and I'll generate production-ready React code instantly.
-                      </p>
-                      <div className="flex flex-col gap-2 w-full">
-                        {SUGGESTIONS.map((s, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSend(s)}
-                            className="text-left px-3 py-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted text-sm text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map(msg => (
-                      <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                        <div
-                          className={cn(
-                            'max-w-[90%] rounded-2xl px-4 py-2.5 text-sm',
-                            msg.role === 'user'
-                              ? 'bg-primary text-primary-foreground rounded-br-md'
-                              : 'bg-muted text-foreground rounded-bl-md',
-                          )}
-                        >
-                          <p className="whitespace-pre-wrap leading-relaxed">
-                            {msg.content || (msg.isStreaming ? '' : 'Thinking...')}
-                          </p>
-                          {msg.isStreaming && (
-                            <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse rounded-full" />
-                          )}
-                          {/* File chips */}
-                          {msg.files && msg.files.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {msg.files.map(f => (
-                                <button
-                                  key={f.path}
-                                  onClick={() => {
-                                    setSelectedFile(f.path);
-                                    setViewMode('code');
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background/60 border border-border/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  <FileCode className="h-3 w-3" />
-                                  {f.path.split('/').pop()}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-
-                  {/* Loading indicator */}
-                  {isGenerating && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
-                    <div className="flex justify-start">
-                      <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-
-              {/* Input area */}
-              <div className="p-3 border-t border-border">
-                <div className="relative bg-muted/50 rounded-xl border border-border focus-within:border-primary/50 transition-colors">
-                  <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder="Ask v0 a question..."
-                    disabled={isGenerating}
-                    rows={2}
-                    className="w-full bg-transparent px-4 pt-3 pb-10 text-sm resize-none outline-none placeholder:text-muted-foreground disabled:opacity-50"
-                  />
-                  <div className="absolute bottom-2 right-2">
-                    <Button
-                      size="icon"
-                      className="h-7 w-7 rounded-lg"
-                      disabled={!input.trim() || isGenerating}
-                      onClick={() => handleSend()}
-                    >
-                      {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                  Enter to send · Shift+Enter for new line
-                </p>
-              </div>
+              <ChatPanel
+                messages={messages}
+                isGenerating={isGenerating}
+                onSendMessage={handleSend}
+                onFileClick={handleFileClick}
+                currentGeneratingFiles={currentGeneratingFiles}
+                project={project}
+                specs={approvedSpecs}
+              />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Right panel: Preview or Code ──────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {viewMode === 'preview' ? (
-            /* ── Preview mode ──────────────────────────────────── */
-            <div className="flex-1 flex items-center justify-center bg-muted/20 p-4 overflow-auto">
-              {hasFiles ? (
-                <div
-                  className="bg-background rounded-lg shadow-xl border border-border overflow-hidden transition-all duration-300"
-                  style={{
-                    width: VIEWPORT_WIDTHS[viewport],
-                    maxWidth: '100%',
-                    height: viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '100%',
-                  }}
-                >
-                  <SandboxPreview
-                    key={refreshKey}
-                    code={appFile?.content || ''}
-                    files={projectFiles}
-                  />
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <Eye className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Start a conversation to see your website here</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* ── Code mode ─────────────────────────────────────── */
-            <div className="flex-1 flex overflow-hidden">
-              {/* File tree */}
-              <div className="w-52 shrink-0 border-r border-border bg-muted/10 overflow-auto">
-                <FileTree
-                  files={projectFiles}
-                  selectedFile={selectedFile}
-                  onSelectFile={setSelectedFile}
-                  expanded
-                />
-              </div>
-              {/* Editor */}
-              <div className="flex-1 overflow-hidden">
-                <CodeEditor
-                  code={currentFile?.content || '// Select a file to view its contents'}
-                  language={selectedFile?.endsWith('.css') ? 'css' : 'typescript'}
-                  filename={selectedFile || undefined}
-                />
-              </div>
-            </div>
-          )}
+        {/* Preview / Code panel */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <PreviewPanel
+            files={projectFiles}
+            selectedFile={selectedFile}
+            onSelectFile={setSelectedFile}
+            currentFileContent={currentFile?.content}
+            viewMode={viewMode}
+            viewport={viewport}
+            viewportWidth={VIEWPORT_WIDTHS[viewport]}
+            refreshKey={refreshKey}
+            onRefresh={() => setRefreshKey((k) => k + 1)}
+          />
         </div>
       </div>
 
-      {/* ── Deploy modal ───────────────────────────────────────── */}
+      {/* Deploy modal */}
       <DeploymentModal
         open={showDeployModal}
         onOpenChange={setShowDeployModal}
         projectId={projectId}
         projectName={project.name}
         files={projectFiles}
-        onSuccess={url => {
+        onSuccess={(url) => {
           onDeploymentComplete?.(url);
           toast.success(`Deployed: ${url}`);
         }}

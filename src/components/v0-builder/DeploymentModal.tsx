@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Loader2, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react';
+import {
+  Rocket,
+  Loader2,
+  CheckCircle2,
+  ExternalLink,
+  AlertCircle,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,13 +15,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { ProjectFile } from './V0Builder';
-import { ensureViteScaffold } from "./vite-scaffold";
+import { ensureViteScaffold } from './vite-scaffold';
 
 interface DeploymentModalProps {
   open: boolean;
@@ -45,23 +50,25 @@ export function DeploymentModal({
   const handleDeploy = async () => {
     setStatus('deploying');
     setProgress(10);
-    setMessage('Preparing deployment...');
+    setMessage('Preparing deployment…');
     setError('');
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
       const deployFiles = ensureViteScaffold(files, projectName);
 
       setProgress(30);
-      setMessage('Building Vite project...');
+      setMessage('Building Vite project…');
 
       const response = await supabase.functions.invoke('deploy-vite-project', {
         body: {
           projectId,
           projectName,
-          files: deployFiles.map(f => ({
+          files: deployFiles.map((f) => ({
             path: f.path,
             content: f.content,
             fileType: f.type,
@@ -73,17 +80,17 @@ export function DeploymentModal({
       if (response.data?.error) throw new Error(response.data.error);
 
       setProgress(70);
-      setMessage('Deploying to Vercel...');
+      setMessage('Deploying to Vercel…');
 
-      // Simulate final steps
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
       setProgress(90);
-      setMessage('Configuring domain...');
+      setMessage('Configuring domain…');
 
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
       setProgress(100);
 
-      const url = response.data?.deploymentUrl || response.data?.productionUrl;
+      const url =
+        response.data?.deploymentUrl || response.data?.productionUrl;
       if (url) {
         setDeployedUrl(url);
         setStatus('success');
@@ -96,20 +103,18 @@ export function DeploymentModal({
     } catch (err) {
       console.error('Deployment error:', err);
       setStatus('error');
-      const message = err instanceof Error ? err.message : 'Deployment failed';
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Deployment failed');
       toast.error('Deployment failed');
     }
   };
 
   const handleClose = () => {
-    if (status !== 'deploying') {
-      setStatus('idle');
-      setProgress(0);
-      setMessage('');
-      setError('');
-      onOpenChange(false);
-    }
+    if (status === 'deploying') return;
+    setStatus('idle');
+    setProgress(0);
+    setMessage('');
+    setError('');
+    onOpenChange(false);
   };
 
   return (
@@ -135,13 +140,27 @@ export function DeploymentModal({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                  <h4 className="font-medium mb-2">Project Summary</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• {files.length} files ready for deployment</li>
-                    <li>• React + Vite + Tailwind CSS</li>
-                    <li>• Automatic SSL certificate</li>
-                    <li>• CDN-powered delivery</li>
+                <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                  <h4 className="font-medium text-sm mb-2.5">
+                    Project Summary
+                  </h4>
+                  <ul className="text-sm text-muted-foreground space-y-1.5">
+                    <li className="flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-primary" />
+                      {files.length} files ready for deployment
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-primary" />
+                      React + Vite + Tailwind CSS
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-primary" />
+                      Automatic SSL certificate
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-primary" />
+                      CDN-powered delivery
+                    </li>
                   </ul>
                 </div>
 
@@ -160,11 +179,11 @@ export function DeploymentModal({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-center py-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-                  <p className="font-medium">{message}</p>
+                <div className="text-center py-6">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                  <p className="font-medium text-sm">{message}</p>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress value={progress} className="h-1.5" />
               </motion.div>
             )}
 
@@ -176,33 +195,47 @@ export function DeploymentModal({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="h-8 w-8 text-green-500" />
+                <div className="text-center py-6">
+                  <div className="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="h-7 w-7 text-green-500" />
                   </div>
-                  <h4 className="font-semibold text-lg mb-1">Deployment Successful!</h4>
-                  <p className="text-sm text-muted-foreground">Your website is now live</p>
+                  <h4 className="font-semibold text-lg mb-1">
+                    Deployment Successful!
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Your website is now live
+                  </p>
                 </div>
 
                 <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                  <Label className="text-xs text-muted-foreground">Live URL</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Live URL
+                  </Label>
                   <a
                     href={deployedUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-primary hover:underline mt-1"
+                    className="flex items-center gap-2 text-primary hover:underline mt-1 text-sm"
                   >
                     {deployedUrl}
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                   </a>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleClose} className="flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={handleClose}
+                    className="flex-1"
+                  >
                     Close
                   </Button>
                   <Button asChild className="flex-1">
-                    <a href={deployedUrl} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={deployedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Visit Site
                     </a>
                   </Button>
@@ -218,16 +251,22 @@ export function DeploymentModal({
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-8 w-8 text-destructive" />
+                <div className="text-center py-6">
+                  <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="h-7 w-7 text-destructive" />
                   </div>
-                  <h4 className="font-semibold text-lg mb-1">Deployment Failed</h4>
+                  <h4 className="font-semibold text-lg mb-1">
+                    Deployment Failed
+                  </h4>
                   <p className="text-sm text-muted-foreground">{error}</p>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleClose} className="flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={handleClose}
+                    className="flex-1"
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleDeploy} className="flex-1">

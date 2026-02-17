@@ -1,3 +1,10 @@
 export { V0Builder } from './V0Builder';
 export { SandboxPreview } from './SandboxPreview';
+export { ChatPanel } from './ChatPanel';
+export { PreviewPanel } from './PreviewPanel';
+export { CodeEditor } from './CodeEditor';
+export { FileTree } from './FileTree';
+export { DeploymentModal } from './DeploymentModal';
+export { StreamingMessage } from './StreamingMessage';
+export { SuggestionChips } from './SuggestionChips';
 export type { ProjectFile, Message } from './V0Builder';

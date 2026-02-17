@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  File,
+  FolderOpen,
+  Folder,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProjectFile } from './V0Builder';
 
@@ -53,13 +59,17 @@ function buildTree(files: ProjectFile[]): TreeNode[] {
   return root;
 }
 
+const FILE_ICONS: Record<string, string> = {
+  tsx: '⚛️',
+  ts: '📘',
+  css: '🎨',
+  json: '📋',
+  html: '🌐',
+};
+
 function getFileIcon(filename: string): string {
-  if (filename.endsWith('.tsx')) return '⚛️';
-  if (filename.endsWith('.ts')) return '📘';
-  if (filename.endsWith('.css')) return '🎨';
-  if (filename.endsWith('.json')) return '📋';
-  if (filename.endsWith('.html')) return '🌐';
-  return '📄';
+  const ext = filename.split('.').pop() || '';
+  return FILE_ICONS[ext] || '📄';
 }
 
 interface TreeItemProps {
@@ -70,9 +80,16 @@ interface TreeItemProps {
   defaultExpanded?: boolean;
 }
 
-function TreeItem({ node, selectedFile, onSelectFile, depth, defaultExpanded }: TreeItemProps) {
+function TreeItem({
+  node,
+  selectedFile,
+  onSelectFile,
+  depth,
+  defaultExpanded,
+}: TreeItemProps) {
   const [isOpen, setIsOpen] = useState(defaultExpanded ?? depth < 2);
   const isSelected = selectedFile === node.path;
+  const paddingLeft = `${depth * 12 + 8}px`;
 
   if (node.type === 'file') {
     return (
@@ -81,14 +98,14 @@ function TreeItem({ node, selectedFile, onSelectFile, depth, defaultExpanded }: 
         animate={{ opacity: 1 }}
         onClick={() => onSelectFile(node.path)}
         className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md text-sm transition-colors",
-          isSelected 
-            ? "bg-primary/10 text-primary" 
-            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          'w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md text-sm transition-colors',
+          isSelected
+            ? 'bg-primary/10 text-primary font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
         )}
-        style={{ paddingLeft: `${(depth * 12) + 8}px` }}
+        style={{ paddingLeft }}
       >
-        <span className="text-xs">{getFileIcon(node.name)}</span>
+        <span className="text-xs shrink-0">{getFileIcon(node.name)}</span>
         <span className="truncate">{node.name}</span>
       </motion.button>
     );
@@ -98,24 +115,22 @@ function TreeItem({ node, selectedFile, onSelectFile, depth, defaultExpanded }: 
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md text-sm transition-colors",
-          "text-foreground hover:bg-muted"
-        )}
-        style={{ paddingLeft: `${(depth * 12) + 8}px` }}
+        className="w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md text-sm transition-colors text-foreground hover:bg-muted/50"
+        style={{ paddingLeft }}
       >
         {isOpen ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         )}
         {isOpen ? (
-          <FolderOpen className="h-4 w-4 text-primary" />
+          <FolderOpen className="h-4 w-4 text-primary shrink-0" />
         ) : (
-          <Folder className="h-4 w-4 text-muted-foreground" />
+          <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
         )}
         <span className="truncate font-medium">{node.name}</span>
       </button>
+
       <AnimatePresence>
         {isOpen && node.children && (
           <motion.div
@@ -123,6 +138,7 @@ function TreeItem({ node, selectedFile, onSelectFile, depth, defaultExpanded }: 
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
+            className="overflow-hidden"
           >
             {node.children.map((child) => (
               <TreeItem
@@ -141,7 +157,12 @@ function TreeItem({ node, selectedFile, onSelectFile, depth, defaultExpanded }: 
   );
 }
 
-export function FileTree({ files, selectedFile, onSelectFile, expanded }: FileTreeProps) {
+export function FileTree({
+  files,
+  selectedFile,
+  onSelectFile,
+  expanded,
+}: FileTreeProps) {
   const tree = buildTree(files);
 
   if (files.length === 0) {
@@ -154,7 +175,7 @@ export function FileTree({ files, selectedFile, onSelectFile, expanded }: FileTr
   }
 
   return (
-    <div className="py-2">
+    <div className="py-1.5 px-1">
       {tree.map((node) => (
         <TreeItem
           key={node.path}
