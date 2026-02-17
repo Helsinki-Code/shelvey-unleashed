@@ -122,11 +122,11 @@ export default function Phase4Page() {
         .order("created_at", { ascending: false })
         .limit(100);
 
-      const projectActivities = (activityData || []).filter((activity: AgentActivity) => {
+      const projectActivities = (activityData || []).filter((activity) => {
         const metadata = activity.metadata as Record<string, unknown> | null;
         return metadata?.projectId === projectId || activity.agent_id === PHASE_AGENT.id;
       });
-      setActivities(projectActivities.slice(0, 50));
+      setActivities(projectActivities.slice(0, 50) as unknown as AgentActivity[]);
     } catch (error) {
       console.error("Error fetching phase data:", error);
     } finally {
