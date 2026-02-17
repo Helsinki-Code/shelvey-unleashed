@@ -16,52 +16,70 @@ interface DeployRequest {
   }[];
 }
 
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const toBase64Utf8 = (input: string) => {
+  const bytes = new TextEncoder().encode(input);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const vercelToken = Deno.env.get('VERCEL_API_TOKEN');
+    const vercelToken = Deno.env.get('VERCEL_API_TOKEN') || Deno.env.get('VERCEL_TOKEN');
     if (!vercelToken) {
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         error: 'VERCEL_API_TOKEN not configured',
         message: 'Please add your Vercel API token in settings'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 400);
     }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseKey) {
+      return jsonResponse({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }, 500);
+    }
     const userSupabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
     const { data: { user }, error: authError } = await userSupabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    const { projectId, projectName, files }: DeployRequest = await req.json();
+    let payload: DeployRequest;
+    try {
+      payload = await req.json();
+    } catch {
+      return jsonResponse({ error: 'Invalid JSON request body' }, 400);
+    }
 
-    if (!files || files.length === 0) {
-      return new Response(JSON.stringify({ error: 'No files to deploy' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const { projectId, projectName, files } = payload;
+
+    if (!projectId || !projectName) {
+      return jsonResponse({ error: 'projectId and projectName are required' }, 400);
+    }
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return jsonResponse({ error: 'No files to deploy' }, 400);
     }
 
     // Create a unique project name for Vercel
@@ -73,7 +91,7 @@ serve(async (req) => {
     // Convert files to Vercel deployment format
     const deploymentFiles = files.map(file => ({
       file: file.path,
-      data: btoa(unescape(encodeURIComponent(file.content))),
+      data: toBase64Utf8(file.content),
       encoding: 'base64' as const,
     }));
 
@@ -101,7 +119,14 @@ serve(async (req) => {
     if (!deployResponse.ok) {
       const errorText = await deployResponse.text();
       console.error('Vercel deployment error:', errorText);
-      throw new Error(`Vercel deployment failed: ${deployResponse.status}`);
+      return jsonResponse(
+        {
+          error: `Vercel deployment failed: ${deployResponse.status}`,
+          details: errorText,
+          statusCode: deployResponse.status,
+        },
+        502,
+      );
     }
 
     const deployData = await deployResponse.json();
@@ -129,7 +154,13 @@ serve(async (req) => {
         if (deploymentStatus === 'READY') {
           break;
         } else if (deploymentStatus === 'ERROR') {
-          throw new Error('Deployment failed during build');
+          return jsonResponse(
+            {
+              error: 'Deployment failed during build',
+              deploymentId: deployData.id,
+            },
+            502,
+          );
         }
       }
       
@@ -143,61 +174,60 @@ serve(async (req) => {
     const deploymentUrl = `https://${deployData.url}`;
     const productionUrl = deployData.alias?.[0] ? `https://${deployData.alias[0]}` : deploymentUrl;
 
-    // Update (or create) database row with deployment info
+    // Update (or create) database row with deployment info (non-fatal if DB write fails)
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const appFile = files.find((f) => f.path === 'src/App.tsx' || f.path === 'App.tsx');
-    const now = new Date().toISOString();
+    try {
+      const appFile = files.find((f) => f.path === 'src/App.tsx' || f.path === 'App.tsx');
+      const now = new Date().toISOString();
 
-    const { data: existingWebsite } = await supabase
-      .from('generated_websites')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      const { data: existingWebsite } = await supabase
+        .from('generated_websites')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if (existingWebsite?.id) {
-      await supabase
-        .from('generated_websites')
-        .update({
-          deployed_url: productionUrl,
-          status: 'deployed',
-          hosting_type: 'vercel',
-          updated_at: now,
-        })
-        .eq('id', existingWebsite.id);
-    } else {
-      await supabase
-        .from('generated_websites')
-        .insert({
-          project_id: projectId,
-          user_id: user.id,
-          name: `${projectName} Website`,
-          html_content: appFile?.content || '',
-          status: 'deployed',
-          deployed_url: productionUrl,
-          hosting_type: 'vercel',
-          created_at: now,
-          updated_at: now,
-        });
+      if (existingWebsite?.id) {
+        await supabase
+          .from('generated_websites')
+          .update({
+            deployed_url: productionUrl,
+            status: 'deployed',
+            hosting_type: 'vercel',
+            updated_at: now,
+          })
+          .eq('id', existingWebsite.id);
+      } else {
+        await supabase
+          .from('generated_websites')
+          .insert({
+            project_id: projectId,
+            user_id: user.id,
+            name: `${projectName} Website`,
+            html_content: appFile?.content || '',
+            status: 'deployed',
+            deployed_url: productionUrl,
+            hosting_type: 'vercel',
+            created_at: now,
+            updated_at: now,
+          });
+      }
+    } catch (dbError) {
+      console.error('Deployment succeeded but DB update failed:', dbError);
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       success: true,
       deploymentId: deployData.id,
       deploymentUrl,
       productionUrl,
       status: deploymentStatus,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Deploy error:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Deployment failed' 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({
+      error: error instanceof Error ? error.message : 'Deployment failed',
+    }, 500);
   }
 });

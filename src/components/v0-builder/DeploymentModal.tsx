@@ -77,7 +77,15 @@ export function DeploymentModal({
       });
 
       if (response.error) throw new Error(response.error.message);
-      if (response.data?.error) throw new Error(response.data.error);
+      if (response.data?.error) {
+        const parts = [response.data.error];
+        if (response.data.statusCode) parts.push(`status=${response.data.statusCode}`);
+        if (response.data.details) {
+          const detailText = String(response.data.details);
+          parts.push(detailText.length > 320 ? `${detailText.slice(0, 320)}...` : detailText);
+        }
+        throw new Error(parts.join(' | '));
+      }
 
       setProgress(70);
       setMessage('Deploying to Vercel…');
