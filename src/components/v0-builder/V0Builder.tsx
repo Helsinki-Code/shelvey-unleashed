@@ -1,30 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ArrowUp,
+  Code2,
+  Eye,
   FileCode,
-  Globe,
-  GripVertical,
   Loader2,
-  Maximize2,
-  MessageSquare,
-  Minimize2,
   Monitor,
-  PanelLeft,
   PanelLeftClose,
-  RefreshCw,
+  PanelLeft,
   Rocket,
-  Send,
+  Smartphone,
+  Sparkles,
+  Tablet,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { CodeEditor } from './CodeEditor';
+import { FileTree } from './FileTree';
+import { SandboxPreview } from './SandboxPreview';
 import { DeploymentModal } from './DeploymentModal';
-import { WebPreview, WebPreviewBody, WebPreviewNavigation, WebPreviewNavigationButton, WebPreviewUrl, WebPreviewViewport } from './WebPreview';
 
 export interface ProjectFile {
   path: string;
@@ -57,63 +55,63 @@ interface V0BuilderProps {
 }
 
 type ViewMode = 'preview' | 'code';
+type Viewport = 'desktop' | 'tablet' | 'mobile';
+
+const VIEWPORT_WIDTHS: Record<Viewport, string> = {
+  desktop: '100%',
+  tablet: '768px',
+  mobile: '375px',
+};
+
+const SUGGESTIONS = [
+  'Create a modern landing page with hero, features, and footer',
+  'Build a multi-page site with navigation',
+  'Add a pricing section with 3 tiers',
+  'Create a contact page with a form',
+];
 
 export function V0Builder({ projectId, project, branding, approvedSpecs, onDeploymentComplete }: V0BuilderProps) {
+  // Core state
   const [messages, setMessages] = useState<Message[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [input, setInput] = useState('');
+
+  // UI state
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
-  const [chatOpen, setChatOpen] = useState(true);
-  const [activePanel, setActivePanel] = useState<'chat' | 'preview'>('chat');
-  const [isMobileLayout, setIsMobileLayout] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(36);
-  const [isSplitDragging, setIsSplitDragging] = useState(false);
-  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [viewport, setViewport] = useState<Viewport>('desktop');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showDeployModal, setShowDeployModal] = useState(false);
-  const [sandboxId, setSandboxId] = useState<string | null>(null);
-  const [sandboxPreviewUrl, setSandboxPreviewUrl] = useState<string | null>(null);
-  const [sandboxStatus, setSandboxStatus] = useState<string | null>(null);
-  const [isSandboxBusy, setIsSandboxBusy] = useState(false);
-  const [previewEngine, setPreviewEngine] = useState<'local' | 'vercel'>('vercel');
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
-  const splitRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const filesRef = useRef<ProjectFile[]>([]);
-  const syncSignatureRef = useRef('');
-  const syncTimerRef = useRef<number | null>(null);
 
-  const theme = useMemo(() => ({
-    primary: branding?.primaryColor || '#16a34a',
-    border: 'rgba(22,163,74,.25)',
-    headingFont: branding?.headingFont || 'var(--font-cyber)',
-    bodyFont: branding?.bodyFont || 'var(--font-sans)',
-  }), [branding]);
+  // Derived state
+  const appFile = projectFiles.find(f => f.path === 'src/App.tsx' || f.path === 'App.tsx');
+  const currentFile = projectFiles.find(f => f.path === selectedFile);
 
-  const currentFile = projectFiles.find((f) => f.path === selectedFile);
-  const appFile = projectFiles.find((f) => f.path === 'src/App.tsx' || f.path === 'App.tsx');
-  const showChatPane = isMobileLayout ? activePanel === 'chat' : chatOpen;
-  const showPreviewPane = isMobileLayout ? activePanel === 'preview' : true;
-  const previewUrl = previewEngine === 'vercel' ? sandboxPreviewUrl || '' : '';
-  const hasPreview = previewEngine === 'vercel' ? Boolean(sandboxPreviewUrl) : projectFiles.length > 0;
-
-  const filesSignature = useCallback((files: ProjectFile[]) => files.map((f) => `${f.path}:${f.content.length}`).sort().join('|'), []);
-
+  // ── Data loading ──────────────────────────────────────────────
   const loadSavedFiles = useCallback(async () => {
     try {
-      const { data } = await supabase.from('website_pages').select('page_name,page_code').eq('project_id', projectId).order('created_at', { ascending: true });
+      const { data } = await supabase
+        .from('website_pages')
+        .select('page_name,page_code')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
       if (!data) return;
-      const loaded = data.map((p) => ({
+      const loaded: ProjectFile[] = data.map(p => ({
         path: p.page_name,
         content: p.page_code || '',
         type: (p.page_name.endsWith('.css') ? 'css' : p.page_name.endsWith('.json') ? 'json' : 'tsx') as ProjectFile['type'],
       }));
       setProjectFiles(loaded);
       filesRef.current = loaded;
-      setSelectedFile(loaded[0]?.path || null);
+      if (loaded.length > 0) setSelectedFile(loaded[0].path);
     } finally {
       setFilesLoaded(true);
     }
@@ -122,7 +120,7 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
   const saveFiles = useCallback(async (files: ProjectFile[]) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const rows = files.map((f) => ({
+    const rows = files.map(f => ({
       project_id: projectId,
       user_id: user.id,
       page_name: f.path,
@@ -134,230 +132,396 @@ export function V0Builder({ projectId, project, branding, approvedSpecs, onDeplo
     await supabase.from('website_pages').upsert(rows, { onConflict: 'project_id,user_id,page_name', ignoreDuplicates: false });
   }, [projectId]);
 
-  const persistSandboxSession = useCallback(async (next: { sandboxId?: string | null; previewUrl?: string | null; status?: string | null }) => {
-    const payload = { sandboxId: next.sandboxId ?? sandboxId, previewUrl: next.previewUrl ?? sandboxPreviewUrl, status: next.status ?? sandboxStatus };
-    localStorage.setItem(`phase3:sandbox:${projectId}`, JSON.stringify(payload));
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !payload.sandboxId) return;
-    const sb = supabase as any;
-    await sb.from('phase3_sandbox_sessions').upsert({
-      project_id: projectId,
-      user_id: user.id,
-      sandbox_id: payload.sandboxId,
-      preview_url: payload.previewUrl,
-      status: payload.status || 'running',
-      preview_engine: 'vercel',
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'project_id,user_id' });
-  }, [projectId, sandboxId, sandboxPreviewUrl, sandboxStatus]);
-
   useEffect(() => { loadSavedFiles(); }, [loadSavedFiles]);
   useEffect(() => { filesRef.current = projectFiles; }, [projectFiles]);
-  useEffect(() => { const onResize = () => setIsMobileLayout(window.innerWidth < 1024); onResize(); window.addEventListener('resize', onResize); return () => window.removeEventListener('resize', onResize); }, []);
-  useEffect(() => { if (!scrollRef.current) return; scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
-
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user;
-      if (!user) return;
-      const sb = supabase as any;
-      const { data } = await sb.from('phase3_sandbox_sessions').select('sandbox_id,preview_url,status').eq('project_id', projectId).eq('user_id', user.id).maybeSingle();
-      if (cancelled) return;
-      if (data?.sandbox_id) {
-        setSandboxId(data.sandbox_id); setSandboxPreviewUrl(data.preview_url || null); setSandboxStatus(data.status || null); setPreviewEngine('vercel'); return;
-      }
-      const raw = localStorage.getItem(`phase3:sandbox:${projectId}`);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      setSandboxId(parsed.sandboxId || null); setSandboxPreviewUrl(parsed.previewUrl || null); setSandboxStatus(parsed.status || null);
-    })();
-    return () => { cancelled = true; };
-  }, [projectId]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-  useEffect(() => {
-    if (!sandboxId) return;
-    supabase.functions.invoke('vercel-sandbox-preview', { body: { action: 'get_status', sandboxId } }).then(({ data }) => {
-      if (!data?.success) return;
-      setSandboxStatus(data.status || null); setSandboxPreviewUrl(data.previewUrl || null);
-    }).catch(() => undefined);
-  }, [sandboxId]);
+  // ── Streaming chat ────────────────────────────────────────────
+  const handleSend = useCallback(async (content?: string) => {
+    const text = (content || input).trim();
+    if (!text || isGenerating) return;
 
-  useEffect(() => {
-    if (previewEngine !== 'vercel' || !sandboxId || sandboxStatus === 'stopped' || projectFiles.length === 0) return;
-    const sig = filesSignature(projectFiles);
-    if (sig === syncSignatureRef.current) return;
-    if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
-    syncTimerRef.current = window.setTimeout(async () => {
-      const { data } = await supabase.functions.invoke('vercel-sandbox-preview', {
-        body: { action: 'update_files', sandboxId, projectId, projectName: project.name, files: projectFiles.map((f) => ({ path: f.path, content: f.content, type: f.type })) },
-      });
-      if (!data?.success) return;
-      syncSignatureRef.current = sig;
-      setSandboxStatus(data.status || sandboxStatus);
-      if (data.previewUrl) setSandboxPreviewUrl(data.previewUrl);
-      await persistSandboxSession({ status: data.status, previewUrl: data.previewUrl });
-    }, 1000);
-    return () => { if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current); };
-  }, [previewEngine, sandboxId, sandboxStatus, projectFiles, projectId, project.name, filesSignature, persistSandboxSession]);
-
-  useEffect(() => {
-    if (!isSplitDragging) return;
-    const onMove = (e: MouseEvent) => {
-      if (!splitRef.current) return;
-      const rect = splitRef.current.getBoundingClientRect();
-      const next = ((e.clientX - rect.left) / rect.width) * 100;
-      setLeftPanelWidth(Math.max(24, Math.min(58, next)));
-    };
-    const onUp = () => setIsSplitDragging(false);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-  }, [isSplitDragging]);
-
-  const handleSendMessage = useCallback(async () => {
-    if (!input.trim() || isGenerating) return;
-    const content = input.trim();
-    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content, timestamp: new Date() };
+    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date() };
     const assistantId = crypto.randomUUID();
-    setMessages((prev) => [...prev, userMessage, { id: assistantId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), files: [] }]);
+    setMessages(prev => [
+      ...prev,
+      userMsg,
+      { id: assistantId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), files: [] },
+    ]);
     setInput('');
     setIsGenerating(true);
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`, {
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/v0-stream-chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({ role: m.role, content: m.content })),
-          projectId, project, branding, specs: approvedSpecs, existingFiles: projectFiles.map((f) => ({ path: f.path, content: f.content, type: f.type })),
+          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+          projectId,
+          project,
+          branding,
+          specs: approvedSpecs,
+          existingFiles: projectFiles.map(f => ({ path: f.path, content: f.content, type: f.type })),
         }),
       });
-      if (!response.ok) throw new Error('Generation failed');
-      const reader = response.body?.getReader(); const decoder = new TextDecoder();
-      let narrative = ''; let buffer = ''; const generated: ProjectFile[] = [];
+
+      if (!res.ok) throw new Error('Generation failed');
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let narrative = '';
+      let buffer = '';
+      const generated: ProjectFile[] = [];
+
       while (reader) {
-        const { done, value } = await reader.read(); if (done) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n'); buffer = lines.pop() || '';
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const raw = line.slice(6).trim();
-          if (raw === '[DONE]') continue;
-          const parsed = JSON.parse(raw);
-          if (parsed.type === 'content') {
-            narrative += parsed.content;
-            setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: narrative } : m));
-          } else if (parsed.type === 'file') {
-            const file = parsed.file as ProjectFile;
-            generated.push(file);
-            setProjectFiles((prev) => {
-              const idx = prev.findIndex((f) => f.path === file.path);
-              const next = idx >= 0 ? prev.map((f, i) => i === idx ? file : f) : [...prev, file];
-              filesRef.current = next;
-              return next;
-            });
-            setSelectedFile((p) => p || file.path);
+          if (raw === '[DONE]') {
+            try { await reader.cancel(); } catch {}
+            break;
           }
+
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.type === 'content') {
+              narrative += parsed.content;
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: narrative } : m));
+            } else if (parsed.type === 'file') {
+              const file = parsed.file as ProjectFile;
+              generated.push(file);
+              setProjectFiles(prev => {
+                const idx = prev.findIndex(f => f.path === file.path);
+                const next = idx >= 0 ? prev.map((f, i) => i === idx ? file : f) : [...prev, file];
+                filesRef.current = next;
+                return next;
+              });
+              setSelectedFile(p => p || file.path);
+            }
+          } catch {}
         }
       }
-      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: narrative, isStreaming: false, files: generated } : m));
+
+      setMessages(prev =>
+        prev.map(m => m.id === assistantId ? { ...m, content: narrative, isStreaming: false, files: generated } : m),
+      );
       if (generated.length > 0) await saveFiles(filesRef.current);
     } catch {
-      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: 'Generation failed. Retry.', isStreaming: false } : m));
+      setMessages(prev =>
+        prev.map(m => m.id === assistantId ? { ...m, content: 'Something went wrong. Please try again.', isStreaming: false } : m),
+      );
     } finally {
       setIsGenerating(false);
     }
   }, [input, isGenerating, messages, projectId, project, branding, approvedSpecs, projectFiles, saveFiles]);
 
-  const launchSandbox = useCallback(async () => {
-    if (filesRef.current.length === 0) return toast.error('Generate files first');
-    setIsSandboxBusy(true);
-    try {
-      const action = sandboxId && sandboxStatus !== 'stopped' ? 'update_files' : 'provision_preview';
-      const { data } = await supabase.functions.invoke('vercel-sandbox-preview', { body: { action, sandboxId, projectId, projectName: project.name, files: filesRef.current } });
-      if (!data?.success) throw new Error(data?.error || 'Sandbox failed');
-      const nextId = data.sandboxId || sandboxId; const nextUrl = data.previewUrl || sandboxPreviewUrl; const nextStatus = data.status || 'running';
-      setSandboxId(nextId); setSandboxPreviewUrl(nextUrl); setSandboxStatus(nextStatus); setPreviewEngine('vercel');
-      syncSignatureRef.current = filesSignature(filesRef.current);
-      await persistSandboxSession({ sandboxId: nextId, previewUrl: nextUrl, status: nextStatus });
-      toast.success('Sandbox ready');
-    } catch (e: any) {
-      toast.error(e?.message || 'Sandbox failed');
-    } finally { setIsSandboxBusy(false); }
-  }, [sandboxId, sandboxStatus, sandboxPreviewUrl, projectId, project.name, filesSignature, persistSandboxSession]);
+  // ── Loading state ─────────────────────────────────────────────
+  if (!filesLoaded) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  if (!filesLoaded) return <div className="h-[calc(100vh-220px)] min-h-[500px] rounded-xl border flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  const hasFiles = projectFiles.length > 0;
 
   return (
-    <div className="h-[calc(100vh-220px)] min-h-[500px] flex flex-col rounded-xl border overflow-hidden" style={{ borderColor: theme.border, fontFamily: theme.bodyFont }}>
-      <div className="h-11 shrink-0 border-b flex items-center justify-between px-2 bg-background/70" style={{ borderColor: theme.border }}>
-        <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => isMobileLayout ? setActivePanel((p) => p === 'chat' ? 'preview' : 'chat') : setChatOpen((v) => !v)}>
-            {isMobileLayout ? (activePanel === 'chat' ? <Monitor className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />) : (chatOpen ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeft className="h-3.5 w-3.5" />)}
+    <div className="h-full flex flex-col bg-background">
+      {/* ── Top toolbar ────────────────────────────────────────── */}
+      <div className="h-12 shrink-0 border-b border-border flex items-center justify-between px-3 bg-background">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setSidebarOpen(v => !v)}
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
           </Button>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="text-xs font-semibold" style={{ fontFamily: theme.headingFont }}>{project.name}</span>
+          <div className="h-5 w-px bg-border" />
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">{project.name}</span>
+          {isGenerating && (
+            <span className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Generating...
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
-          <div className="flex items-center bg-muted rounded-md p-0.5">
-            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', viewMode === 'preview' && 'bg-background shadow-sm')} onClick={() => setViewMode('preview')}>Preview</Button>
-            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', viewMode === 'code' && 'bg-background shadow-sm')} onClick={() => setViewMode('code')}>Code</Button>
+
+        <div className="flex items-center gap-1.5">
+          {/* View mode toggle */}
+          <div className="flex items-center bg-muted rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('preview')}
+              className={cn(
+                'h-7 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
+                viewMode === 'preview' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Preview
+            </button>
+            <button
+              onClick={() => setViewMode('code')}
+              className={cn(
+                'h-7 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
+                viewMode === 'code' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Code2 className="h-3.5 w-3.5" />
+              Code
+            </button>
           </div>
-          <div className="flex items-center bg-muted rounded-md p-0.5">
-            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', previewEngine === 'local' && 'bg-background shadow-sm')} onClick={() => setPreviewEngine('local')}>Local</Button>
-            <Button size="sm" variant="ghost" className={cn('h-6 px-2 text-[10px]', previewEngine === 'vercel' && 'bg-background shadow-sm')} onClick={() => setPreviewEngine('vercel')}>Vercel</Button>
-          </div>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={launchSandbox} disabled={isSandboxBusy || projectFiles.length === 0}>{isSandboxBusy ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Globe className="h-3 w-3 mr-1" />{sandboxId ? 'Sync' : 'Launch'}</Button>
-          <Button size="sm" className="h-7 text-xs" onClick={() => setShowDeployModal(true)} disabled={projectFiles.length === 0}><Rocket className="h-3 w-3 mr-1" />Deploy</Button>
+
+          {/* Viewport switcher (preview only) */}
+          {viewMode === 'preview' && (
+            <>
+              <div className="h-5 w-px bg-border" />
+              <div className="flex items-center gap-0.5">
+                {(['desktop', 'tablet', 'mobile'] as Viewport[]).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setViewport(v)}
+                    className={cn(
+                      'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                      viewport === v ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {v === 'desktop' && <Monitor className="h-3.5 w-3.5" />}
+                    {v === 'tablet' && <Tablet className="h-3.5 w-3.5" />}
+                    {v === 'mobile' && <Smartphone className="h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="h-5 w-px bg-border" />
+          <Button
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => setShowDeployModal(true)}
+            disabled={!hasFiles}
+          >
+            <Rocket className="h-3.5 w-3.5" />
+            Deploy
+          </Button>
         </div>
       </div>
 
-      {viewMode === 'preview' ? (
-        <div ref={splitRef} className="relative flex-1 flex overflow-hidden">
-          {showChatPane && (
-            <div className="flex flex-col border-r min-h-0" style={{ borderColor: theme.border, width: isMobileLayout ? '100%' : `${leftPanelWidth}%` }}>
-              <div className="h-9 border-b shrink-0 flex items-center px-3" style={{ borderColor: theme.border }}><span className="text-xs font-semibold">Chat</span>{isGenerating && <Badge variant="secondary" className="ml-2 text-[10px]">Generating</Badge>}</div>
-              <ScrollArea className="flex-1 px-3" ref={scrollRef}><div className="py-3 space-y-3">{messages.map((m) => <div key={m.id} className={cn('text-xs', m.role === 'user' && 'text-right')}><div className={cn('inline-block max-w-[95%] px-3 py-2 rounded-lg', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>{m.content || (m.isStreaming ? '...' : '')}</div></div>)}</div></ScrollArea>
-              <div className="p-2 border-t shrink-0" style={{ borderColor: theme.border }}>
-                <div className="relative">
-                  <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder={isGenerating ? 'Generating...' : 'Continue the conversation...'} className="min-h-[60px] max-h-[120px] pr-10 resize-none text-xs" />
-                  <Button size="icon" className="absolute bottom-1.5 right-1.5 h-7 w-7" disabled={!input.trim() || isGenerating} onClick={handleSendMessage}>{isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}</Button>
+      {/* ── Main content area ──────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ── Chat sidebar ─────────────────────────────────────── */}
+        <AnimatePresence initial={false}>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 380, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="shrink-0 border-r border-border flex flex-col bg-background overflow-hidden"
+            >
+              {/* Messages */}
+              <ScrollArea className="flex-1" ref={scrollRef}>
+                <div className="p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    /* Welcome screen */
+                    <div className="py-12 flex flex-col items-center text-center px-4">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+                        <Sparkles className="h-7 w-7 text-primary" />
+                      </div>
+                      <h3 className="text-base font-semibold mb-1.5">What do you want to build?</h3>
+                      <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">
+                        Describe your website and I'll generate production-ready React code instantly.
+                      </p>
+                      <div className="flex flex-col gap-2 w-full">
+                        {SUGGESTIONS.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSend(s)}
+                            className="text-left px-3 py-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    messages.map(msg => (
+                      <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                        <div
+                          className={cn(
+                            'max-w-[90%] rounded-2xl px-4 py-2.5 text-sm',
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground rounded-br-md'
+                              : 'bg-muted text-foreground rounded-bl-md',
+                          )}
+                        >
+                          <p className="whitespace-pre-wrap leading-relaxed">
+                            {msg.content || (msg.isStreaming ? '' : 'Thinking...')}
+                          </p>
+                          {msg.isStreaming && (
+                            <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse rounded-full" />
+                          )}
+                          {/* File chips */}
+                          {msg.files && msg.files.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {msg.files.map(f => (
+                                <button
+                                  key={f.path}
+                                  onClick={() => {
+                                    setSelectedFile(f.path);
+                                    setViewMode('code');
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background/60 border border-border/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <FileCode className="h-3 w-3" />
+                                  {f.path.split('/').pop()}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {/* Loading indicator */}
+                  {isGenerating && messages.length > 0 && messages[messages.length - 1]?.role === 'user' && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </ScrollArea>
+
+              {/* Input area */}
+              <div className="p-3 border-t border-border">
+                <div className="relative bg-muted/50 rounded-xl border border-border focus-within:border-primary/50 transition-colors">
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Ask v0 a question..."
+                    disabled={isGenerating}
+                    rows={2}
+                    className="w-full bg-transparent px-4 pt-3 pb-10 text-sm resize-none outline-none placeholder:text-muted-foreground disabled:opacity-50"
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <Button
+                      size="icon"
+                      className="h-7 w-7 rounded-lg"
+                      disabled={!input.trim() || isGenerating}
+                      onClick={() => handleSend()}
+                    >
+                      {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                  Enter to send · Shift+Enter for new line
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Right panel: Preview or Code ──────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {viewMode === 'preview' ? (
+            /* ── Preview mode ──────────────────────────────────── */
+            <div className="flex-1 flex items-center justify-center bg-muted/20 p-4 overflow-auto">
+              {hasFiles ? (
+                <div
+                  className="bg-background rounded-lg shadow-xl border border-border overflow-hidden transition-all duration-300"
+                  style={{
+                    width: VIEWPORT_WIDTHS[viewport],
+                    maxWidth: '100%',
+                    height: viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '100%',
+                  }}
+                >
+                  <SandboxPreview
+                    key={refreshKey}
+                    code={appFile?.content || ''}
+                    files={projectFiles}
+                  />
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  <Eye className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">Start a conversation to see your website here</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Code mode ─────────────────────────────────────── */
+            <div className="flex-1 flex overflow-hidden">
+              {/* File tree */}
+              <div className="w-52 shrink-0 border-r border-border bg-muted/10 overflow-auto">
+                <FileTree
+                  files={projectFiles}
+                  selectedFile={selectedFile}
+                  onSelectFile={setSelectedFile}
+                  expanded
+                />
+              </div>
+              {/* Editor */}
+              <div className="flex-1 overflow-hidden">
+                <CodeEditor
+                  code={currentFile?.content || '// Select a file to view its contents'}
+                  language={selectedFile?.endsWith('.css') ? 'css' : 'typescript'}
+                  filename={selectedFile || undefined}
+                />
               </div>
             </div>
           )}
-          {!isMobileLayout && showChatPane && showPreviewPane && <button type="button" className="relative w-1 bg-border/70 hover:bg-border" onMouseDown={() => setIsSplitDragging(true)}><GripVertical className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /></button>}
-          {showPreviewPane && (
-            <div className={cn('flex-1 min-h-0', isPreviewFullscreen && !isMobileLayout && 'fixed inset-4 z-50 rounded-xl border bg-background shadow-2xl')} style={isPreviewFullscreen && !isMobileLayout ? { borderColor: theme.border } : undefined}>
-              <WebPreview defaultUrl={previewUrl}>
-                <WebPreviewNavigation>
-                  <WebPreviewNavigationButton onClick={() => setRefreshKey((k) => k + 1)} tooltip="Refresh" disabled={!hasPreview}><RefreshCw className="h-4 w-4" /></WebPreviewNavigationButton>
-                  <WebPreviewUrl readOnly value={previewUrl} />
-                  <WebPreviewViewport />
-                  <WebPreviewNavigationButton onClick={() => setIsPreviewFullscreen((v) => !v)} tooltip={isPreviewFullscreen ? 'Exit' : 'Fullscreen'}>{isPreviewFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</WebPreviewNavigationButton>
-                </WebPreviewNavigation>
-                <WebPreviewBody key={refreshKey} src={previewUrl || undefined} localPreview={previewEngine !== 'vercel'} localCode={appFile?.content || ''} localFiles={projectFiles} />
-              </WebPreview>
-            </div>
-          )}
-          {isMobileLayout && <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20"><div className="flex items-center bg-background/90 border rounded-lg p-1" style={{ borderColor: theme.border }}><button onClick={() => setActivePanel('chat')} className={cn('h-8 px-3 rounded-md text-xs font-medium', activePanel === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Chat</button><button onClick={() => setActivePanel('preview')} className={cn('h-8 px-3 rounded-md text-xs font-medium', activePanel === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Preview</button></div></div>}
         </div>
-      ) : (
-        <div className="flex-1 flex overflow-hidden">
-          <div className="w-56 border-r bg-muted/20 overflow-auto shrink-0">
-            <div className="p-2">
-              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Files</div>
-              {projectFiles.map((f) => <button key={f.path} onClick={() => setSelectedFile(f.path)} className={cn('w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] text-left', selectedFile === f.path ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><FileCode className="h-3 w-3 shrink-0" /><span className="truncate">{f.path}</span></button>)}
-            </div>
-          </div>
-          <div className="flex-1 overflow-hidden"><CodeEditor code={currentFile?.content || '// Select a file to view'} language={selectedFile?.endsWith('.css') ? 'css' : 'typescript'} filename={selectedFile || undefined} /></div>
-        </div>
-      )}
+      </div>
 
-      <DeploymentModal open={showDeployModal} onOpenChange={setShowDeployModal} projectId={projectId} projectName={project.name} files={projectFiles} onSuccess={(url) => { onDeploymentComplete?.(url); toast.success(`Deployed: ${url}`); }} />
+      {/* ── Deploy modal ───────────────────────────────────────── */}
+      <DeploymentModal
+        open={showDeployModal}
+        onOpenChange={setShowDeployModal}
+        projectId={projectId}
+        projectName={project.name}
+        files={projectFiles}
+        onSuccess={url => {
+          onDeploymentComplete?.(url);
+          toast.success(`Deployed: ${url}`);
+        }}
+      />
     </div>
   );
 }

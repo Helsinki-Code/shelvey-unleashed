@@ -2544,6 +2544,181 @@ export type Database = {
           },
         ]
       }
+      phase3_sandbox_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          preview_engine: string
+          preview_url: string | null
+          project_id: string
+          sandbox_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          preview_engine?: string
+          preview_url?: string | null
+          project_id: string
+          sandbox_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          preview_engine?: string
+          preview_url?: string | null
+          project_id?: string
+          sandbox_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase3_sandbox_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phase4_autopilot_configs: {
+        Row: {
+          auto_publish_medium: boolean
+          auto_publish_site: boolean
+          auto_publish_social: boolean
+          created_at: string
+          enabled: boolean
+          id: string
+          include_parasite_seo: boolean
+          keywords: Json
+          last_error: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          project_id: string
+          run_interval_minutes: number
+          social_platforms: Json
+          status: string
+          target_posts_per_run: number
+          updated_at: string
+          use_brand_assets: boolean
+          user_id: string
+        }
+        Insert: {
+          auto_publish_medium?: boolean
+          auto_publish_site?: boolean
+          auto_publish_social?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          include_parasite_seo?: boolean
+          keywords?: Json
+          last_error?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          project_id: string
+          run_interval_minutes?: number
+          social_platforms?: Json
+          status?: string
+          target_posts_per_run?: number
+          updated_at?: string
+          use_brand_assets?: boolean
+          user_id: string
+        }
+        Update: {
+          auto_publish_medium?: boolean
+          auto_publish_site?: boolean
+          auto_publish_social?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          include_parasite_seo?: boolean
+          keywords?: Json
+          last_error?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          project_id?: string
+          run_interval_minutes?: number
+          social_platforms?: Json
+          status?: string
+          target_posts_per_run?: number
+          updated_at?: string
+          use_brand_assets?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase4_autopilot_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phase4_autopilot_runs: {
+        Row: {
+          completed_at: string | null
+          config_id: string
+          created_at: string
+          id: string
+          project_id: string
+          run_type: string
+          started_at: string
+          status: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          config_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          run_type?: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          config_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          run_type?: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase4_autopilot_runs_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "phase4_autopilot_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phase4_autopilot_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pod_products: {
         Row: {
           cost: number | null
@@ -4254,6 +4429,36 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      v0_chats: {
+        Row: {
+          created_at: string | null
+          id: string
+          messages: Json | null
+          name: string | null
+          project_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          messages?: Json | null
+          name?: string | null
+          project_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          name?: string | null
+          project_id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
