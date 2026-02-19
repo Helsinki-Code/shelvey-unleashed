@@ -1,476 +1,374 @@
-import { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 import {
-  ArrowLeft,
-  Code,
-  Globe,
-  Loader2,
-  Bot,
-  CheckCircle2,
-  Eye,
-  MessageSquare,
-  Rocket,
-  RefreshCw,
-  ExternalLink,
-  Shield,
-  Sparkles,
-  FileText,
-  Layers,
-  Activity
+  Send, Loader2, Sparkles, Code2, Eye, ArrowLeft,
+  Copy, Check, Download, Rocket, Smartphone, Monitor, Tablet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
-import { AgentChatSheet } from '@/components/AgentChatSheet';
 import { PageHeader } from '@/components/PageHeader';
-import { StartPhaseButton } from '@/components/StartPhaseButton';
-import { V0Builder } from '@/components/v0-builder';
-import { WebsiteSpecsAgent } from '@/components/WebsiteSpecsAgent';
-import { LiveAgentWorkPreview } from '@/components/LiveAgentWorkPreview';
-import { PhaseAgentCard } from '@/components/PhaseAgentCard';
-import { DeliverableCard } from '@/components/DeliverableCard';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { getPhaseAgent } from '@/lib/phase-agents';
+import { PreviewEngine } from '@/components/builder/PreviewEngine';
+import { sendBuilderRequest } from '@/services/aiService';
+import { exportCode } from '@/lib/export';
+import type { Message, SEOData } from '@/types/agent';
+import { cn } from '@/lib/utils';
 
-interface GeneratedWebsite {
-  id: string;
-  name: string;
-  html_content: string;
-  css_content: string | null;
-  js_content: string | null;
-  status: string;
-  deployed_url: string | null;
-  domain_name: string | null;
-  custom_domain: string | null;
-  hosting_type: string | null;
-  dns_records: any | null;
-  ssl_status: string | null;
-  ceo_approved: boolean | null;
-  user_approved: boolean | null;
-}
+const DEFAULT_CODE = `() => {
+  const [started, setStarted] = React.useState(false);
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-8 text-center">
+      <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-emerald-500/30">
+        <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+        </svg>
+      </div>
+      <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">ShelVey AI Builder</h1>
+      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
+        Describe your website or application in natural language. I'll architect, design, and build it in real-time.
+      </p>
+      <div className="flex gap-4">
+        <button onClick={() => setStarted(true)} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40">
+          {started ? '✓ Ready to Build' : 'Get Started'}
+        </button>
+      </div>
+      {started && (
+        <p className="mt-6 text-sm text-emerald-600 dark:text-emerald-400 animate-pulse">
+          Type your idea in the chat panel to begin building →
+        </p>
+      )}
+    </div>
+  );
+}`;
 
-interface Deliverable {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string | null;
-  deliverable_type: string;
-  ceo_approved: boolean | null;
-  user_approved: boolean | null;
-  feedback: string | null;
-  generated_content: any;
-  screenshots: any;
-  citations: any;
-  assigned_agent_id: string | null;
-}
+const THINKING_STEPS = [
+  'Understanding requirements...',
+  'Planning component architecture...',
+  'Generating React code & styles...',
+  'Optimizing for performance...',
+  'Finalizing output...',
+];
 
-interface ActivityLog {
-  id: string;
-  action: string;
-  status: string;
-  created_at: string;
-  agent_name: string;
-}
-
-const PHASE_AGENT = getPhaseAgent(3)!;
+type ViewportSize = 'desktop' | 'tablet' | 'mobile';
 
 const Phase3Page = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [project, setProject] = useState<any>(null);
-  const [phase, setPhase] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('builder');
-  const [chatOpen, setChatOpen] = useState(false);
-  const [generatedWebsite, setGeneratedWebsite] = useState<GeneratedWebsite | null>(null);
-  const [branding, setBranding] = useState<any>(null);
-  const [specsApproved, setSpecsApproved] = useState(false);
-  const [approvedSpecs, setApprovedSpecs] = useState<any>(null);
-  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'init',
+      role: 'model',
+      content: "Welcome to ShelVey AI Builder! I'm your AI architect. Tell me what you want to build — a landing page, dashboard, portfolio, SaaS app — and I'll generate it in real-time with production-ready code.",
+      timestamp: Date.now()
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState(0);
+  const [currentCode, setCurrentCode] = useState(DEFAULT_CODE);
+  const [activeTab, setActiveTab] = useState<'preview' | 'code' | 'seo'>('preview');
+  const [seoData, setSeoData] = useState<SEOData>({
+    title: 'Untitled | ShelVey',
+    description: 'AI-generated website component.',
+    keywords: ['shelvey', 'ai-generated']
+  });
+  const [copied, setCopied] = useState(false);
+  const [viewport, setViewport] = useState<ViewportSize>('desktop');
+  const [buildCount, setBuildCount] = useState(0);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const thinkingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (projectId && user) fetchData();
-  }, [projectId, user]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   useEffect(() => {
-    if (!phase?.id) return;
-    const channel = supabase
-      .channel(`phase3-deliverables-${phase.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'phase_deliverables', filter: `phase_id=eq.${phase.id}` }, () => fetchDeliverables())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [phase?.id]);
+    if (isBuilding) {
+      setThinkingStep(0);
+      thinkingIntervalRef.current = setInterval(() => {
+        setThinkingStep(prev => (prev < THINKING_STEPS.length - 1 ? prev + 1 : prev));
+      }, 1500);
+    } else {
+      if (thinkingIntervalRef.current) clearInterval(thinkingIntervalRef.current);
+    }
+    return () => { if (thinkingIntervalRef.current) clearInterval(thinkingIntervalRef.current); };
+  }, [isBuilding]);
 
-  useEffect(() => {
-    if (!projectId) return;
-    const channel = supabase
-      .channel(`phase3-activity-${projectId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_activity_logs', filter: `agent_id=eq.${PHASE_AGENT.id}` }, (payload) => {
-        const newLog = payload.new as any;
-        setActivityLogs(prev => [{ id: newLog.id, action: newLog.action, status: newLog.status, created_at: newLog.created_at, agent_name: newLog.agent_name }, ...prev.slice(0, 19)]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [projectId]);
+  const handleBuild = async () => {
+    if (!input.trim() || isBuilding) return;
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input, timestamp: Date.now() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsBuilding(true);
 
-  const fetchData = async () => {
-    setIsLoading(true);
     try {
-      const { data: projectData } = await supabase.from('business_projects').select('*').eq('id', projectId).single();
-      if (projectData) setProject(projectData);
-
-      const { data: phaseData } = await supabase.from('business_phases').select('*').eq('project_id', projectId).eq('phase_number', 3).single();
-      if (phaseData) {
-        setPhase(phaseData);
-        const { data: specsDeliverable } = await supabase.from('phase_deliverables').select('*').eq('phase_id', phaseData.id).eq('deliverable_type', 'website_specs').maybeSingle();
-        if (specsDeliverable?.ceo_approved && specsDeliverable?.user_approved) {
-          setSpecsApproved(true);
-          setApprovedSpecs((specsDeliverable.generated_content as any)?.specs);
-        }
-        const { data: deliverablesData } = await supabase.from('phase_deliverables').select('*').eq('phase_id', phaseData.id).order('created_at', { ascending: false });
-        if (deliverablesData) setDeliverables(deliverablesData as Deliverable[]);
-      }
-
-      const { data: brandingPhase } = await supabase.from('business_phases').select('id').eq('project_id', projectId).eq('phase_number', 2).single();
-      if (brandingPhase) {
-        const { data: brandDeliverables } = await supabase.from('phase_deliverables').select('*').eq('phase_id', brandingPhase.id).eq('deliverable_type', 'brand_assets').eq('user_approved', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
-        if (brandDeliverables?.generated_content) {
-          const content = brandDeliverables.generated_content as any;
-          const assets = Array.isArray(content.assets) ? content.assets : [];
-          const paletteAsset = assets.find((a: any) => a.type === 'color_palette');
-          const palette = paletteAsset?.colorData || content.colorPalette || content.colors;
-          const logoAsset = assets.find((a: any) => a.type === 'logo');
-          const logoUrl = logoAsset?.imageUrl || logoAsset?.url;
-          setBranding({
-            primaryColor: palette?.primary || palette?.[0]?.hex || palette?.[0],
-            secondaryColor: palette?.secondary || palette?.[1]?.hex || palette?.[1],
-            accentColor: palette?.accent || palette?.[2]?.hex || palette?.[2],
-            logo: logoUrl,
-            headingFont: content.typography?.headingFont,
-            bodyFont: content.typography?.bodyFont,
-          });
-        }
-      }
-
-      const { data: websiteData } = await supabase.from('generated_websites').select('*').eq('project_id', projectId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (websiteData) setGeneratedWebsite(websiteData);
-
-      const { data: logsData } = await supabase.from('agent_activity_logs').select('*').eq('agent_id', PHASE_AGENT.id).order('created_at', { ascending: false }).limit(20);
-      if (logsData) setActivityLogs(logsData.map((log: any) => ({ id: log.id, action: log.action, status: log.status, created_at: log.created_at, agent_name: log.agent_name })));
+      const history = messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
+      const result = await sendBuilderRequest(input, history, currentCode);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', content: result.message, timestamp: Date.now() }]);
+      setCurrentCode(result.code);
+      setSeoData(result.seo);
+      setBuildCount(prev => prev + 1);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Build error:', error);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', content: `Build failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`, timestamp: Date.now() }]);
     } finally {
-      setIsLoading(false);
+      setIsBuilding(false);
     }
   };
 
-  const fetchDeliverables = async () => {
-    if (!phase?.id) return;
-    const { data } = await supabase.from('phase_deliverables').select('*').eq('phase_id', phase.id).order('created_at', { ascending: false });
-    if (data) setDeliverables(data as Deliverable[]);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(currentCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchData();
-    setIsRefreshing(false);
-    toast.success('Data refreshed');
+  const handleDownload = () => {
+    const blob = new Blob([exportCode(currentCode, seoData)], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'index.html';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleSpecsApproved = (specs: any) => {
-    setApprovedSpecs(specs);
-    setSpecsApproved(true);
-    setActiveTab('builder');
-    toast.success('Specifications approved! You can now build your website.');
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleBuild(); }
   };
 
-  const getPhaseProgress = () => {
-    const total = deliverables.length || 1;
-    const approved = deliverables.filter(d => d.ceo_approved && d.user_approved).length;
-    return Math.round((approved / total) * 100);
+  const viewportWidths: Record<ViewportSize, string> = {
+    desktop: 'w-full',
+    tablet: 'w-[768px]',
+    mobile: 'w-[375px]',
   };
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    return date.toLocaleTimeString();
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // When builder tab is active and specs are approved, render full-screen builder
-  const isBuilderFullscreen = activeTab === 'builder' && specsApproved && project;
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen flex bg-background overflow-hidden">
       <Helmet>
-        <title>Phase 3: Development &amp; Build | {project?.name} | ShelVey</title>
+        <title>Phase 3: AI Website Builder | ShelVey</title>
       </Helmet>
 
       <SimpleDashboardSidebar />
 
-      <main className="flex-1 flex flex-col ml-64">
-        {/* Header - always visible */}
-        <div className="shrink-0 p-4 border-b border-border flex items-center justify-between">
+      <div className="flex-1 flex flex-col ml-64">
+        {/* Header */}
+        <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm z-10">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(`/projects/${projectId}`)} className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate(projectId ? `/projects/${projectId}` : '/projects')} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              <span className="text-sm font-medium">Back</span>
             </Button>
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                <Code className="w-5 h-5 text-primary" />
-                Phase 3: Development
-              </h1>
-              <p className="text-xs text-muted-foreground">{project?.name}</p>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center">
+                <Sparkles className="w-3 h-3 text-primary-foreground" />
+              </div>
+              <span className="font-bold tracking-tight text-sm">ShelVey AI Builder</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isBuilderFullscreen && (
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+            {buildCount > 0 && (
+              <Badge variant="secondary" className="text-xs font-mono">
+                {buildCount} build{buildCount !== 1 ? 's' : ''}
+              </Badge>
             )}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="h-8">
-                <TabsTrigger value="builder" className="text-xs h-7 px-2.5 gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  Builder
-                </TabsTrigger>
-                <TabsTrigger value="specs" className="text-xs h-7 px-2.5 gap-1">
-                  <FileText className="w-3 h-3" />
-                  Specs
-                  {specsApproved && <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />}
-                </TabsTrigger>
-                <TabsTrigger value="agent" className="text-xs h-7 px-2.5 gap-1">
-                  <Bot className="w-3 h-3" />
-                  Agent
-                </TabsTrigger>
-                <TabsTrigger value="deliverables" className="text-xs h-7 px-2.5 gap-1">
-                  <Layers className="w-3 h-3" />
-                  Deliverables
-                </TabsTrigger>
-                <TabsTrigger value="activity" className="text-xs h-7 px-2.5 gap-1">
-                  <Activity className="w-3 h-3" />
-                  Activity
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Badge className={phase?.status === 'active' ? 'bg-green-500' : phase?.status === 'completed' ? 'bg-blue-500' : 'bg-muted'}>
-              {phase?.status || 'pending'}
-            </Badge>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDownload} title="Download as HTML">
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button size="sm" className="gap-2" onClick={handleDownload}>
+              <Rocket className="w-4 h-4" />
+              <span className="text-xs font-medium">Export & Deploy</span>
+            </Button>
             <PageHeader showNotifications={true} showLogout={true} />
           </div>
-        </div>
+        </header>
 
-        {/* Content area */}
-        <div className="flex-1 overflow-hidden">
-          {/* Builder Tab - FULLSCREEN */}
-          {activeTab === 'builder' && (
-            <>
-              {!specsApproved ? (
-                <div className="p-6">
-                  <Card className="border-amber-500/30 bg-amber-500/5 max-w-xl mx-auto">
-                    <CardContent className="py-12 text-center">
-                      <FileText className="w-12 h-12 mx-auto text-amber-500 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Website Specifications Required</h3>
-                      <p className="text-muted-foreground mb-4 max-w-md mx-auto text-sm">
-                        Before building, approve the website specifications so the AI knows what to create.
-                      </p>
-                      <Button onClick={() => setActiveTab('specs')} className="gap-2">
-                        <FileText className="w-4 h-4" />
-                        Go to Specifications
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : project && (
-                <div className="h-full flex flex-col">
-                  {/* Live deployment banner */}
-                  {generatedWebsite?.deployed_url && (
-                    <div className="shrink-0 px-4 py-2 bg-green-500/10 border-b border-green-500/20 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        <span className="text-sm font-medium">Live:</span>
-                        <a href={generatedWebsite.deployed_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
-                          {generatedWebsite.deployed_url}
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => navigate('/domains')} className="gap-1 text-xs">
-                        <Globe className="w-3 h-3" />
-                        Custom Domain
-                      </Button>
+        {/* Main Workspace */}
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* Left Panel: Chat */}
+          <div className="w-[400px] flex flex-col border-r border-border bg-card/30">
+            <div className="h-12 border-b border-border flex items-center px-4 bg-card/50">
+              <Sparkles className="w-4 h-4 text-primary mr-2" />
+              <span className="font-medium text-sm">AI Architect</span>
+              <Badge variant="outline" className="ml-auto text-xs">{messages.length} msgs</Badge>
+            </div>
+
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div key={message.id} className={cn("flex flex-col", message.role === 'user' ? "items-end" : "items-start")}>
+                    <div className={cn(
+                      "max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                      message.role === 'user'
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted/50 text-foreground rounded-tl-sm border border-border/50"
+                    )}>
+                      {message.content}
                     </div>
-                  )}
-
-                  {/* Builder takes remaining space */}
-                  <div className="flex-1 overflow-hidden">
-                    <V0Builder
-                      projectId={projectId!}
-                      project={{
-                        name: project.name,
-                        industry: project.industry || 'General',
-                        description: project.description || '',
-                      }}
-                      branding={branding}
-                      approvedSpecs={approvedSpecs}
-                      onDeploymentComplete={(url) => {
-                        setGeneratedWebsite(prev => prev ? { ...prev, deployed_url: url } : {
-                          id: crypto.randomUUID(),
-                          name: `${project.name} Website`,
-                          html_content: '',
-                          css_content: null,
-                          js_content: null,
-                          status: 'deployed',
-                          deployed_url: url,
-                          domain_name: null,
-                          custom_domain: null,
-                          hosting_type: 'vercel',
-                          dns_records: null,
-                          ssl_status: null,
-                          ceo_approved: null,
-                          user_approved: null,
-                        });
-                        fetchData();
-                      }}
-                    />
+                    <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                      {message.role === 'user' ? 'You' : 'ShelVey AI'}
+                    </span>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                ))}
 
-          {/* Other tabs - scrollable content */}
-          {activeTab !== 'builder' && (
-            <div className="p-6 overflow-auto h-full">
-              <div className="max-w-5xl mx-auto">
-                <StartPhaseButton projectId={projectId!} phaseNumber={3} phaseStatus={phase?.status || 'pending'} onStart={fetchData} />
-
-                {activeTab === 'specs' && project && phase && (
-                  <WebsiteSpecsAgent
-                    projectId={projectId!}
-                    phaseId={phase.id}
-                    project={{ name: project.name, industry: project.industry || 'General', description: project.description || '' }}
-                    onSpecsApproved={handleSpecsApproved}
-                  />
-                )}
-
-                {activeTab === 'agent' && (
-                  <div className="grid lg:grid-cols-2 gap-6">
-                    <PhaseAgentCard phaseNumber={3} onChat={() => setChatOpen(true)} status="working" />
-                    <LiveAgentWorkPreview projectId={projectId!} agentId={PHASE_AGENT.id} agentName={PHASE_AGENT.name} />
-                  </div>
-                )}
-
-                {activeTab === 'deliverables' && (
-                  <div className="space-y-4">
-                    {deliverables.length === 0 ? (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <Layers className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">No deliverables yet. Start the phase to begin work.</p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      deliverables.map(d => (
-                        <DeliverableCard
-                          key={d.id}
-                          deliverable={d}
-                          onViewWork={() => toast.info(`Viewing ${d.name}`)}
-                          onRefresh={fetchDeliverables}
-                        />
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'activity' && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-primary" />
-                        Live Activity Feed
-                      </CardTitle>
-                      <CardDescription>Real-time updates from the Development Agent</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                        {activityLogs.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p>No activity yet.</p>
+                {isBuilding && (
+                  <div className="flex flex-col items-start">
+                    <div className="bg-muted/50 border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[90%]">
+                      <div className="space-y-2">
+                        {THINKING_STEPS.map((step, i) => (
+                          <div key={i} className={cn(
+                            "flex items-center gap-2 text-xs transition-all duration-300",
+                            i <= thinkingStep ? "opacity-100" : "opacity-30"
+                          )}>
+                            {i < thinkingStep ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : i === thinkingStep ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                            ) : (
+                              <div className="w-3 h-3 rounded-full border border-muted-foreground/30" />
+                            )}
+                            <span className={cn(
+                              i < thinkingStep ? "text-muted-foreground line-through" :
+                              i === thinkingStep ? "text-foreground font-medium" : "text-muted-foreground"
+                            )}>{step}</span>
                           </div>
-                        ) : (
-                          activityLogs.map((log, i) => (
-                            <motion.div
-                              key={log.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.02 }}
-                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                            >
-                              <div className={`mt-0.5 p-1.5 rounded-full ${
-                                log.status === 'completed' ? 'bg-green-500/20 text-green-500' :
-                                log.status === 'in_progress' ? 'bg-primary/20 text-primary' :
-                                log.status === 'error' ? 'bg-destructive/20 text-destructive' :
-                                'bg-muted text-muted-foreground'
-                              }`}>
-                                {log.status === 'completed' ? <CheckCircle2 className="w-3 h-3" /> :
-                                 log.status === 'in_progress' ? <Loader2 className="w-3 h-3 animate-spin" /> :
-                                 <Activity className="w-3 h-3" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{log.action}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                  <span>{log.agent_name}</span>
-                                  <span>·</span>
-                                  <span>{formatTime(log.created_at)}</span>
-                                </div>
-                              </div>
-                              <Badge variant="outline" className="text-xs">{log.status}</Badge>
-                            </motion.div>
-                          ))
-                        )}
+                        ))}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-1 px-1">ShelVey AI</span>
+                  </div>
                 )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Input */}
+            <div className="p-4 border-t border-border bg-card/50">
+              <div className="relative">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Describe what you want to build..."
+                  className="min-h-[80px] max-h-[150px] resize-none pr-12"
+                />
+                <Button
+                  onClick={handleBuild}
+                  disabled={isBuilding || !input.trim()}
+                  size="icon"
+                  className="absolute bottom-3 right-3 h-8 w-8"
+                >
+                  {isBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-muted-foreground">Enter to send · Shift+Enter for new line</p>
+                <p className="text-[10px] text-muted-foreground">Powered by ShelVey AI</p>
               </div>
             </div>
-          )}
-        </div>
-      </main>
+          </div>
 
-      <AgentChatSheet
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        agentId={PHASE_AGENT.id}
-        agentName={PHASE_AGENT.name}
-        agentRole={PHASE_AGENT.role}
-        projectId={projectId}
-      />
+          {/* Right Panel: Preview/Code/SEO */}
+          <div className="flex-1 flex flex-col bg-muted/20 relative">
+            <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-card/50">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                  <button onClick={() => setActiveTab('preview')} className={cn("px-3 py-1 rounded-md text-xs font-medium transition-colors", activeTab === 'preview' ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                    <Eye className="w-3 h-3 inline mr-1.5" />Preview
+                  </button>
+                  <button onClick={() => setActiveTab('code')} className={cn("px-3 py-1 rounded-md text-xs font-medium transition-colors", activeTab === 'code' ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                    <Code2 className="w-3 h-3 inline mr-1.5" />Code
+                  </button>
+                  <button onClick={() => setActiveTab('seo')} className={cn("px-3 py-1 rounded-md text-xs font-medium transition-colors", activeTab === 'seo' ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                    <Sparkles className="w-3 h-3 inline mr-1.5" />SEO
+                  </button>
+                </div>
+
+                {activeTab === 'preview' && (
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                    <button onClick={() => setViewport('desktop')} className={cn("p-1.5 rounded-md transition-colors", viewport === 'desktop' ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                      <Monitor className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => setViewport('tablet')} className={cn("p-1.5 rounded-md transition-colors", viewport === 'tablet' ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                      <Tablet className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => setViewport('mobile')} className={cn("p-1.5 rounded-md transition-colors", viewport === 'mobile' ? "bg-background shadow-sm" : "text-muted-foreground")}>
+                      <Smartphone className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-mono">
+                  {isBuilding ? 'Building...' : 'Ready'}
+                </span>
+                <Button variant="ghost" size="icon" onClick={handleCopy} className="h-8 w-8" title="Copy code">
+                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 p-4 overflow-hidden flex flex-col items-center">
+              {activeTab === 'preview' && (
+                <div className={cn(
+                  "flex-1 shadow-2xl rounded-xl overflow-hidden border border-border transition-all duration-300 mx-auto",
+                  viewportWidths[viewport],
+                  viewport !== 'desktop' && 'max-h-full'
+                )}>
+                  <PreviewEngine code={currentCode} theme="light" className="rounded-xl" />
+                </div>
+              )}
+
+              {activeTab === 'code' && (
+                <Card className="flex-1 overflow-hidden w-full">
+                  <CardContent className="p-0 h-full">
+                    <ScrollArea className="h-full">
+                      <pre className="p-4 text-sm font-mono bg-muted/30 whitespace-pre-wrap break-all leading-relaxed">
+                        <code>{currentCode}</code>
+                      </pre>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === 'seo' && (
+                <div className="flex-1 max-w-3xl mx-auto w-full space-y-6 overflow-y-auto">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Google Search Preview</h3>
+                      <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                        <div className="text-xl text-blue-600 hover:underline cursor-pointer truncate">{seoData.title}</div>
+                        <div className="text-sm text-emerald-700">www.your-domain.com</div>
+                        <div className="text-sm text-muted-foreground leading-snug">{seoData.description}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Meta Tags</h3>
+                      <div className="space-y-4">
+                        <div><label className="text-xs font-medium text-muted-foreground">Title</label><div className="p-3 bg-muted rounded-lg text-sm font-mono mt-1">{seoData.title}</div></div>
+                        <div><label className="text-xs font-medium text-muted-foreground">Description</label><div className="p-3 bg-muted rounded-lg text-sm mt-1">{seoData.description}</div></div>
+                        <div><label className="text-xs font-medium text-muted-foreground">Keywords</label><div className="flex flex-wrap gap-2 mt-1">{seoData.keywords.map((k, i) => <Badge key={i} variant="secondary" className="text-xs">{k}</Badge>)}</div></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
