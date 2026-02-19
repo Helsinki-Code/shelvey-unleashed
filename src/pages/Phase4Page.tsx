@@ -37,6 +37,7 @@ import { StartPhaseButton } from "@/components/StartPhaseButton";
 import { ContentGenerationStudio } from "@/components/ContentGenerationStudio";
 import SEODashboard from "@/components/SEODashboard";
 import { SocialCommandCenter } from "@/components/SocialCommandCenter";
+import { SEOWarRoom } from "@/components/seo/SEOWarRoom";
 import SocialContentFactory from "@/components/SocialContentFactory";
 import RadialOrbitalTimeline, { type RadialTimelineItem } from "@/components/ui/radial-orbital-timeline";
 import { Phase4AutopilotPanel } from "@/components/Phase4AutopilotPanel";
@@ -388,6 +389,7 @@ export default function Phase4Page() {
               <TabsTrigger value="seo" className="gap-2"><Search className="w-4 h-4" /> SEO Ops</TabsTrigger>
               <TabsTrigger value="social" className="gap-2"><Share2 className="w-4 h-4" /> Social Ops</TabsTrigger>
               <TabsTrigger value="content-lab" className="gap-2"><Sparkles className="w-4 h-4" /> Content Lab</TabsTrigger>
+              <TabsTrigger value="seo-warroom" className="gap-2"><Bot className="w-4 h-4" /> SEO War Room</TabsTrigger>
               <TabsTrigger value="autopilot" className="gap-2"><Bot className="w-4 h-4" /> Autopilot</TabsTrigger>
               <TabsTrigger value="agent" className="gap-2"><Bot className="w-4 h-4" /> Agent</TabsTrigger>
               <TabsTrigger value="deliverables" className="gap-2"><Eye className="w-4 h-4" /> Deliverables ({deliverables.length})</TabsTrigger>
@@ -455,6 +457,12 @@ export default function Phase4Page() {
                   brandVoice={projectBrandVoice}
                 />
                 <ContentGenerationStudio projectId={projectId!} project={project} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="seo-warroom">
+              <div className="h-[700px] border border-border rounded-lg overflow-hidden">
+                <SEOWarRoom />
               </div>
             </TabsContent>
 
