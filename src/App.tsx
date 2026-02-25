@@ -120,8 +120,8 @@ const App = () => (
               <Route path="/domains" element={<DomainsPage />} />
               <Route path="/stores" element={<OnlineStoresPage />} />
               <Route path="/command-center" element={<CommandCenterPage />} />
-              <Route path="/trading-old" element={<TradingDashboardPage />} />
-              <Route path="/trading" element={<TradingProjectsPage />} />
+              <Route path="/trading" element={<TradingDashboardPage />} />
+              <Route path="/trading-projects" element={<TradingProjectsPage />} />
               <Route path="/trading/new" element={<TradingProjectWizard />} />
               <Route path="/trading/:projectId" element={<TradingCommandCenter />} />
               <Route path="/trading/:projectId/research" element={<TradingResearchPhase />} />
