@@ -373,7 +373,7 @@ export const TradingCEOControlTower = ({ projectId }: TradingCEOControlTowerProp
                     <p className="text-xs text-muted-foreground">Recent Worker Runs</p>
                     {(dashboard.operations?.schedulerRuns || []).slice(0, 5).map((run) => (
                       <div key={run.id} className="p-2 rounded border text-xs flex items-center justify-between gap-2">
-                        <span className="font-medium">{run.job_type.replaceAll("_", " ")}</span>
+                        <span className="font-medium">{run.job_type.split("_").join(" ")}</span>
                         <Badge variant={run.status === "completed" ? "secondary" : run.status === "failed" ? "destructive" : "outline"}>
                           {run.status}
                         </Badge>
@@ -389,7 +389,7 @@ export const TradingCEOControlTower = ({ projectId }: TradingCEOControlTowerProp
                     {(dashboard.operations?.reconciliationEvents || []).slice(0, 5).map((event) => (
                       <div key={event.id} className="p-2 rounded border text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">{event.result.replaceAll("_", " ")}</span>
+                          <span className="font-medium">{event.result.split("_").join(" ")}</span>
                           <Badge variant={event.result === "matched" ? "secondary" : "destructive"}>
                             {event.db_status || "n/a"} / {event.broker_status || "n/a"}
                           </Badge>

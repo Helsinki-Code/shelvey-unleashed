@@ -3725,15 +3725,20 @@ export type Database = {
         Row: {
           approved_by_ceo: boolean | null
           approved_by_user: boolean | null
+          broker_order_id: string | null
           created_at: string | null
           executed_at: string | null
           execution_price: number | null
+          gateway_source: string
           id: string
           order_type: string
           phase_id: string | null
           price: number | null
           project_id: string
           quantity: number
+          reconciled_at: string | null
+          reconciliation_notes: string | null
+          reconciliation_status: string
           rejection_reason: string | null
           side: string
           status: string
@@ -3746,15 +3751,20 @@ export type Database = {
         Insert: {
           approved_by_ceo?: boolean | null
           approved_by_user?: boolean | null
+          broker_order_id?: string | null
           created_at?: string | null
           executed_at?: string | null
           execution_price?: number | null
+          gateway_source?: string
           id?: string
           order_type?: string
           phase_id?: string | null
           price?: number | null
           project_id: string
           quantity: number
+          reconciled_at?: string | null
+          reconciliation_notes?: string | null
+          reconciliation_status?: string
           rejection_reason?: string | null
           side: string
           status?: string
@@ -3767,15 +3777,20 @@ export type Database = {
         Update: {
           approved_by_ceo?: boolean | null
           approved_by_user?: boolean | null
+          broker_order_id?: string | null
           created_at?: string | null
           executed_at?: string | null
           execution_price?: number | null
+          gateway_source?: string
           id?: string
           order_type?: string
           phase_id?: string | null
           price?: number | null
           project_id?: string
           quantity?: number
+          reconciled_at?: string | null
+          reconciliation_notes?: string | null
+          reconciliation_status?: string
           rejection_reason?: string | null
           side?: string
           status?: string
@@ -3971,6 +3986,73 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_reconciliation_events: {
+        Row: {
+          broker_order_id: string | null
+          broker_status: string | null
+          created_at: string
+          db_status: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          payload: Json
+          project_id: string
+          result: string
+          run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          broker_order_id?: string | null
+          broker_status?: string | null
+          created_at?: string
+          db_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payload?: Json
+          project_id: string
+          result: string
+          run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          broker_order_id?: string | null
+          broker_status?: string | null
+          created_at?: string
+          db_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payload?: Json
+          project_id?: string
+          result?: string
+          run_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_reconciliation_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "trading_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_reconciliation_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_reconciliation_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "trading_scheduler_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trading_risk_controls: {
         Row: {
           created_at: string | null
@@ -4021,53 +4103,325 @@ export type Database = {
           },
         ]
       }
+      trading_scheduler_runs: {
+        Row: {
+          completed_at: string | null
+          details: Json
+          error_message: string | null
+          id: string
+          job_type: string
+          project_id: string | null
+          started_at: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          details?: Json
+          error_message?: string | null
+          id?: string
+          job_type: string
+          project_id?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          details?: Json
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          project_id?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_scheduler_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_stage_transition_events: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          from_stage: string
+          id: string
+          metadata: Json
+          project_id: string
+          reason: string | null
+          to_stage: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          from_stage: string
+          id?: string
+          metadata?: Json
+          project_id: string
+          reason?: string | null
+          to_stage: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          from_stage?: string
+          id?: string
+          metadata?: Json
+          project_id?: string
+          reason?: string | null
+          to_stage?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_stage_transition_events_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "trading_strategy_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_stage_transition_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trading_strategies: {
         Row: {
+          ceo_approved: boolean
           created_at: string | null
           exchange: string
           id: string
           is_active: boolean | null
+          last_stage_transition_at: string | null
+          lifecycle_stage: string
           name: string
           paper_mode: boolean | null
           parameters: Json | null
+          project_id: string | null
+          promoted_from_candidate_id: string | null
           strategy_type: string
           total_profit: number | null
           total_trades: number | null
           updated_at: string | null
+          user_approved: boolean
           user_id: string
           win_rate: number | null
         }
         Insert: {
+          ceo_approved?: boolean
           created_at?: string | null
           exchange: string
           id?: string
           is_active?: boolean | null
+          last_stage_transition_at?: string | null
+          lifecycle_stage?: string
           name: string
           paper_mode?: boolean | null
           parameters?: Json | null
+          project_id?: string | null
+          promoted_from_candidate_id?: string | null
           strategy_type: string
           total_profit?: number | null
           total_trades?: number | null
           updated_at?: string | null
+          user_approved?: boolean
           user_id: string
           win_rate?: number | null
         }
         Update: {
+          ceo_approved?: boolean
           created_at?: string | null
           exchange?: string
           id?: string
           is_active?: boolean | null
+          last_stage_transition_at?: string | null
+          lifecycle_stage?: string
           name?: string
           paper_mode?: boolean | null
           parameters?: Json | null
+          project_id?: string | null
+          promoted_from_candidate_id?: string | null
           strategy_type?: string
           total_profit?: number | null
           total_trades?: number | null
           updated_at?: string | null
+          user_approved?: boolean
           user_id?: string
           win_rate?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trading_strategies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_strategy_candidates: {
+        Row: {
+          created_at: string
+          current_stage: string
+          description: string | null
+          exchange: string
+          expected_return: number | null
+          id: string
+          max_drawdown: number | null
+          name: string
+          parameters: Json
+          project_id: string
+          promoted_strategy_id: string | null
+          risk_score: number | null
+          sharpe_ratio: number | null
+          source_team_id: string | null
+          stage_artifacts: Json
+          status: string
+          symbol_universe: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_stage?: string
+          description?: string | null
+          exchange?: string
+          expected_return?: number | null
+          id?: string
+          max_drawdown?: number | null
+          name: string
+          parameters?: Json
+          project_id: string
+          promoted_strategy_id?: string | null
+          risk_score?: number | null
+          sharpe_ratio?: number | null
+          source_team_id?: string | null
+          stage_artifacts?: Json
+          status?: string
+          symbol_universe?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_stage?: string
+          description?: string | null
+          exchange?: string
+          expected_return?: number | null
+          id?: string
+          max_drawdown?: number | null
+          name?: string
+          parameters?: Json
+          project_id?: string
+          promoted_strategy_id?: string | null
+          risk_score?: number | null
+          sharpe_ratio?: number | null
+          source_team_id?: string | null
+          stage_artifacts?: Json
+          status?: string
+          symbol_universe?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_strategy_candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_strategy_candidates_promoted_strategy_id_fkey"
+            columns: ["promoted_strategy_id"]
+            isOneToOne: false
+            referencedRelation: "trading_strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_strategy_candidates_source_team_id_fkey"
+            columns: ["source_team_id"]
+            isOneToOne: false
+            referencedRelation: "trading_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_strategy_stage_approvals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          candidate_id: string
+          created_at: string
+          feedback: string | null
+          id: string
+          metadata: Json
+          project_id: string
+          required_approver: string
+          stage: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          candidate_id: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          metadata?: Json
+          project_id: string
+          required_approver: string
+          stage: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          candidate_id?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          metadata?: Json
+          project_id?: string
+          required_approver?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_strategy_stage_approvals_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "trading_strategy_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_strategy_stage_approvals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trading_tax_reports: {
         Row: {
@@ -4116,6 +4470,236 @@ export type Database = {
           wash_sale_losses?: number | null
         }
         Relationships: []
+      }
+      trading_team_members: {
+        Row: {
+          agent_id: string
+          agent_name: string
+          capabilities: string[]
+          created_at: string
+          id: string
+          role: string
+          status: string
+          team_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          agent_name: string
+          capabilities?: string[]
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          team_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          agent_name?: string
+          capabilities?: string[]
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          team_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "trading_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_team_performance_snapshots: {
+        Row: {
+          active_tasks: number
+          completed_tasks: number
+          created_at: string
+          id: string
+          pnl: number
+          pnl_percent: number
+          project_id: string
+          risk_events: number
+          snapshot_at: string
+          team_id: string
+          user_id: string
+          win_rate: number
+        }
+        Insert: {
+          active_tasks?: number
+          completed_tasks?: number
+          created_at?: string
+          id?: string
+          pnl?: number
+          pnl_percent?: number
+          project_id: string
+          risk_events?: number
+          snapshot_at?: string
+          team_id: string
+          user_id: string
+          win_rate?: number
+        }
+        Update: {
+          active_tasks?: number
+          completed_tasks?: number
+          created_at?: string
+          id?: string
+          pnl?: number
+          pnl_percent?: number
+          project_id?: string
+          risk_events?: number
+          snapshot_at?: string
+          team_id?: string
+          user_id?: string
+          win_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_team_performance_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_team_performance_snapshots_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "trading_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_team_tasks: {
+        Row: {
+          assigned_member_id: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          input_payload: Json
+          output_payload: Json
+          priority: string
+          project_id: string
+          started_at: string | null
+          status: string
+          task_type: string
+          team_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_member_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          input_payload?: Json
+          output_payload?: Json
+          priority?: string
+          project_id: string
+          started_at?: string | null
+          status?: string
+          task_type: string
+          team_id: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_member_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          input_payload?: Json
+          output_payload?: Json
+          priority?: string
+          project_id?: string
+          started_at?: string | null
+          status?: string
+          task_type?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_team_tasks_assigned_member_id_fkey"
+            columns: ["assigned_member_id"]
+            isOneToOne: false
+            referencedRelation: "trading_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_team_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trading_team_tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "trading_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_teams: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          name: string
+          project_id: string
+          status: string
+          team_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name: string
+          project_id: string
+          status?: string
+          team_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          project_id?: string
+          status?: string
+          team_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_teams_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "trading_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_agent_activity: {
         Row: {
