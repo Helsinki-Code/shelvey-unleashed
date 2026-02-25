@@ -3,6 +3,7 @@ import { Activity, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ActivityLog {
   id: string;
@@ -20,6 +21,7 @@ interface TradingActivityFeedProps {
 }
 
 const TradingActivityFeed = ({ projectId, maxItems = 20 }: TradingActivityFeedProps) => {
+  const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,19 +41,23 @@ const TradingActivityFeed = ({ projectId, maxItems = 20 }: TradingActivityFeedPr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [projectId, maxItems]);
+  }, [projectId, maxItems, user?.id]);
 
   const fetchActivities = async () => {
+    if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('trading_activity_logs')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
-        .limit(maxItems);
+      const { data, error } = await supabase.functions.invoke('trading-project-worker', {
+        body: {
+          action: 'get_activity_feed',
+          userId: user.id,
+          projectId,
+          params: { maxItems },
+        }
+      });
 
       if (error) throw error;
-      setActivities(data || []);
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch activities');
+      setActivities(data.activities || []);
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {

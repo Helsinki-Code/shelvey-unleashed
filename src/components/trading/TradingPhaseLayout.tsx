@@ -56,40 +56,32 @@ const TradingPhaseLayout = ({ phaseNumber, children }: TradingPhaseLayoutProps) 
   useEffect(() => {
     if (projectId && user) {
       fetchData();
-      const cleanup = subscribeToUpdates();
-      return cleanup;
+      const interval = setInterval(fetchData, 12000);
+      return () => clearInterval(interval);
     }
   }, [projectId, user, phaseNumber]);
 
   const fetchData = async () => {
+    if (!projectId || !user) return;
     try {
-      const [projectRes, phaseRes] = await Promise.all([
-        supabase.from('trading_projects').select('*').eq('id', projectId).single(),
-        supabase.from('trading_project_phases').select('*').eq('project_id', projectId).eq('phase_number', phaseNumber).single()
-      ]);
+      const { data, error } = await supabase.functions.invoke('trading-project-worker', {
+        body: {
+          action: 'get_project_state',
+          userId: user.id,
+          projectId,
+        }
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch phase state');
 
-      if (projectRes.error) throw projectRes.error;
-      setProject(projectRes.data);
-      setPhase(phaseRes.data);
+      const currentPhase = (data.phases || []).find((item: TradingPhase) => item.phase_number === phaseNumber) || null;
+      setProject(data.project || null);
+      setPhase(currentPhase);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const subscribeToUpdates = () => {
-    const channel = supabase
-      .channel(`trading-phase-${projectId}-${phaseNumber}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'trading_project_phases', filter: `project_id=eq.${projectId}` },
-        () => fetchData()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const handleStartPhase = async () => {

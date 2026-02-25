@@ -44,21 +44,19 @@ const UserDashboard = () => {
     const checkCeo = async () => {
       if (!user || (!isSubscribed && !isSuperAdmin)) return;
       
-      const { data, error } = await supabase
-        .from('user_ceos')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('ceo-profile-gateway', {
+        body: {},
+      });
       
       setCeoChecked(true);
       
-      if (!data && !error) {
+      if (!data?.ceo && !error) {
         navigate('/create-ceo');
         return;
       }
       
-      if (data) {
-        setUserCeo(data);
+      if (data?.ceo) {
+        setUserCeo(data.ceo);
       }
     };
 

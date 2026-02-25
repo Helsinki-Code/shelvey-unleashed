@@ -39,17 +39,15 @@ export const CEOProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const { data, error } = await supabase
-        .from('user_ceos')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('ceo-profile-gateway', {
+        body: {},
+      });
 
       if (error) {
         console.error('Failed to fetch CEO:', error);
         setCeo(null);
       } else {
-        setCeo(data as UserCEO | null);
+        setCeo((data?.ceo || null) as UserCEO | null);
       }
     } catch (err) {
       console.error('Error fetching CEO:', err);

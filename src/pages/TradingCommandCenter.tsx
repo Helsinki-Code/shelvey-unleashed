@@ -60,45 +60,33 @@ const TradingCommandCenter = () => {
   useEffect(() => {
     if (projectId && user) {
       fetchProjectData();
-      const cleanup = subscribeToUpdates();
-      return cleanup;
+      const interval = setInterval(fetchProjectData, 15000);
+      return () => clearInterval(interval);
     }
   }, [projectId, user]);
 
   const fetchProjectData = async () => {
+    if (!user || !projectId) return;
     try {
-      const [projectRes, phasesRes, riskRes] = await Promise.all([
-        supabase.from('trading_projects').select('*').eq('id', projectId).single(),
-        supabase.from('trading_project_phases').select('*').eq('project_id', projectId).order('phase_number'),
-        supabase.from('trading_risk_controls').select('*').eq('project_id', projectId).single()
-      ]);
+      const { data, error } = await supabase.functions.invoke('trading-project-worker', {
+        body: {
+          action: 'get_project_state',
+          userId: user.id,
+          projectId,
+        }
+      });
 
-      if (projectRes.error) throw projectRes.error;
-      setProject(projectRes.data);
-      setPhases(phasesRes.data || []);
-      setRiskControls(riskRes.data);
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch project state');
+      setProject(data.project || null);
+      setPhases(data.phases || []);
+      setRiskControls(data.riskControls || null);
     } catch (error) {
       console.error('Error fetching project:', error);
       toast.error('Failed to load project');
     } finally {
       setLoading(false);
     }
-  };
-
-  const subscribeToUpdates = () => {
-    const channel = supabase
-      .channel(`trading-project-${projectId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trading_projects', filter: `id=eq.${projectId}` }, 
-        (payload) => setProject(payload.new as TradingProject))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trading_project_phases', filter: `project_id=eq.${projectId}` }, 
-        () => fetchProjectData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trading_risk_controls', filter: `project_id=eq.${projectId}` }, 
-        (payload) => setRiskControls(payload.new as RiskControls))
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const handleKillSwitch = async (activate: boolean) => {

@@ -333,6 +333,9 @@ verify_jwt = false
 [functions.trading-order-gateway]
 verify_jwt = false
 
+[functions.ceo-profile-gateway]
+verify_jwt = false
+
 [functions.trading-scheduler-worker]
 verify_jwt = false
 

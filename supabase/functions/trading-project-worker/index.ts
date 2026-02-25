@@ -331,6 +331,70 @@ serve(async (req) => {
         });
       }
 
+      case 'get_project_state': {
+        if (!projectId || !userId) {
+          throw new Error('projectId and userId are required');
+        }
+
+        const [projectRes, phasesRes, riskRes] = await Promise.all([
+          supabase
+            .from('trading_projects')
+            .select('*')
+            .eq('id', projectId)
+            .eq('user_id', userId)
+            .single(),
+          supabase
+            .from('trading_project_phases')
+            .select('*')
+            .eq('project_id', projectId)
+            .eq('user_id', userId)
+            .order('phase_number'),
+          supabase
+            .from('trading_risk_controls')
+            .select('*')
+            .eq('project_id', projectId)
+            .eq('user_id', userId)
+            .single(),
+        ]);
+
+        if (projectRes.error || !projectRes.data) {
+          throw new Error(projectRes.error?.message || 'Project not found');
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          project: projectRes.data,
+          phases: phasesRes.data || [],
+          riskControls: riskRes.data || null,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'get_activity_feed': {
+        if (!projectId || !userId) {
+          throw new Error('projectId and userId are required');
+        }
+        const maxItems = Number(params?.maxItems || 20);
+
+        const { data, error } = await supabase
+          .from('trading_activity_logs')
+          .select('*')
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(maxItems);
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify({
+          success: true,
+          activities: data || [],
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {
           status: 400,

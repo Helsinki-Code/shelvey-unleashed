@@ -54,14 +54,12 @@ export const CEOChatSheet = ({ currentPage, defaultOpen }: CEOChatSheetProps) =>
         return;
       }
 
-      const { data, error } = await supabase
-        .from('user_ceos')
-        .select('ceo_name, ceo_image_url, persona, voice_id, communication_style')
-        .eq('user_id', user.id)
-        .single();
+      const { data, error } = await supabase.functions.invoke('ceo-profile-gateway', {
+        body: {},
+      });
 
-      if (data && !error) {
-        setUserCEO(data);
+      if (!error && data?.ceo) {
+        setUserCEO(data.ceo);
       }
       setIsLoadingCEO(false);
     };

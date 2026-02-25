@@ -103,26 +103,29 @@ const CreateCEOPage = () => {
     
     setIsSubmitting(true);
     try {
-      // Insert CEO record
-      const { error: insertError } = await supabase
-        .from('user_ceos')
-        .insert({
-          user_id: user.id,
-          ceo_name: ceoName,
-          ceo_image_url: selectedAvatar,
-          persona: selectedPersona,
-          voice_id: selectedVoice,
-          language: selectedLanguage,
-          communication_style: selectedStyle,
-          gender: selectedGender,
-          personality_traits: {
-            humor_level: 'medium',
-            emoji_usage: selectedStyle === 'casual',
-            enthusiasm: selectedPersona === 'friendly' ? 'high' : 'medium'
+      const { data, error: upsertError } = await supabase.functions.invoke('ceo-profile-gateway', {
+        body: {
+          action: 'upsert',
+          ceo: {
+            ceo_name: ceoName,
+            ceo_image_url: selectedAvatar,
+            persona: selectedPersona,
+            voice_id: selectedVoice,
+            language: selectedLanguage,
+            communication_style: selectedStyle,
+            gender: selectedGender,
+            personality_traits: {
+              humor_level: 'medium',
+              emoji_usage: selectedStyle === 'casual',
+              enthusiasm: selectedPersona === 'friendly' ? 'high' : 'medium'
+            }
           }
-        });
+        }
+      });
 
-      if (insertError) throw insertError;
+      if (upsertError || !data?.success) {
+        throw upsertError || new Error(data?.error || 'Failed to save CEO profile');
+      }
 
       // Trigger welcome email generation in background
       supabase.functions.invoke('generate-ceo-welcome', {
