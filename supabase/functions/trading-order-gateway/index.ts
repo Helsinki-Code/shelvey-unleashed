@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -148,8 +148,8 @@ serve(async (req) => {
     if (projectError || !project) throw new Error("Trading project not found");
     if (riskError || !risk) throw new Error("Risk controls not configured");
 
-    if (project.exchange !== "alpaca") {
-      throw new Error("Only Alpaca is supported in production gateway right now");
+    if (!['alpaca', 'binance', 'coinbase'].includes(project.exchange)) {
+      throw new Error(`Exchange ${project.exchange} is not supported. Supported: alpaca, binance, coinbase`);
     }
     if (project.status !== "active") {
       throw new Error(`Project is not active (status: ${project.status})`);
@@ -275,13 +275,52 @@ serve(async (req) => {
       );
     }
 
-    const brokerOrder = await invokeAlpacaTool(supabase, effectiveUserId, "place_order", {
-      symbol,
-      side,
-      type: orderType,
-      qty: quantity,
-      limit_price: orderType === "limit" ? limitPrice : undefined,
-    });
+    let brokerOrder: any;
+    
+    if (project.exchange === 'alpaca') {
+      brokerOrder = await invokeAlpacaTool(supabase, effectiveUserId, "place_order", {
+        symbol,
+        side,
+        type: orderType,
+        qty: quantity,
+        limit_price: orderType === "limit" ? limitPrice : undefined,
+      });
+    } else if (project.exchange === 'binance') {
+      // Route through Binance MCP
+      const { data: binanceResult, error: binanceError } = await supabase.functions.invoke("mcp-binance", {
+        body: {
+          tool: "place_order",
+          arguments: {
+            symbol: symbol.replace('-', ''),
+            side: side.toUpperCase(),
+            type: orderType === 'limit' ? 'LIMIT' : 'MARKET',
+            quantity,
+            price: orderType === 'limit' ? limitPrice : undefined,
+            timeInForce: orderType === 'limit' ? 'GTC' : undefined,
+          },
+          userId: effectiveUserId,
+        },
+      });
+      if (binanceError) throw binanceError;
+      brokerOrder = binanceResult?.data ?? binanceResult;
+    } else if (project.exchange === 'coinbase') {
+      // Route through Coinbase MCP
+      const { data: coinbaseResult, error: coinbaseError } = await supabase.functions.invoke("mcp-coinbase", {
+        body: {
+          tool: "place_order",
+          arguments: {
+            product_id: symbol,
+            side,
+            order_type: orderType,
+            size: String(quantity),
+            price: orderType === 'limit' ? String(limitPrice) : undefined,
+          },
+          userId: effectiveUserId,
+        },
+      });
+      if (coinbaseError) throw coinbaseError;
+      brokerOrder = coinbaseResult?.data ?? coinbaseResult;
+    }
 
     const executionPrice = toNumber(
       brokerOrder?.filled_avg_price ?? brokerOrder?.limit_price ?? referencePrice,
