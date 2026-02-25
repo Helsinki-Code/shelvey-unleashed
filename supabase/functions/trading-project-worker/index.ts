@@ -15,6 +15,35 @@ const TRADING_PHASES = [
   { number: 6, name: 'Optimize', agentId: 'optimize-agent' }
 ];
 
+async function runSchedulerJobs(projectId: string, userId: string, jobTypes: string[], phaseNumber?: number) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) return;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/trading-scheduler-worker`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${serviceRoleKey}`,
+      'apikey': serviceRoleKey,
+    },
+    body: JSON.stringify({
+      action: 'run_jobs',
+      params: {
+        internalUserId: userId,
+        projectId,
+        phaseNumber,
+        jobTypes,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.text().catch(() => '');
+    throw new Error(`Scheduler job failed: ${payload || response.statusText}`);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -130,6 +159,8 @@ serve(async (req) => {
           details: { phaseName: phase.phase_name }
         });
 
+        await runSchedulerJobs(projectId, userId, ['phase_task_generation'], Number(phaseNumber));
+
         return new Response(JSON.stringify({ success: true, phase }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -214,6 +245,10 @@ serve(async (req) => {
             .from('trading_projects')
             .update({ current_phase: phaseNumber + 1 })
             .eq('id', projectId);
+        }
+
+        if (ceoApproved && userApproved) {
+          await runSchedulerJobs(projectId, userId, ['phase_task_generation', 'team_performance_snapshot', 'stage_progression'], phaseNumber + 1);
         }
 
         // Log activity

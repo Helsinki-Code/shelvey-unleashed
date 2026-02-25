@@ -71,6 +71,7 @@ export const RealTimeAgentExecutor = ({
       let query = supabase
         .from("agent_activity_logs")
         .select("*")
+        .contains("metadata", { projectId })
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -114,6 +115,9 @@ export const RealTimeAgentExecutor = ({
         },
         (payload) => {
           const newActivity = payload.new as AgentActivity;
+          const metadata = newActivity.metadata as Record<string, unknown> | undefined;
+          if (metadata?.projectId !== projectId) return;
+
           setActivities((prev) => {
             const filtered = prev.filter((a) => a.id !== newActivity.id);
             return [newActivity, ...filtered].slice(0, 100);
@@ -164,15 +168,15 @@ export const RealTimeAgentExecutor = ({
       const agent = TRADING_AGENTS[currentPhase];
       setCurrentAgent(agent?.name || "Trading Agent");
 
-      // Call the trading AI agent
-      const response = await supabase.functions.invoke("trading-ai-agent", {
+      setProgress(15);
+
+      // Execute real phase worker (no simulated outputs)
+      const userId = session.data.session.user.id;
+      const response = await supabase.functions.invoke("trading-agent-executor", {
         body: {
-          action: "execute_phase",
-          project_id: projectId,
-          phase: currentPhase,
-          exchange,
-          mode,
-          capital,
+          projectId,
+          phaseNumber: currentPhase,
+          userId,
         },
         headers: {
           Authorization: `Bearer ${session.data.session.access_token}`,
@@ -180,12 +184,7 @@ export const RealTimeAgentExecutor = ({
       });
 
       if (response.error) throw response.error;
-
-      // Simulate progress for visual feedback
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise((r) => setTimeout(r, 500));
-        setProgress(i);
-      }
+      setProgress(100);
 
       // Log completion
       await supabase.from("agent_activity_logs").insert({

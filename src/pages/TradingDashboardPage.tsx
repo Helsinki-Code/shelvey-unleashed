@@ -337,7 +337,7 @@ const TradingDashboardPage = () => {
                             <SelectValue placeholder="Select mode" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="paper">Paper Trading (Simulated)</SelectItem>
+                            <SelectItem value="paper">Paper Trading</SelectItem>
                             <SelectItem value="live">Live Trading (Real Money)</SelectItem>
                           </SelectContent>
                         </Select>
@@ -618,7 +618,7 @@ const TradingDashboardPage = () => {
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <ExchangeWebMonitor />
+                  <ExchangeWebMonitor exchangeId={selectedProject?.exchange || "alpaca"} />
                 </div>
                 <div>
                   <Card className="h-full">
@@ -644,7 +644,7 @@ const TradingDashboardPage = () => {
             {/* Portfolio Tab */}
             <TabsContent value="portfolio" className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
-                <ExchangeWebMonitor />
+                <ExchangeWebMonitor exchangeId={selectedProject?.exchange || "alpaca"} />
                 <AutoRebalanceConfig />
               </div>
             </TabsContent>

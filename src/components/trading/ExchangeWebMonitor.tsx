@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-export const ExchangeWebMonitor = () => {
+interface ExchangeWebMonitorProps {
+  exchangeId?: string;
+}
+
+export const ExchangeWebMonitor = ({ exchangeId = "alpaca" }: ExchangeWebMonitorProps) => {
   const { user } = useAuth();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +20,7 @@ export const ExchangeWebMonitor = () => {
       const interval = setInterval(fetchPortfolio, 10000); // Refresh every 10 seconds
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, exchangeId]);
 
   const fetchPortfolio = async () => {
     try {
@@ -24,7 +28,7 @@ export const ExchangeWebMonitor = () => {
       if (!session.data.session?.access_token) return;
 
       const response = await supabase.functions.invoke("trading-browser-agent", {
-        body: { action: "get_portfolio", exchangeId: "alpaca" },
+        body: { action: "get_portfolio", exchangeId },
         headers: {
           Authorization: `Bearer ${session.data.session.access_token}`,
         },

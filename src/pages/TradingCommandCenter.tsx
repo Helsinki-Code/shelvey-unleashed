@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Play, Pause, Power, TrendingUp, TrendingDown, AlertTriangle, Activity } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, Activity, ShieldCheck, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Navbar } from '@/components/Navbar';
 import TradingKillSwitch from '@/components/trading/TradingKillSwitch';
 import TradingActivityFeed from '@/components/trading/TradingActivityFeed';
+import TradingCEOControlTower from '@/components/trading/TradingCEOControlTower';
 
 interface TradingProject {
   id: string;
@@ -59,7 +60,8 @@ const TradingCommandCenter = () => {
   useEffect(() => {
     if (projectId && user) {
       fetchProjectData();
-      subscribeToUpdates();
+      const cleanup = subscribeToUpdates();
+      return cleanup;
     }
   }, [projectId, user]);
 
@@ -195,7 +197,7 @@ const TradingCommandCenter = () => {
                     {project.status}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground capitalize">{project.exchange} • {project.risk_level} Risk</p>
+                <p className="text-muted-foreground capitalize">{project.exchange} | {project.risk_level} risk profile</p>
               </div>
             </div>
             
@@ -250,6 +252,34 @@ const TradingCommandCenter = () => {
             </div>
           )}
 
+          {/* CEO Control Tower */}
+          <div className="mb-6">
+            <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg border bg-muted/20 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Workflow className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Strategy Promotion Pipeline</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Research to Backtest to Paper to Staged Live to Full Live.</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/20 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Approval-Gated Lifecycle</span>
+                </div>
+                <p className="text-xs text-muted-foreground">CEO and user approvals are required before each stage promotion.</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/20 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Autonomous Worker Ops</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Task generation, reconciliation, snapshots, and stage progression from control tower.</p>
+              </div>
+            </div>
+            <TradingCEOControlTower projectId={projectId!} />
+          </div>
+
           {/* Phases Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {phases.map((phase) => {
@@ -280,10 +310,10 @@ const TradingCommandCenter = () => {
                     {phase.status === 'review' && (
                       <div className="flex gap-2 text-xs">
                         <Badge variant={phase.ceo_approved ? 'default' : 'outline'}>
-                          CEO {phase.ceo_approved ? '✓' : 'Pending'}
+                          CEO {phase.ceo_approved ? 'Approved' : 'Pending'}
                         </Badge>
                         <Badge variant={phase.user_approved ? 'default' : 'outline'}>
-                          User {phase.user_approved ? '✓' : 'Pending'}
+                          User {phase.user_approved ? 'Approved' : 'Pending'}
                         </Badge>
                       </div>
                     )}

@@ -327,6 +327,15 @@ verify_jwt = false
 [functions.trading-agent-executor]
 verify_jwt = false
 
+[functions.trading-ceo-orchestrator]
+verify_jwt = false
+
+[functions.trading-order-gateway]
+verify_jwt = false
+
+[functions.trading-scheduler-worker]
+verify_jwt = false
+
 [functions.pod-automation-agent]
 verify_jwt = false
 

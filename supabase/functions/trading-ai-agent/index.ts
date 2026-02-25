@@ -6,6 +6,93 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SUPPORTED_LIVE_EXCHANGES = new Set(['alpaca']);
+
+function normalizeAlpacaSymbol(symbol: string): string {
+  return String(symbol || '').trim().toUpperCase().replace('/', '-');
+}
+
+function extractPrice(payload: any): number {
+  const candidates = [
+    payload?.price,
+    payload?.last_price,
+    payload?.last,
+    payload?.c,
+    payload?.ap,
+    payload?.ask_price,
+    payload?.bid_price,
+    payload?.quote?.ap,
+    payload?.quote?.bp,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  throw new Error('Could not determine market price from exchange response');
+}
+
+async function invokeMcpTool(
+  supabase: any,
+  exchange: string,
+  userId: string,
+  tool: string,
+  args: Record<string, unknown> = {}
+) {
+  const { data, error } = await supabase.functions.invoke(`mcp-${exchange}`, {
+    body: {
+      tool,
+      arguments: args,
+      userId,
+    },
+  });
+
+  if (error) throw error;
+  if (data?.success === false) {
+    throw new Error(data?.error || `mcp-${exchange} ${tool} failed`);
+  }
+
+  return data?.data ?? data;
+}
+
+function assertLiveExchangeSupported(exchange: string) {
+  if (!SUPPORTED_LIVE_EXCHANGES.has(exchange)) {
+    throw new Error(
+      `Live trading for ${exchange} is not production-ready yet. Supported: alpaca`
+    );
+  }
+}
+
+async function invokeOrderGateway(userId: string, payload: Record<string, unknown>) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Gateway environment not configured");
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/trading-order-gateway`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({
+      ...payload,
+      internalUserId: userId,
+    }),
+  });
+
+  const result = await response.json();
+  if (!response.ok || result?.success === false) {
+    throw new Error(result?.error || `Order gateway failed (${response.status})`);
+  }
+
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -99,18 +186,22 @@ serve(async (req) => {
 });
 
 async function createStrategy(supabase: any, userId: string, params: any) {
-  const { name, exchange, strategyType, parameters, paperMode } = params;
+  const { name, exchange, strategyType, parameters, paperMode, projectId, promotedFromCandidateId } = params;
 
   const { data, error } = await supabase
     .from('trading_strategies')
     .insert({
       user_id: userId,
+      project_id: projectId || null,
       name,
       exchange,
       strategy_type: strategyType,
       parameters,
       paper_mode: paperMode !== false,
       is_active: false,
+      lifecycle_stage: paperMode !== false ? 'paper' : 'staged_live',
+      promoted_from_candidate_id: promotedFromCandidateId || null,
+      last_stage_transition_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -173,6 +264,7 @@ async function executeStrategy(supabase: any, userId: string, strategyId: string
     case 'dca':
       result = await runDCAStrategy(supabase, userId, { 
         strategyId, 
+        projectId: strategy.project_id,
         ...strategy.parameters,
         exchange: strategy.exchange,
         paperMode: strategy.paper_mode,
@@ -182,6 +274,7 @@ async function executeStrategy(supabase: any, userId: string, strategyId: string
     case 'grid':
       result = await runGridStrategy(supabase, userId, { 
         strategyId, 
+        projectId: strategy.project_id,
         ...strategy.parameters,
         exchange: strategy.exchange,
         paperMode: strategy.paper_mode,
@@ -205,15 +298,20 @@ async function executeStrategy(supabase: any, userId: string, strategyId: string
 }
 
 async function runDCAStrategy(supabase: any, userId: string, params: any) {
-  const { strategyId, symbol, amount, exchange, paperMode } = params;
+  const { strategyId, projectId, symbol, amount, exchange, paperMode } = params;
+  const normalizedSymbol = normalizeAlpacaSymbol(symbol);
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    throw new Error('Invalid DCA amount');
+  }
   
   // Get current price
-  const { data: marketData } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { action: 'get_quote', userId, params: { symbol } },
+  const marketData = await invokeMcpTool(supabase, exchange, userId, 'get_market_data', {
+    symbol: normalizedSymbol,
   });
 
-  const currentPrice = marketData?.price || marketData?.last_price || 100;
-  const quantity = amount / currentPrice;
+  const currentPrice = extractPrice(marketData);
+  const quantity = numericAmount / currentPrice;
 
   if (paperMode) {
     // Paper trade - just record it
@@ -232,10 +330,16 @@ async function runDCAStrategy(supabase: any, userId: string, params: any) {
       .single();
 
     // Update strategy stats
+    const { data: strategyRow } = await supabase
+      .from('trading_strategies')
+      .select('total_trades')
+      .eq('id', strategyId)
+      .single();
+
     await supabase
       .from('trading_strategies')
       .update({ 
-        total_trades: supabase.sql`total_trades + 1`,
+        total_trades: Number(strategyRow?.total_trades || 0) + 1,
         updated_at: new Date().toISOString(),
       })
       .eq('id', strategyId);
@@ -246,28 +350,17 @@ async function runDCAStrategy(supabase: any, userId: string, params: any) {
       paperMode: true,
     };
   } else {
-    // Live trade
-    const { data: order } = await supabase.functions.invoke(`mcp-${exchange}`, {
-      body: { 
-        action: 'create_order', 
-        userId, 
-        params: { 
-          symbol, 
-          side: 'buy', 
-          type: 'market', 
-          qty: quantity 
-        } 
-      },
-    });
+    assertLiveExchangeSupported(exchange);
+    if (!projectId) throw new Error("projectId required for live strategy execution");
 
-    // Record execution
-    await supabase.from('trading_executions').insert({
-      strategy_id: strategyId,
-      user_id: userId,
-      action: 'buy',
-      symbol,
+    const gatewayResult = await invokeOrderGateway(userId, {
+      projectId,
+      strategyId,
+      symbol: normalizedSymbol,
+      side: "buy",
+      orderType: "market",
       quantity,
-      price: currentPrice,
+      source: "trading-ai-agent:dca",
     });
 
     // Send notification
@@ -278,27 +371,42 @@ async function runDCAStrategy(supabase: any, userId: string, params: any) {
       type: 'trading',
     });
 
-    return { order, message: `DCA buy executed: ${quantity.toFixed(6)} ${symbol}` };
+    return { order: gatewayResult, message: `DCA buy executed: ${quantity.toFixed(6)} ${symbol}` };
   }
 }
 
 async function runGridStrategy(supabase: any, userId: string, params: any) {
-  const { strategyId, symbol, upperPrice, lowerPrice, gridLevels, totalAmount, exchange, paperMode } = params;
+  const { strategyId, projectId, symbol, upperPrice, lowerPrice, gridLevels, totalAmount, exchange, paperMode } = params;
+  const normalizedSymbol = normalizeAlpacaSymbol(symbol);
+  const numericUpperPrice = Number(upperPrice);
+  const numericLowerPrice = Number(lowerPrice);
+  const numericGridLevels = Number(gridLevels);
+  const numericTotalAmount = Number(totalAmount);
+
+  if (!Number.isFinite(numericUpperPrice) || !Number.isFinite(numericLowerPrice) || numericUpperPrice <= numericLowerPrice) {
+    throw new Error('Invalid grid price range');
+  }
+  if (!Number.isFinite(numericGridLevels) || numericGridLevels < 1) {
+    throw new Error('Invalid grid levels');
+  }
+  if (!Number.isFinite(numericTotalAmount) || numericTotalAmount <= 0) {
+    throw new Error('Invalid grid total amount');
+  }
   
-  const gridSpacing = (upperPrice - lowerPrice) / gridLevels;
-  const amountPerLevel = totalAmount / gridLevels;
+  const gridSpacing = (numericUpperPrice - numericLowerPrice) / numericGridLevels;
+  const amountPerLevel = numericTotalAmount / numericGridLevels;
   
   // Get current price
-  const { data: marketData } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { action: 'get_quote', userId, params: { symbol } },
+  const marketData = await invokeMcpTool(supabase, exchange, userId, 'get_market_data', {
+    symbol: normalizedSymbol,
   });
 
-  const currentPrice = marketData?.price || marketData?.last_price || 100;
+  const currentPrice = extractPrice(marketData);
   
   // Determine which grid levels to place orders at
   const orders = [];
-  for (let i = 0; i < gridLevels; i++) {
-    const gridPrice = lowerPrice + (i * gridSpacing);
+  for (let i = 0; i < numericGridLevels; i++) {
+    const gridPrice = numericLowerPrice + (i * gridSpacing);
     if (gridPrice < currentPrice) {
       // Buy order below current price
       orders.push({ side: 'buy', price: gridPrice, amount: amountPerLevel / gridPrice });
@@ -317,38 +425,44 @@ async function runGridStrategy(supabase: any, userId: string, params: any) {
     };
   }
 
+  assertLiveExchangeSupported(exchange);
+  if (!projectId) throw new Error("projectId required for live strategy execution");
+
   // Place actual orders
+  const executions: any[] = [];
   for (const order of orders) {
-    await supabase.functions.invoke(`mcp-${exchange}`, {
-      body: { 
-        action: 'create_order', 
-        userId, 
-        params: { 
-          symbol, 
-          side: order.side, 
-          type: 'limit', 
-          price: order.price,
-          qty: order.amount,
-        } 
-      },
+    const gatewayResult = await invokeOrderGateway(userId, {
+      projectId,
+      strategyId,
+      symbol: normalizedSymbol,
+      side: order.side,
+      orderType: "limit",
+      quantity: order.amount,
+      limitPrice: order.price,
+      source: "trading-ai-agent:grid",
     });
+    executions.push(gatewayResult);
   }
 
   return {
     ordersPlaced: orders.length,
+    executions,
     message: `Grid strategy active: ${orders.length} orders placed`,
   };
 }
 
 async function runMomentumStrategy(supabase: any, userId: string, params: any) {
   const { strategyId, symbol, lookbackPeriod, threshold, exchange, paperMode } = params;
+  const normalizedSymbol = normalizeAlpacaSymbol(symbol);
 
   // Get historical data
-  const { data: history } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { action: 'get_bars', userId, params: { symbol, timeframe: '1D', limit: lookbackPeriod } },
+  const history = await invokeMcpTool(supabase, exchange, userId, 'get_bars', {
+    symbol: normalizedSymbol,
+    timeframe: '1Day',
+    limit: lookbackPeriod,
   });
 
-  const bars = history?.bars || [];
+  const bars = history?.bars || history?.bar || [];
   if (bars.length < 2) {
     return { message: 'Insufficient data for momentum analysis' };
   }
@@ -375,13 +489,21 @@ async function analyzeMarket(supabase: any, userId: string, exchange: string, sy
   const analysis = [];
 
   for (const symbol of symbols) {
-    const { data } = await supabase.functions.invoke(`mcp-${exchange}`, {
-      body: { action: 'get_quote', userId, params: { symbol } },
+    const normalizedSymbol = normalizeAlpacaSymbol(symbol);
+    const data = await invokeMcpTool(supabase, exchange, userId, 'get_market_data', {
+      symbol: normalizedSymbol,
     });
 
+    let resolvedPrice = 0;
+    try {
+      resolvedPrice = extractPrice(data);
+    } catch {
+      resolvedPrice = 0;
+    }
+
     analysis.push({
-      symbol,
-      price: data?.price || data?.last_price,
+      symbol: normalizedSymbol,
+      price: resolvedPrice,
       change: data?.change_percent || data?.percent_change,
       volume: data?.volume,
     });
@@ -413,14 +535,16 @@ async function analyzeMarket(supabase: any, userId: string, exchange: string, sy
 
 async function getPortfolioSummary(supabase: any, userId: string, exchange: string) {
   // Get account info from exchange
-  const { data: account } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { action: 'get_account', userId },
-  });
+  const account = await invokeMcpTool(supabase, exchange, userId, 'get_account');
 
-  // Get positions
-  const { data: positions } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { action: 'get_positions', userId },
-  });
+  // Get positions (fallback gracefully if not supported by connector)
+  let positions: any = { positions: [] };
+  try {
+    const result = await invokeMcpTool(supabase, exchange, userId, 'get_positions');
+    positions = Array.isArray(result) ? { positions: result } : result;
+  } catch (error) {
+    console.warn(`Could not fetch positions for ${exchange}:`, error);
+  }
 
   // Get recent executions
   const { data: executions } = await supabase
@@ -446,36 +570,51 @@ async function getPortfolioSummary(supabase: any, userId: string, exchange: stri
 }
 
 async function executeTrade(supabase: any, userId: string, params: any) {
-  const { exchange, symbol, side, type, quantity, price } = params;
+  const { projectId, exchange, symbol, side, type, quantity, price, strategyId } = params;
+  assertLiveExchangeSupported(exchange);
+  if (!projectId) {
+    throw new Error("projectId is required");
+  }
 
-  const { data: order, error } = await supabase.functions.invoke(`mcp-${exchange}`, {
-    body: { 
-      action: 'create_order', 
-      userId, 
-      params: { symbol, side, type, qty: quantity, limit_price: price } 
-    },
-  });
+  const normalizedSide = String(side || '').toLowerCase();
+  const normalizedType = String(type || '').toLowerCase();
+  const numericQuantity = Number(quantity);
+  const numericPrice = price === undefined || price === null ? undefined : Number(price);
 
-  if (error) throw error;
+  if (!['buy', 'sell'].includes(normalizedSide)) {
+    throw new Error('Invalid trade side');
+  }
+  if (!['market', 'limit'].includes(normalizedType)) {
+    throw new Error('Invalid order type');
+  }
+  if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+    throw new Error('Invalid quantity');
+  }
+  if (normalizedType === 'limit' && (!Number.isFinite(numericPrice) || Number(numericPrice) <= 0)) {
+    throw new Error('Invalid limit price');
+  }
 
-  // Record execution
-  await supabase.from('trading_executions').insert({
-    user_id: userId,
-    action: side,
-    symbol,
-    quantity,
-    price: price || order?.filled_avg_price || 0,
+  const normalizedSymbol = normalizeAlpacaSymbol(symbol);
+  const gatewayResult = await invokeOrderGateway(userId, {
+    projectId,
+    strategyId,
+    symbol: normalizedSymbol,
+    side: normalizedSide,
+    orderType: normalizedType,
+    quantity: numericQuantity,
+    limitPrice: numericPrice,
+    source: "trading-ai-agent:manual-execute",
   });
 
   // Send notification
   await supabase.from('notifications').insert({
     user_id: userId,
     title: 'Trade Executed',
-    message: `${side.toUpperCase()} ${quantity} ${symbol} at ${type === 'market' ? 'market' : '$' + price}`,
+    message: `${normalizedSide.toUpperCase()} ${numericQuantity} ${normalizedSymbol} at ${normalizedType === 'market' ? 'market' : '$' + numericPrice}`,
     type: 'trading',
   });
 
-  return { order, message: 'Trade executed successfully' };
+  return { order: gatewayResult, message: 'Trade executed successfully' };
 }
 
 async function getTradeHistory(supabase: any, userId: string, strategyId?: string) {
@@ -537,16 +676,11 @@ async function executePhase(supabase: any, userId: string, params: any) {
     metadata: { project_id, phase, exchange, mode, capital },
   });
 
-  // Simulate phase work
-  await new Promise((r) => setTimeout(r, 1000));
-
-  await supabase.from("agent_activity_logs").insert({
-    agent_id: `trading-phase-${phase}`,
-    agent_name: `${phaseName} Agent`,
-    action: `Completed ${phaseName} phase analysis`,
-    status: "completed",
-    metadata: { project_id, phase, exchange, mode },
-  });
-
-  return { success: true, phase, phaseName, message: `${phaseName} phase completed` };
+  return {
+    success: false,
+    phase,
+    phaseName,
+    message:
+      "Synthetic phase execution is disabled. Use trading-agent-executor with real completed team tasks.",
+  };
 }

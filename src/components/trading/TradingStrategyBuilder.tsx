@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface TradingStrategyBuilderProps {
+  projectId?: string;
   exchange?: string;
   exchangeType?: 'stocks' | 'crypto';
   onStrategyCreated?: () => void;
@@ -38,7 +39,7 @@ const strategyConfigs: Record<StrategyType, { name: string; description: string;
   },
 };
 
-export function TradingStrategyBuilder({ exchange: propExchange, exchangeType, onStrategyCreated }: TradingStrategyBuilderProps) {
+export function TradingStrategyBuilder({ projectId, exchange: propExchange, exchangeType, onStrategyCreated }: TradingStrategyBuilderProps) {
   const { user } = useAuth();
   const [creating, setCreating] = useState(false);
   const [strategyType, setStrategyType] = useState<StrategyType>('dca');
@@ -105,6 +106,7 @@ export function TradingStrategyBuilder({ exchange: propExchange, exchangeType, o
             strategyType,
             parameters,
             paperMode,
+            projectId,
           },
         },
       });

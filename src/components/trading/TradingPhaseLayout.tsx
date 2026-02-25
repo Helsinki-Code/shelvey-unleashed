@@ -56,7 +56,8 @@ const TradingPhaseLayout = ({ phaseNumber, children }: TradingPhaseLayoutProps) 
   useEffect(() => {
     if (projectId && user) {
       fetchData();
-      subscribeToUpdates();
+      const cleanup = subscribeToUpdates();
+      return cleanup;
     }
   }, [projectId, user, phaseNumber]);
 

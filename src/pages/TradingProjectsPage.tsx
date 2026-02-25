@@ -45,10 +45,13 @@ const TradingProjectsPage = () => {
   }, [user]);
 
   const fetchProjects = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('trading_projects')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

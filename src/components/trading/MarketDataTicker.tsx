@@ -63,14 +63,7 @@ export const MarketDataTicker = ({ exchangeId, mcpId, exchangeType }: MarketData
       setTickers(tickerData);
     } catch (err) {
       console.error('Error fetching market data:', err);
-      // Generate mock data for display
-      const symbols = exchangeType === 'stocks' ? STOCK_SYMBOLS : CRYPTO_SYMBOLS;
-      setTickers(symbols.map(s => ({
-        symbol: s,
-        price: Math.random() * 1000 + 100,
-        change: (Math.random() - 0.5) * 10,
-        changePercent: (Math.random() - 0.5) * 5
-      })));
+      setTickers([]);
     } finally {
       setLoading(false);
     }

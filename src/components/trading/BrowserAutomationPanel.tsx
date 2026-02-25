@@ -145,7 +145,8 @@ export const BrowserAutomationPanel = () => {
             <p className="text-sm font-medium mb-3">Available Automations</p>
             <div className="space-y-2">
               {availableAutomations.map((automation) => {
-                const isActive = runningAutomations.length > 0;
+                const session = automations.find((a) => a.task === automation.id);
+                const isActive = !!session;
                 return (
                   <div
                     key={automation.id}
@@ -178,7 +179,6 @@ export const BrowserAutomationPanel = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            const session = automations.find((a) => a.task === automation.id);
                             if (session) handleStopAutomation(session.id);
                           }}
                         >
@@ -255,15 +255,15 @@ export const BrowserAutomationPanel = () => {
             <div className="space-y-1 text-xs text-muted-foreground">
               <div className="flex items-center justify-between p-2 rounded bg-muted">
                 <span>Success Rate</span>
-                <Badge variant="outline">95%</Badge>
+                <Badge variant="outline">N/A</Badge>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-muted">
                 <span>Avg Execution Time</span>
-                <Badge variant="outline">2.3s</Badge>
+                <Badge variant="outline">N/A</Badge>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-muted">
                 <span>Total Automations Run</span>
-                <Badge variant="outline">247</Badge>
+                <Badge variant="outline">{automations.length}</Badge>
               </div>
             </div>
           </div>

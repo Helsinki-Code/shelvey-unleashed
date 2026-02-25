@@ -12,13 +12,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface QuickTradePanelProps {
+  projectId?: string;
   exchangeId: string;
   mcpId: string;
   exchangeType: 'stocks' | 'crypto';
   onOrderPlaced: () => void;
 }
 
-export const QuickTradePanel = ({ exchangeId, mcpId, exchangeType, onOrderPlaced }: QuickTradePanelProps) => {
+export const QuickTradePanel = ({ projectId, exchangeId, mcpId, exchangeType, onOrderPlaced }: QuickTradePanelProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
@@ -31,35 +32,31 @@ export const QuickTradePanel = ({ exchangeId, mcpId, exchangeType, onOrderPlaced
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !symbol || !quantity) return;
+    if (!projectId) {
+      toast({
+        title: 'Project Required',
+        description: 'Select a trading project before placing live orders.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const orderData: any = {
-        symbol: symbol.toUpperCase(),
-        qty: parseFloat(quantity),
-        side,
-        type: orderType,
-      };
-
-      if (orderType === 'limit' && limitPrice) {
-        orderData.limit_price = parseFloat(limitPrice);
-      }
-
-      // For crypto, might need to adjust field names
-      if (exchangeType === 'crypto') {
-        orderData.size = orderData.qty;
-        orderData.product_id = orderData.symbol;
-      }
-
-      const { data, error } = await supabase.functions.invoke(mcpId, {
+      const { data, error } = await supabase.functions.invoke('trading-order-gateway', {
         body: {
-          tool: 'place_order',
-          arguments: orderData,
-          userId: user.id
+          projectId,
+          symbol: symbol.toUpperCase(),
+          side,
+          orderType,
+          quantity: parseFloat(quantity),
+          limitPrice: orderType === 'limit' && limitPrice ? parseFloat(limitPrice) : undefined,
+          source: `quick-trade-panel:${exchangeId}:${mcpId}:${exchangeType}`,
         }
       });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Trade execution rejected');
 
       toast({
         title: 'Order Placed!',

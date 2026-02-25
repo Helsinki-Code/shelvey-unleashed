@@ -211,7 +211,7 @@ const TradingProjectWizard = () => {
                       >
                         <RadioGroupItem value="paper" id="paper" className="sr-only" />
                         <p className="font-medium">Paper Trading</p>
-                        <p className="text-xs text-muted-foreground text-center mt-1">Simulated, no real money</p>
+                        <p className="text-xs text-muted-foreground text-center mt-1">No real money</p>
                       </Label>
                       
                       <Label
