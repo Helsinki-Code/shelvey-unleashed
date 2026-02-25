@@ -64,6 +64,8 @@ interface TradingProject {
   risk_level: string;
   current_phase: number;
   created_at: string;
+  autonomous_mode?: boolean;
+  last_sync_at?: string;
 }
 
 const TradingDashboardPage = () => {
@@ -228,6 +230,25 @@ const TradingDashboardPage = () => {
 
   const totalCapital = tradingProjects.reduce((sum, p) => sum + (p.capital || 0), 0);
   const totalPnL = tradingProjects.reduce((sum, p) => sum + (p.total_pnl || 0), 0);
+  const autonomousCount = tradingProjects.filter(p => p.autonomous_mode).length;
+
+  const toggleAutonomousMode = async (projectId: string, enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('trading_projects')
+        .update({ autonomous_mode: enabled })
+        .eq('id', projectId);
+
+      if (error) throw error;
+      toast.success(enabled ? '🤖 Autonomous mode ACTIVATED — agents are now trading!' : '⏸️ Autonomous mode paused');
+      
+      if (selectedProject?.id === projectId) {
+        setSelectedProject({ ...selectedProject, autonomous_mode: enabled });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to toggle autonomous mode');
+    }
+  };
 
   const statsData = [
     {
@@ -252,11 +273,11 @@ const TradingDashboardPage = () => {
       bgColor: totalPnL >= 0 ? "bg-green-500/10" : "bg-red-500/10",
     },
     {
-      label: "System Health",
-      value: `${metrics?.successRate || 100}%`,
-      icon: Shield,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10",
+      label: "Autonomous",
+      value: `${autonomousCount} active`,
+      icon: Zap,
+      color: autonomousCount > 0 ? "text-yellow-500" : "text-muted-foreground",
+      bgColor: autonomousCount > 0 ? "bg-yellow-500/10" : "bg-muted/10",
     },
   ];
 
@@ -533,15 +554,22 @@ const TradingDashboardPage = () => {
                                 {project.exchange.toUpperCase()} • {project.mode === 'paper' ? '📄 Paper' : '💰 Live'}
                               </CardDescription>
                             </div>
-                            <Badge
-                              className={
-                                project.status === "active"
-                                  ? "bg-green-500"
-                                  : "bg-gray-500"
-                              }
-                            >
-                              {project.status}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                className={
+                                  project.status === "active"
+                                    ? "bg-green-500"
+                                    : "bg-gray-500"
+                                }
+                              >
+                                {project.status}
+                              </Badge>
+                              {project.autonomous_mode && (
+                                <Badge className="bg-yellow-500 text-xs animate-pulse">
+                                  🤖 AUTO
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="pt-2">
@@ -567,6 +595,12 @@ const TradingDashboardPage = () => {
                             <span>{phaseNames[project.current_phase - 1]}</span>
                           </div>
 
+                          {project.last_sync_at && (
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Last sync: {new Date(project.last_sync_at).toLocaleTimeString()}
+                            </p>
+                          )}
+
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -580,8 +614,16 @@ const TradingDashboardPage = () => {
                               <Play className="h-3 w-3 mr-1" />
                               Open
                             </Button>
-                            <Button size="sm" variant="outline">
-                              <Settings className="h-3 w-3" />
+                            <Button
+                              size="sm"
+                              variant={project.autonomous_mode ? "destructive" : "outline"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleAutonomousMode(project.id, !project.autonomous_mode);
+                              }}
+                              title={project.autonomous_mode ? "Disable Autonomous" : "Enable Autonomous"}
+                            >
+                              <Zap className="h-3 w-3" />
                             </Button>
                             <Button
                               size="sm"

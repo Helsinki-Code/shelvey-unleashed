@@ -3943,11 +3943,13 @@ export type Database = {
       }
       trading_projects: {
         Row: {
+          autonomous_mode: boolean
           capital: number
           created_at: string | null
           current_phase: number | null
           exchange: string
           id: string
+          last_sync_at: string | null
           mode: string
           name: string
           risk_level: string
@@ -3957,11 +3959,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          autonomous_mode?: boolean
           capital?: number
           created_at?: string | null
           current_phase?: number | null
           exchange: string
           id?: string
+          last_sync_at?: string | null
           mode?: string
           name: string
           risk_level?: string
@@ -3971,11 +3975,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          autonomous_mode?: boolean
           capital?: number
           created_at?: string | null
           current_phase?: number | null
           exchange?: string
           id?: string
+          last_sync_at?: string | null
           mode?: string
           name?: string
           risk_level?: string

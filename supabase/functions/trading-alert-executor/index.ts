@@ -330,17 +330,69 @@ async function executeAutoAction(
   // Parse action format: "BUY:100" or "SELL:50" or "SET_STOP_LOSS:2%"
   const [actionType, actionValue] = action.split(":");
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
   switch (actionType) {
     case "BUY":
-      return `Bought ${actionValue} shares of ${symbol}`;
-    case "SELL":
-      return `Sold ${actionValue} shares of ${symbol}`;
+    case "SELL": {
+      const qty = parseFloat(actionValue) || 1;
+
+      // Find user's active trading project
+      const { data: project } = await supabase
+        .from("trading_projects")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .limit(1)
+        .single();
+
+      if (!project) {
+        return `No active trading project found for ${actionType} ${symbol}`;
+      }
+
+      if (!supabaseUrl || !serviceRoleKey) {
+        return `Gateway not configured for ${actionType} ${symbol}`;
+      }
+
+      // Route through real order gateway with full risk checks
+      const response = await fetch(`${supabaseUrl}/functions/v1/trading-order-gateway`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          internalUserId: userId,
+          symbol: symbol.toUpperCase(),
+          side: actionType.toLowerCase(),
+          orderType: "market",
+          quantity: qty,
+          source: "alert-auto-executor",
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || result?.success === false) {
+        return `${actionType} ${qty} ${symbol} FAILED: ${result?.error || 'Unknown error'}`;
+      }
+
+      return `${actionType} ${qty} ${symbol} executed via order gateway (mode: ${result.mode})`;
+    }
     case "SET_STOP_LOSS":
       return `Set stop loss at ${actionValue} for ${symbol}`;
     case "TAKE_PROFIT":
       return `Set take profit at ${actionValue} for ${symbol}`;
-    case "SEND_NOTIFICATION":
+    case "SEND_NOTIFICATION": {
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        title: `Alert: ${symbol}`,
+        message: `Price alert triggered for ${symbol}`,
+        type: "trading",
+      });
       return `Notification sent: ${symbol} alert triggered`;
+    }
     case "WEBHOOK":
       return `Webhook triggered for ${symbol}`;
     default:
