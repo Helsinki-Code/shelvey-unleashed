@@ -1,114 +1,284 @@
-// Blog Empire AI Agents - 6 Specialized Content Creation Agents
+// Autonomous Blogger AI Agent Team - 12 Specialized Content Agents
 
 export interface BlogAgent {
   id: string;
   name: string;
+  title: string;
   role: string;
   description: string;
-  icon: string;
+  emoji: string;
+  category: string;
+  responsibilities: string[];
   skills: string[];
   mcpServers: string[];
 }
+
+export const BLOG_AGENT_CATEGORIES: Record<string, { label: string; emoji: string }> = {
+  strategy: { label: 'Strategy', emoji: '🧠' },
+  research: { label: 'Research', emoji: '🔍' },
+  content: { label: 'Content', emoji: '✍️' },
+  quality: { label: 'Quality', emoji: '✅' },
+  seo: { label: 'SEO', emoji: '📊' },
+  visual: { label: 'Visual', emoji: '🎨' },
+  publishing: { label: 'Publishing', emoji: '🚀' },
+  distribution: { label: 'Distribution', emoji: '📣' },
+  analytics: { label: 'Analytics', emoji: '📈' },
+  outreach: { label: 'Outreach', emoji: '🔗' },
+  compliance: { label: 'Compliance', emoji: '🛡️' },
+  orchestration: { label: 'Orchestration', emoji: '🔄' },
+};
 
 export const BLOG_EMPIRE_AGENTS: BlogAgent[] = [
   {
     id: 'content-strategist',
     name: 'Content Strategist',
-    role: 'Chief Content Officer',
-    description: 'Plans content calendar, identifies trending topics, and develops content pillars for maximum engagement and monetization.',
-    icon: '📊',
-    skills: ['Content Planning', 'Trend Analysis', 'Keyword Research', 'Editorial Calendar'],
-    mcpServers: ['mcp-perplexity', 'mcp-serpapi', 'mcp-googleanalytics']
-  },
-  {
-    id: 'blog-writer',
-    name: 'Blog Writer',
-    role: 'Senior Content Writer',
-    description: 'Creates high-quality, SEO-optimized blog posts with engaging narratives and proper structure.',
-    icon: '✍️',
-    skills: ['Long-form Writing', 'SEO Writing', 'Storytelling', 'Research'],
-    mcpServers: ['mcp-perplexity', 'mcp-openai', 'mcp-medium']
-  },
-  {
-    id: 'seo-optimizer',
-    name: 'SEO Optimizer',
-    role: 'SEO Specialist',
-    description: 'Optimizes all content for search engines, manages keywords, and tracks ranking performance.',
-    icon: '🔍',
-    skills: ['On-page SEO', 'Keyword Optimization', 'Meta Tags', 'Internal Linking'],
-    mcpServers: ['mcp-serpapi', 'mcp-googleanalytics', 'mcp-perplexity']
-  },
-  {
-    id: 'monetization-manager',
-    name: 'Monetization Manager',
-    role: 'Revenue Optimization Lead',
-    description: 'Manages ad placements, affiliate partnerships, and sponsored content opportunities.',
-    icon: '💰',
-    skills: ['Ad Optimization', 'Affiliate Marketing', 'Sponsorship Deals', 'Revenue Analysis'],
-    mcpServers: ['mcp-googleads', 'mcp-stripe', 'mcp-googleanalytics']
-  },
-  {
-    id: 'social-distributor',
-    name: 'Social Distributor',
-    role: 'Distribution Specialist',
-    description: 'Distributes content across social platforms using browser automation, manages Instagram posts/stories, and drives traffic to blog posts.',
-    icon: '📱',
-    skills: [
-      'Instagram Automation',
-      'Create & Publish Posts',
-      'Upload & Manage Stories',
-      'Like & Comment on Posts',
-      'Follow/Unfollow Accounts',
-      'Search Users & Hashtags',
-      'Access Insights & Analytics',
-      'Community Engagement',
-      'Content Repurposing',
-      'Traffic Generation'
+    title: 'The Visionary Planner',
+    role: 'Chief Content Strategist',
+    emoji: '🧠',
+    category: 'strategy',
+    description: 'Analyzes market trends, audience behavior, and competitor landscapes. Develops content calendars and aligns every piece with business goals.',
+    responsibilities: [
+      'Develops monthly/weekly/daily content calendars',
+      'Identifies high-opportunity keywords and content gaps',
+      'Aligns content with overarching business goals',
+      'Adapts strategy based on performance data and algorithm changes',
+      'Maps out content clusters, pillar pages, and topical authority blueprints',
     ],
-    mcpServers: ['mcp-twitter', 'mcp-linkedin', 'mcp-facebook', 'mcp-instagram', 'instagram-automation']
+    skills: ['Content Planning', 'Trend Analysis', 'Keyword Research', 'Editorial Calendar', 'Content Clusters'],
+    mcpServers: ['mcp-perplexity', 'mcp-serpapi', 'mcp-googleanalytics'],
   },
   {
-    id: 'analytics-reporter',
-    name: 'Analytics Reporter',
+    id: 'research-analyst',
+    name: 'Research Analyst',
+    title: 'The Deep Diver',
+    role: 'Senior Research Analyst',
+    emoji: '🔍',
+    category: 'research',
+    description: 'Conducts deep-dive research on every assigned topic. Gathers data, statistics, case studies, and credible sources.',
+    responsibilities: [
+      'Deep-dive research on every assigned topic',
+      'Gathers data, statistics, case studies, and credible sources',
+      'Fact-checks information for accuracy and reliability',
+      'Compiles structured research briefs for writing agents',
+      'Monitors industry news and trending topics in real time',
+      'Curates reference materials, quotes, and expert insights',
+    ],
+    skills: ['Deep Research', 'Fact-Checking', 'Data Gathering', 'Source Verification', 'Trend Monitoring'],
+    mcpServers: ['mcp-perplexity', 'mcp-serpapi'],
+  },
+  {
+    id: 'content-writer',
+    name: 'Content Writer',
+    title: 'The Wordsmith',
+    role: 'Senior Content Writer',
+    emoji: '✍️',
+    category: 'content',
+    description: 'Produces original, engaging, human-quality blog posts at scale. Writes in multiple tones and styles tailored to each brand.',
+    responsibilities: [
+      'Produces original, engaging, human-quality blog posts at scale',
+      'Writes in multiple tones, styles, and voices tailored to each brand',
+      'Creates how-to guides, listicles, tutorials, reviews, pillar content',
+      'Maintains brand consistency across all published content',
+      'Capable of producing content in multiple languages',
+    ],
+    skills: ['Long-form Writing', 'SEO Writing', 'Storytelling', 'Multi-language', 'Brand Voice'],
+    mcpServers: ['mcp-perplexity', 'mcp-openai', 'mcp-medium'],
+  },
+  {
+    id: 'editor-qa',
+    name: 'Editor & QA',
+    title: 'The Perfectionist',
+    role: 'Quality Assurance Lead',
+    emoji: '✅',
+    category: 'quality',
+    description: 'Reviews every draft for grammar, plagiarism, factual accuracy, and brand voice compliance. Maintains quality benchmarks.',
+    responsibilities: [
+      'Reviews grammar, spelling, punctuation, and readability',
+      'Checks for plagiarism and ensures 100% originality',
+      'Verifies factual accuracy and source credibility',
+      'Ensures tone, voice, and style guide compliance',
+      'Scores content for readability (Flesch-Kincaid)',
+      'Sends content back for revision when standards are not met',
+    ],
+    skills: ['Grammar Review', 'Plagiarism Detection', 'Readability Scoring', 'Style Enforcement', 'Fact Verification'],
+    mcpServers: ['mcp-openai', 'mcp-perplexity'],
+  },
+  {
+    id: 'seo-specialist',
+    name: 'SEO Specialist',
+    title: 'The Ranking Machine',
+    role: 'SEO Optimization Lead',
+    emoji: '📊',
+    category: 'seo',
+    description: 'Performs advanced keyword research, optimizes on-page SEO, and monitors keyword rankings in real time.',
+    responsibilities: [
+      'Advanced keyword research (primary, secondary, LSI, long-tail)',
+      'Optimizes title tags, meta descriptions, header hierarchy, URL slugs',
+      'Implements internal linking strategies',
+      'Ensures proper schema markup and structured data',
+      'Monitors keyword rankings and adjusts strategy in real time',
+      'Analyzes SERP competition and reverse-engineers top-ranking content',
+    ],
+    skills: ['Keyword Research', 'On-page SEO', 'Schema Markup', 'SERP Analysis', 'Technical SEO'],
+    mcpServers: ['mcp-serpapi', 'mcp-googleanalytics', 'mcp-perplexity'],
+  },
+  {
+    id: 'visual-content',
+    name: 'Visual Content Agent',
+    title: 'The Creative Eye',
+    role: 'Visual Content Creator',
+    emoji: '🎨',
+    category: 'visual',
+    description: 'Generates featured images, infographics, illustrations, and custom graphics. Optimizes all images for web performance.',
+    responsibilities: [
+      'Generates featured images, infographics, and illustrations',
+      'Creates custom graphics, charts, and data visualizations',
+      'Optimizes images for web performance (compression, alt tags)',
+      'Designs social media–ready visual assets',
+      'Ensures visual branding consistency across all content',
+    ],
+    skills: ['Image Generation', 'Infographics', 'Image Optimization', 'Brand Design', 'Data Visualization'],
+    mcpServers: ['mcp-falai', 'mcp-canva'],
+  },
+  {
+    id: 'publishing-manager',
+    name: 'Publishing Manager',
+    title: 'The Operations Handler',
+    role: 'CMS & Publishing Manager',
+    emoji: '🚀',
+    category: 'publishing',
+    description: 'Formats and uploads content to WordPress, Ghost, or any CMS. Schedules posts and manages the publication queue.',
+    responsibilities: [
+      'Formats and uploads content to WordPress, Ghost, Webflow',
+      'Schedules posts according to the editorial calendar',
+      'Manages categories, tags, and taxonomies',
+      'Ensures mobile responsiveness and proper rendering',
+      'Handles revisions, updates, and content refreshes',
+      'Manages drafts pipeline and publication queue',
+    ],
+    skills: ['WordPress', 'Ghost', 'CMS Management', 'Scheduling', 'Content Formatting'],
+    mcpServers: ['mcp-wordpress', 'mcp-medium'],
+  },
+  {
+    id: 'social-distribution',
+    name: 'Social Distribution',
+    title: 'The Amplifier',
+    role: 'Distribution Specialist',
+    emoji: '📣',
+    category: 'distribution',
+    description: 'Auto-shares published posts across all social platforms. Crafts platform-specific captions and repurposes blog content.',
+    responsibilities: [
+      'Auto-shares posts across X/Twitter, LinkedIn, Facebook, Pinterest, Reddit',
+      'Crafts platform-specific captions, hashtags, and hooks',
+      'Schedules social posts for optimal engagement windows',
+      'Repurposes blog content into threads, carousels, stories',
+      'Syndicates content to Medium, Substack, and other channels',
+      'Engages with comments and community interactions',
+    ],
+    skills: ['Social Media', 'Content Repurposing', 'Community Engagement', 'Instagram Automation', 'Traffic Generation'],
+    mcpServers: ['mcp-twitter', 'mcp-linkedin', 'mcp-facebook', 'mcp-instagram'],
+  },
+  {
+    id: 'analytics-performance',
+    name: 'Analytics Agent',
+    title: 'The Data Brain',
     role: 'Performance Analyst',
-    description: 'Tracks blog performance, generates reports, and provides insights for content optimization.',
-    icon: '📈',
-    skills: ['Analytics', 'Reporting', 'Performance Tracking', 'Data Visualization'],
-    mcpServers: ['mcp-googleanalytics', 'mcp-perplexity']
-  }
+    emoji: '📈',
+    category: 'analytics',
+    description: 'Tracks page views, bounce rates, conversions, and traffic sources. Generates automated performance reports and A/B tests.',
+    responsibilities: [
+      'Tracks page views, bounce rates, time on page, conversions',
+      'Monitors Google Search Console & Google Analytics',
+      'Generates automated daily, weekly, monthly reports',
+      'Identifies top-performing and underperforming content',
+      'Triggers content updates or retirement based on data',
+      'A/B tests headlines, CTAs, and content formats',
+    ],
+    skills: ['Analytics', 'Reporting', 'A/B Testing', 'Performance Tracking', 'Data Visualization'],
+    mcpServers: ['mcp-googleanalytics', 'mcp-perplexity'],
+  },
+  {
+    id: 'link-builder',
+    name: 'Link Building Agent',
+    title: 'The Relationship Builder',
+    role: 'Outreach & Link Building',
+    emoji: '🔗',
+    category: 'outreach',
+    description: 'Identifies link-building opportunities, drafts outreach emails, monitors backlink profiles, and builds partnerships.',
+    responsibilities: [
+      'Identifies guest post, resource page, and broken link opportunities',
+      'Drafts and sends personalized outreach emails',
+      'Manages follow-ups and relationship nurturing',
+      'Monitors backlink profiles and disavows toxic links',
+      'Tracks domain authority growth and referral traffic',
+    ],
+    skills: ['Link Building', 'Outreach', 'Backlink Analysis', 'Guest Posting', 'Partnership Development'],
+    mcpServers: ['mcp-perplexity', 'mcp-serpapi'],
+  },
+  {
+    id: 'compliance-guardian',
+    name: 'Compliance Guardian',
+    title: 'The Watchdog',
+    role: 'Brand & Compliance Lead',
+    emoji: '🛡️',
+    category: 'compliance',
+    description: 'Ensures all content adheres to legal guidelines, monitors brand reputation, and enforces editorial policies.',
+    responsibilities: [
+      'Ensures content adheres to copyright, disclosure, GDPR guidelines',
+      'Monitors brand reputation and sentiment',
+      'Flags sensitive topics and controversial claims',
+      'Enforces editorial policies and ethical standards',
+      'Manages affiliate disclosure and FTC compliance',
+      'Maintains a living brand style guide',
+    ],
+    skills: ['Compliance', 'Brand Safety', 'GDPR', 'FTC Compliance', 'Style Guide Management'],
+    mcpServers: ['mcp-perplexity'],
+  },
+  {
+    id: 'orchestrator',
+    name: 'Project Orchestrator',
+    title: 'The Conductor',
+    role: 'Master Controller',
+    emoji: '🔄',
+    category: 'orchestration',
+    description: 'Coordinates all agents, manages end-to-end workflows, resolves bottlenecks, and monitors system health.',
+    responsibilities: [
+      'Coordinates all agents and manages end-to-end workflows',
+      'Assigns tasks, sets priorities, and enforces deadlines',
+      'Resolves bottlenecks and dependencies between agents',
+      'Monitors system health, uptime, and agent performance',
+      'Provides status dashboards and progress summaries',
+      'Escalates critical issues for human review',
+      'Continuously optimizes team efficiency and output velocity',
+    ],
+    skills: ['Orchestration', 'Task Management', 'System Monitoring', 'Conflict Resolution', 'Optimization'],
+    mcpServers: ['mcp-perplexity', 'mcp-openai'],
+  },
 ];
 
-export const BLOG_EMPIRE_PHASES = [
-  {
-    phase: 1,
-    name: 'Niche Research',
-    description: 'Identify profitable niches, analyze competition, and select target audience',
-    deliverables: ['Niche Analysis Report', 'Competitor Research', 'Target Audience Profile', 'Keyword Opportunity Map']
-  },
-  {
-    phase: 2,
-    name: 'Content Strategy',
-    description: 'Develop content pillars, editorial calendar, and SEO strategy',
-    deliverables: ['Content Pillar Framework', 'Editorial Calendar', 'SEO Strategy Document', 'Content Templates']
-  },
-  {
-    phase: 3,
-    name: 'Blog Setup',
-    description: 'Set up blog infrastructure, design, and initial content',
-    deliverables: ['Blog Website', 'Brand Identity', 'Initial 10 Posts', 'Email Capture Setup']
-  },
-  {
-    phase: 4,
-    name: 'Content Production',
-    description: 'Scale content creation with consistent publishing schedule',
-    deliverables: ['Weekly Content Batches', 'SEO Optimized Posts', 'Social Media Content', 'Email Newsletter']
-  },
-  {
-    phase: 5,
-    name: 'Monetization',
-    description: 'Implement revenue streams and optimize for maximum earnings',
-    deliverables: ['Ad Integration', 'Affiliate Programs', 'Sponsored Content Pipeline', 'Revenue Dashboard']
-  }
+export const BLOG_WORKFLOW_STEPS = [
+  { emoji: '📅', label: 'Strategy & Planning' },
+  { emoji: '🔍', label: 'Research & Data Gathering' },
+  { emoji: '✍️', label: 'Content Writing & Drafting' },
+  { emoji: '✅', label: 'Editing, QA & SEO Optimization' },
+  { emoji: '🎨', label: 'Visual Asset Creation' },
+  { emoji: '🚀', label: 'CMS Upload & Scheduled Publishing' },
+  { emoji: '📣', label: 'Social Distribution & Promotion' },
+  { emoji: '📈', label: 'Performance Monitoring & Reporting' },
+  { emoji: '🔄', label: 'Optimization, Refresh & Feedback Loop' },
+];
+
+export const BLOG_FEATURES = [
+  { icon: '🕐', feature: '24/7 Operation', description: 'Content planned, created, and published around the clock across all time zones.' },
+  { icon: '📈', feature: 'Self-Optimizing', description: 'Learns from performance data and continuously improves content quality & strategy.' },
+  { icon: '🌍', feature: 'Multi-Language', description: 'Produces content in multiple languages for global blog operations.' },
+  { icon: '🔌', feature: 'Multi-Platform', description: 'Integrates with WordPress, Ghost, Shopify, Webflow, HubSpot, and custom CMS.' },
+  { icon: '🧩', feature: 'Modular & Scalable', description: 'Scale from 1 blog to 100+ blogs. Add or remove agents as needed.' },
+  { icon: '🤝', feature: 'Human-in-the-Loop', description: 'Fully autonomous by default, but humans can review, approve, or override at any stage.' },
+  { icon: '🔒', feature: 'Brand Safe', description: 'Built-in compliance, plagiarism detection, and brand voice enforcement.' },
+  { icon: '⚡', feature: 'Rapid Output', description: 'Capable of producing 10–100+ high-quality blog posts per day.' },
+  { icon: '💰', feature: 'Cost-Efficient', description: 'Replaces a full content team at a fraction of the cost.' },
+  { icon: '📊', feature: 'Transparent Reporting', description: 'Full visibility into every action, decision, and result through dashboards.' },
 ];
 
 export const getBlogAgent = (agentId: string): BlogAgent | undefined => {
