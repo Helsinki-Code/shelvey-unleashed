@@ -2949,6 +2949,45 @@ export type Database = {
           },
         ]
       }
+      seo_sessions: {
+        Row: {
+          agent_logs: Json | null
+          articles: Json | null
+          created_at: string | null
+          goals: string | null
+          id: string
+          status: string
+          target_url: string
+          updated_at: string | null
+          user_id: string
+          workflow_state: Json | null
+        }
+        Insert: {
+          agent_logs?: Json | null
+          articles?: Json | null
+          created_at?: string | null
+          goals?: string | null
+          id?: string
+          status?: string
+          target_url: string
+          updated_at?: string | null
+          user_id: string
+          workflow_state?: Json | null
+        }
+        Update: {
+          agent_logs?: Json | null
+          articles?: Json | null
+          created_at?: string | null
+          goals?: string | null
+          id?: string
+          status?: string
+          target_url?: string
+          updated_at?: string | null
+          user_id?: string
+          workflow_state?: Json | null
+        }
+        Relationships: []
+      }
       shell_command_approvals: {
         Row: {
           approved_at: string | null
