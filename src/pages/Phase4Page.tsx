@@ -37,7 +37,7 @@ import { StartPhaseButton } from "@/components/StartPhaseButton";
 import { ContentGenerationStudio } from "@/components/ContentGenerationStudio";
 import SEODashboard from "@/components/SEODashboard";
 import { SocialCommandCenter } from "@/components/SocialCommandCenter";
-import { SEOWarRoom } from "@/components/seo/SEOWarRoom";
+import { AgentWarRoom } from "@/components/seo/AgentWarRoom";
 import SocialContentFactory from "@/components/SocialContentFactory";
 import RadialOrbitalTimeline, { type RadialTimelineItem } from "@/components/ui/radial-orbital-timeline";
 import { Phase4AutopilotPanel } from "@/components/Phase4AutopilotPanel";
@@ -462,7 +462,7 @@ export default function Phase4Page() {
 
             <TabsContent value="seo-warroom">
               <div className="h-[700px] border border-border rounded-lg overflow-hidden">
-                <SEOWarRoom />
+                <AgentWarRoom url="" goals="" onStop={() => {}} />
               </div>
             </TabsContent>
 
