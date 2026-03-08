@@ -1,15 +1,7 @@
-// AI Service Layer - SEO Agent War Room with 16 Agents
+// AI Service Layer — SEO Agent War Room
 
 import { supabase } from '@/integrations/supabase/client';
-import type {
-  KeywordMetric,
-  SerpResult,
-  ContentStrategy,
-  LinkSuggestion,
-  BulkRankResponse,
-  AnalyticsMetric,
-  PagePerformance,
-} from '@/types/agent';
+import type { InterventionCommand } from '@/types/agent';
 
 // --- Builder Chat Service ---
 export const sendChatMessage = async (
@@ -23,11 +15,7 @@ export const sendChatMessage = async (
     })),
     { role: 'user', content: prompt },
   ];
-
-  const { data, error } = await supabase.functions.invoke('ai-chat', {
-    body: { messages, mode: 'chat' },
-  });
-
+  const { data, error } = await supabase.functions.invoke('ai-chat', { body: { messages, mode: 'chat' } });
   if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
   return data?.content || 'No response.';
@@ -45,14 +33,9 @@ export const sendBuilderRequest = async (
     })),
     { role: 'user', content: currentCode ? `CONTEXT: Previous code length: ${currentCode.length} chars.\n\nREQUEST: ${prompt}` : prompt },
   ];
-
-  const { data, error } = await supabase.functions.invoke('ai-chat', {
-    body: { messages, mode: 'builder' },
-  });
-
+  const { data, error } = await supabase.functions.invoke('ai-chat', { body: { messages, mode: 'builder' } });
   if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
-
   return {
     message: data?.message || 'Component generated.',
     code: data?.code || generateFallbackComponent(prompt),
@@ -60,125 +43,39 @@ export const sendBuilderRequest = async (
   };
 };
 
-// --- SEO Agent Orchestrator Services (16 agents) ---
-async function callAgent(agent: string, params: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('seo-agent-orchestrator', {
-    body: { agent, ...params },
+// --- War Room Service ---
+export async function invokeWarRoom(action: string, payload: Record<string, any> = {}) {
+  const { data, error } = await supabase.functions.invoke('seo-war-room', {
+    body: { action, ...payload },
   });
   if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
   return data;
 }
 
-// 1. Orchestrator
-export const orchestrateWorkflow = async (url: string, goals: string) => {
-  return callAgent('orchestrator', { url, goals });
-};
+export const startWarRoomMission = (url: string, goals: string) =>
+  invokeWarRoom('start_mission', { url, goals });
 
-// 2. Website Crawler
-export const crawlWebsiteAgent = async (url: string) => {
-  return callAgent('crawler', { url });
-};
+export const getWarRoomState = (sessionId: string) =>
+  invokeWarRoom('get_state', { sessionId });
 
-// 3. Keyword Researcher
-export const performKeywordResearch = async (url: string, contentThemes: string[], pages: string[]): Promise<{ keywords: KeywordMetric[]; clusters: any[]; summary: string }> => {
-  return callAgent('keyword_researcher', { url, contentThemes, pages });
-};
+export const advanceWarRoom = (sessionId: string) =>
+  invokeWarRoom('advance', { sessionId });
 
-// 4. SERP Analyst
-export const performSerpAnalysis = async (keyword: string): Promise<SerpResult> => {
-  const data = await callAgent('serp_analyst', { keyword });
-  return {
-    keyword,
-    aiOverview: data?.aiOverview || '',
-    peopleAlsoAsk: data?.peopleAlsoAsk || [],
-    competitors: data?.competitors || [],
-    opportunityScore: data?.opportunityScore || 0,
-    strategicInsight: data?.strategicInsight || '',
-    group: data?.group || 'General',
-    timestamp: data?.timestamp || Date.now(),
-  };
-};
+export const approveWarRoom = (sessionId: string, approvalId: string, optionId: string, userInput?: string) =>
+  invokeWarRoom('approve', { sessionId, approvalId, optionId, userInput });
 
-// 5. Content Strategist
-export const generateContentStrategy = async (
-  keywords: KeywordMetric[], serpData: SerpResult[], goals: string
-): Promise<ContentStrategy> => {
-  const data = await callAgent('content_strategist', { keywords, serpData, goals });
-  return {
-    clusters: data?.clusters || [],
-    pillarContent: data?.pillarContent || [],
-    calendar: data?.calendar || [],
-    internalLinking: data?.internalLinking || [],
-    internalLinkingMap: data?.internalLinkingMap || [],
-    summary: data?.summary || 'Strategy unavailable.',
-  };
-};
+export const interveneWarRoom = (sessionId: string, command: InterventionCommand) =>
+  invokeWarRoom('intervene', { sessionId, command });
 
-// 6. Outline Architect
-export const generateArticleOutline = async (keyword: string, serpData: SerpResult, tone: string, paaQuestions: string[]) => {
-  return callAgent('outline_architect', { keyword, serpData, tone, paaQuestions });
-};
+export const getWarRoomReport = (sessionId: string) =>
+  invokeWarRoom('get_report', { sessionId });
 
-// 7. Article Writer
-export const writeArticleSection = async (
-  sectionHeading: string, keyword: string, context: string, tone: string, visualType: string, paaQuestions?: string[]
-): Promise<{ content: string; chartData?: any[]; imagePrompt?: string }> => {
-  const data = await callAgent('article_writer', { sectionHeading, keyword, context, tone, visualType, paaQuestions });
-  return { content: data?.content || 'Section generation failed.', chartData: data?.chartData, imagePrompt: data?.imagePrompt };
-};
+export const exportWarRoom = (sessionId: string, format: string) =>
+  invokeWarRoom('export', { sessionId, format });
 
-// 8. AI Overview Optimizer
-export const optimizeForAIOverview = async (fullContent: string, keyword: string, aiOverview?: string): Promise<{ content: string; changes: string[] }> => {
-  const data = await callAgent('ai_overview_optimizer', { content: fullContent, keyword, aiOverview });
-  return { content: data?.content || fullContent, changes: data?.changes || [] };
-};
-
-// 9. Internal Link Suggester
-export const generateInternalLinkSuggestions = async (content: string, sitemap: string[]): Promise<LinkSuggestion[]> => {
-  const data = await callAgent('internal_linker', { content, sitemap });
-  return Array.isArray(data) ? data : [];
-};
-
-// 10. Image Generator
-export const generateImagePrompt = async (sectionHeading: string, keyword: string, context: string) => {
-  return callAgent('image_generator', { sectionHeading, keyword, context });
-};
-
-// 11. Rank Tracker
-export const checkRank = async (domain: string, keywords: string[]): Promise<BulkRankResponse> => {
-  const data = await callAgent('rank_tracker', { domain, keywords });
-  return { results: data?.results || [], summary: data?.summary || 'No data.', groundingUrls: [] };
-};
-
-// 12. Analytics Agent
-export const analyzeTrafficPatterns = async (metrics: AnalyticsMetric[], pages: PagePerformance[]) => {
-  return callAgent('analytics_agent', { metrics, pages });
-};
-
-// 13. Content Optimizer
-export const analyzeContentOptimization = async (content: string, keyword: string, currentRank?: number) => {
-  return callAgent('content_optimizer', { content, keyword, currentRank });
-};
-
-// 14. Indexing Predictor
-export const predictIndexingSuccess = async (content: string, keyword: string): Promise<{ likelihood: string; score: number; factors: any[]; advice: string }> => {
-  const data = await callAgent('indexing_predictor', { content, keyword });
-  return { likelihood: data?.likelihood || 'Unknown', score: data?.score || 0, factors: data?.factors || [], advice: data?.advice || 'Check Search Console.' };
-};
-
-// 15. Link Validator
-export const validateLinks = async (links: string[]) => {
-  return callAgent('link_validator', { links });
-};
-
-// 16. Report Generator
-export const generateSessionReport = async (sessionData: any) => {
-  return callAgent('report_generator', { sessionData });
-};
-
-// --- Legacy compatibility ---
-export const applyLinkSuggestions = async (content: string, suggestions: LinkSuggestion[]): Promise<string> => {
+// --- Legacy compat ---
+export const applyLinkSuggestions = async (content: string, suggestions: any[]): Promise<string> => {
   let newContent = content;
   const sorted = [...suggestions].sort((a, b) => b.anchorText.length - a.anchorText.length);
   for (const s of sorted) {
@@ -194,27 +91,6 @@ export const generateImage = async (prompt: string): Promise<string> => {
   return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/600`;
 };
 
-export const analyzeWebsiteContent = async (url: string) => {
-  return crawlWebsiteAgent(url);
-};
-
-export const crawlWebsite = async (url: string) => {
-  const { data, error } = await supabase.functions.invoke('firecrawl-scrape', {
-    body: { url, options: { formats: ['markdown', 'links'] } },
-  });
-  if (error) throw new Error(error.message);
-  return data;
-};
-
-export const mapWebsite = async (url: string) => {
-  const { data, error } = await supabase.functions.invoke('firecrawl-map', {
-    body: { url },
-  });
-  if (error) throw new Error(error.message);
-  return data;
-};
-
-// Fallback component
 const generateFallbackComponent = (prompt: string): string => `() => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
@@ -229,25 +105,14 @@ const generateFallbackComponent = (prompt: string): string => `() => {
 export default {
   sendChatMessage,
   sendBuilderRequest,
-  orchestrateWorkflow,
-  crawlWebsiteAgent,
-  performKeywordResearch,
-  performSerpAnalysis,
-  generateContentStrategy,
-  generateArticleOutline,
-  writeArticleSection,
-  optimizeForAIOverview,
-  generateInternalLinkSuggestions,
-  generateImagePrompt,
-  checkRank,
-  analyzeTrafficPatterns,
-  analyzeContentOptimization,
-  predictIndexingSuccess,
-  validateLinks,
-  generateSessionReport,
+  invokeWarRoom,
+  startWarRoomMission,
+  getWarRoomState,
+  advanceWarRoom,
+  approveWarRoom,
+  interveneWarRoom,
+  getWarRoomReport,
+  exportWarRoom,
   applyLinkSuggestions,
   generateImage,
-  analyzeWebsiteContent,
-  crawlWebsite,
-  mapWebsite,
 };

@@ -1,169 +1,116 @@
 
+# Plan: Production-Grade Autonomous Trading Company
 
-# Plan: Rebuild SEO War Room to Match Full Architecture
+## Current State Assessment
 
-## Summary
+After thorough review, the trading system already has significant production infrastructure in place:
 
-The uploaded architecture defines a production-grade multi-agent system with a proper server-side workflow engine, message bus, state store, health monitor, approval queue, and SSE streaming -- all coordinated through a DAG scheduler. The current implementation runs everything client-side in a single `useEffect`. This plan restructures the system to match the architecture.
+**What Already Works (Real, Not Mock):**
+- `mcp-alpaca` edge function connects to real Alpaca API (paper + live) using user-provided API keys
+- `trading-order-gateway` performs real risk checks (position sizing, daily loss limits, buying power, duplicate detection) before routing orders to Alpaca
+- `trading-ai-agent` executes real DCA, Grid, and Momentum strategies through the order gateway
+- `trading-ceo-orchestrator` manages a full candidate lifecycle pipeline (research → backtest → paper → staged_live → full_live) with dual CEO/user approval gates
+- `trading-scheduler-worker` generates tasks from real project data (not synthetic)
+- Kill switch, reconciliation, and compliance audit trail exist in the database
+- 23 trading-related database tables with proper schema
 
-## Architecture Translation (Server → Edge Function + Frontend)
+**What Is Broken / Missing / Simulated:**
 
-Since this is a Lovable project (React frontend + Supabase edge functions), the Express server architecture translates to:
+1. **No Autonomous Loop**: Agents only execute when user clicks "Execute" button. There is no scheduled autonomous execution cycle that continuously monitors markets, generates signals, and places trades.
 
-- **Express server** → Single `seo-war-room` edge function with action-based routing
-- **SSE streaming** → Polling via React state + Supabase Realtime on `seo_sessions` table
-- **MessageBus/StateStore/WorkflowEngine** → Server-side state managed in the edge function, persisted to `seo_sessions.workflow_state`
-- **Frontend SSE hook** → `useWarRoom` custom hook polling edge function for state updates
+2. **Alert Auto-Actions Are Fake**: `trading-alert-executor` has an `executeAutoAction` function that just returns strings like `"Bought 100 shares of AAPL"` without actually calling the order gateway.
 
-## Changes
+3. **No Real-Time Market Data Pipeline**: Market data is only fetched on-demand. No continuous polling/streaming of prices to power alerts, P&L tracking, or strategy signals.
 
-### 1. Replace Type System (`src/types/agent.ts`)
-Replace the current simple types with the full architecture type system:
-- `AgentId` enum (orchestrator, crawler, keyword, serp, strategy, writer, image, link_builder, rank_tracker, analytics, optimizer, indexer, validator)
-- `AgentStatus` enum (idle, working, waiting_input, waiting_approval, completed, error, monitoring, paused, crashed)
-- `PhaseStatus` enum with DAG states (queued, ready, running, awaiting_approval, completed, failed, skipped)
-- `MessageType` enum for bus messages
-- `ApprovalStatus` enum with timeout support
-- `StreamEventType` enum for frontend events
-- Full interfaces: `BusMessage`, `HeartbeatPayload`, `TaskAssignment`, `TaskCompletion`, `MissionState`, `AgentState`, `PhaseState`, `DataStore`, `CommunicationLog`, `ApprovalRequest` (with options, timeout, blocking), `LogEntry` (with level categories including decision/action), `AgentReport`, `MissionConfig` with `DEFAULT_CONFIG`
-- Domain models: `CrawlResult`, `CrawledPage`, `SiteStructure`, `ToneAnalysis`, `TechnicalIssue`, `ContentTheme`, `KeywordCluster`, `SerpResult` with content gaps, `ContentStrategy` with competitive positioning, `GeneratedArticle` with full pipeline statuses, `ArticleSection` with visual types, `LinkValidationResult`, `GeneratedImage` with placement, `RankingSnapshot`, `AnalyticsSnapshot`, `OptimizationAudit`
-- `InterventionCommand` type
-- Keep existing simple types (`Message`, `SEOData`, `BuilderState`) for backward compatibility
+4. **Portfolio Sync Is Missing**: `PortfolioOverview` shows data from `trading_portfolio_snapshots` table but nothing populates it from Alpaca's real account endpoint on a schedule.
 
-### 2. Create `useWarRoom` Hook (`src/hooks/useWarRoom.ts`)
-Implement the architecture's frontend integration pattern:
-- Manages full `WarRoomState` with agents as Map, phases array, approvals, communications, articles, keywords, health, connected status
-- Starts mission via edge function call
-- Polls edge function for state updates every 2 seconds (replaces SSE)
-- Provides actions: `startMission`, `pauseMission`, `resumeMission`, `approveRequest`, `intervene`, `getAgentDeepDive`, `downloadExport`, `getSessionReport`
-- Handles all stream event types from the architecture (agent_status, phase_update, log_entry, communication, approval_request/resolved, writing_stream, page_crawled, keyword_discovered, rank_checked, heartbeat, progress, workflow_complete, error)
+5. **P&L Tracking Is Stale**: `trading_projects.total_pnl` is set to 0 on creation and never updated from real execution data.
 
-### 3. Create `seo-war-room` Edge Function (`supabase/functions/seo-war-room/index.ts`)
-Single edge function implementing the full server architecture with action routing:
+6. **Strategy Execution Scheduler Missing**: Active strategies (DCA daily, Grid monitoring, Momentum signals) have no cron or scheduled trigger — they only run on manual button press.
 
-**Actions:**
-- `start_mission` — Initialize mission state, register all 13 agents, build default phase DAG (PHASE_CRAWL → PHASE_KEYWORDS → PHASE_SERP → PHASE_STRATEGY → PHASE_WRITE → PHASE_MONITOR), persist to `seo_sessions`, begin workflow advancement
-- `get_state` — Return full state snapshot (mission, agents, phases, data, comms, health, approvals)
-- `advance` — DAG scheduler: check ready phases (all dependencies completed), assign tasks to agents, execute agent logic via Gemini AI calls, handle completions, store outputs
-- `approve` — Resolve approval request, update phase status, trigger workflow advancement
-- `intervene` — Send pause/resume/redirect/instruct commands to specific agents
-- `get_report` — Generate session report via AI
-- `export` — Return data packages (keywords CSV, SERP JSON, strategy JSON, article MD)
+7. **No AI-Driven Research/Analysis Agent**: The Research phase agent doesn't use AI to analyze market conditions and generate actionable trade ideas. It just collects database records.
 
-**Agent implementations within the edge function:**
-- **Crawler**: Calls Gemini with Google Search grounding to discover pages, extract content themes, analyze tone, detect technical issues. Streams `PAGE_CRAWLED` events. Requests approval gate.
-- **Keyword**: Uses crawl data to research keywords via Gemini. Groups into clusters. Streams `KEYWORD_DISCOVERED`. Requests approval.
-- **SERP**: Parallel keyword SERP analysis via Gemini with search grounding. Extracts AI Overviews, PAA questions, competitor data, content gaps. Requests approval.
-- **Strategy**: Synthesizes all intelligence into topic clusters, pillar content, calendar, internal linking map. Requests approval.
-- **Writer**: For each calendar entry: generates outline (approval gate), generates featured image, writes sections one-by-one (streamed), AI Overview optimization, internal link suggestions (approval gate), link validation, final approval gate.
-- **Image**: Generates image prompts and calls Gemini image model.
-- **Link Builder**: Suggests internal links based on sitemap and content.
-- **Rank Tracker**: Checks rankings via Gemini with search grounding. Continuous monitoring mode.
-- **Analytics**: Monitors traffic patterns and performance.
-- **Optimizer**: Detects content optimization opportunities.
-- **Indexer**: Predicts indexing likelihood.
-- **Validator**: Validates all links in articles.
+8. **Binance/Coinbase Not Production-Ready**: Only Alpaca is wired to the order gateway. Binance and Coinbase MCPs exist but don't route through the risk-checked gateway.
 
-**State management:**
-- Mission state, agent states, phase states, data store, communication log all stored as JSONB in `seo_sessions.workflow_state`
-- Each `advance` call loads state, executes next ready phases, saves updated state
-- Approval gates block phase progression until resolved
+## Implementation Plan
 
-### 4. Rebuild Frontend Components
+### Task 1: Autonomous Trading Loop Edge Function
+Create `trading-autonomous-loop` edge function that:
+- Runs as a scheduled cron job (every 5 minutes during market hours)
+- For each active project: fetches real portfolio from Alpaca, updates `trading_portfolio_snapshots`, syncs `trading_projects.total_pnl`
+- Checks all active price alerts against live market data and routes triggered alerts through `trading-order-gateway` (not fake strings)
+- Executes all active strategies (DCA interval checks, Grid level monitoring, Momentum signal generation) through the real order gateway
+- Logs all activity to `trading_activity_logs` for real-time feed visibility
 
-**`AgentWarRoom.tsx`** — Complete rewrite:
-- Uses `useWarRoom` hook instead of inline state management
-- Polls edge function via `advance` action on interval (every 3s while mission is running)
-- Layout: GlobalProgress (top) → OrchestratorPanel (workflow DAG) → Main area with tabs (Agents, Comms, Export) → Approval sidebar
-- Agents tab shows grid of `AgentWorkspacePanel` components with live heartbeat indicators, status badges, progress bars, expandable log streams
-- Click agent → `AgentDeepDive` full-screen overlay with complete log history, intervention controls (pause, resume, redirect, instruct)
+### Task 2: Fix Alert Auto-Execution
+Update `trading-alert-executor` so `executeAutoAction` calls `trading-order-gateway` for BUY/SELL actions instead of returning placeholder strings. Wire alert checking into the autonomous loop.
 
-**`GlobalProgress.tsx`** — Update to show:
-- Overall mission progress from `MissionState.totalProgress`
-- Current phase from DAG
-- Active agents count, pending approvals count
-- Mission timer (elapsed time)
-- Health status indicator (healthy/degraded/critical from `HealthMonitor` data)
+### Task 3: AI-Powered Market Research Agent
+Create `trading-research-agent` edge function that uses Lovable AI (`google/gemini-2.5-flash`) to:
+- Analyze current positions, recent executions, and market data
+- Generate actionable trade recommendations with reasoning
+- Auto-create strategy candidates with risk scores
+- Store research outputs in `trading_team_tasks` with real AI-generated analysis
 
-**`AgentWorkspacePanel.tsx`** — Update to show:
-- Heartbeat indicator (green dot with pulse, showing `lastHeartbeat` recency)
-- Agent status badge using full `AgentStatus` enum (idle/working/waiting_approval/completed/error/monitoring/paused/crashed)
-- Current task description
-- Progress bar
-- Scrollable log stream with color-coded levels (info/warn/error/action/decision)
-- Tasks completed / tasks errored counters
-- Data produced summary
+### Task 4: Real-Time Portfolio Sync
+Add a portfolio sync job inside the autonomous loop that:
+- Calls `mcp-alpaca` `get_account` and `get_positions` for each user's active project
+- Upserts into `trading_portfolio_snapshots` with real equity, cash, positions, and P&L
+- Updates `trading_projects.total_pnl` and `trading_projects.capital` from broker data
+- Calculates and stores max drawdown in `trading_risk_controls`
 
-**`OrchestratorPanel.tsx`** — Update to show:
-- Visual DAG of phases with dependency arrows
-- Phase status badges using `PhaseStatus` enum
-- Approval gate indicators on phases that require approval
-- Decision log from orchestrator
+### Task 5: Strategy Execution Scheduler (Cron)
+Set up a `pg_cron` job that invokes `trading-autonomous-loop` every 5 minutes. This makes the system truly autonomous — agents work continuously without user intervention.
 
-**`ApprovalQueue.tsx`** — Update to match architecture:
-- Full approval options: Approve, Reject, Modify & Approve, Request More Info
-- Each option can require text input
-- Timeout countdown display
-- Blocking indicator with list of blocked agents
-- Work completed summary in each approval card
+### Task 6: Update Frontend to Show Real Data
+- Update `TradingDashboardPage` to fetch portfolio from real Alpaca data (via the synced snapshots) instead of showing static project capital
+- Add a "Live" indicator when autonomous loop is active
+- Show real AI research recommendations in the Research phase
+- Display real-time P&L updates from portfolio sync
+- Add connection status indicator showing whether Alpaca keys are configured and valid
 
-**`CommunicationStream.tsx`** — Update to show:
-- Full `BusMessage` stream with from/to agent labels
-- Message type badges (TASK_ASSIGN, TASK_COMPLETE, DATA_HANDOFF, etc.)
-- Filter by agent, by message type
-- Correlation ID linking related messages
+### Task 7: Wire Binance/Coinbase Through Order Gateway
+Extend `trading-order-gateway` to support Binance and Coinbase exchanges by routing through their respective MCP functions with the same risk checks applied.
 
-**`AgentDeepDive.tsx`** — Update with:
-- Full log history with category and level filters
-- Search through logs
-- Intervention controls: Pause, Resume, Redirect (with payload input), Instruct (with message input), Explain (ask agent to explain), Redo
-- Agent report display (tasks executed, data sources accessed, decisions log, errors encountered, outputs summary, recommendations)
-- Communication history for this specific agent
+## Technical Details
 
-**`ExportPanel.tsx`** — Update with:
-- Keywords CSV download
-- SERP analysis JSON download  
-- Content strategy JSON download
-- Article markdown downloads (per article)
-- Ranking history JSON download
-- Communications log JSON download
-- Full session JSON download
-- Session report (AI-generated)
+### Autonomous Loop Architecture
+```text
+pg_cron (every 5 min)
+  └─► trading-autonomous-loop
+        ├─► For each active project:
+        │     ├─► mcp-alpaca: get_account + get_positions
+        │     ├─► Update trading_portfolio_snapshots
+        │     ├─► Update trading_projects.total_pnl
+        │     ├─► Check trading_alerts vs live prices
+        │     │     └─► trading-order-gateway (if triggered)
+        │     ├─► Execute active strategies
+        │     │     └─► trading-order-gateway (risk-checked)
+        │     └─► Log to trading_activity_logs
+        └─► AI Research (hourly subset)
+              └─► Lovable AI → strategy candidates
+```
 
-### 5. Update `BlogEmpirePage.tsx`
-- Import and use `useWarRoom` hook
-- Pass hook state and actions to `AgentWarRoom`
-- Handle mission lifecycle (start → running → complete)
+### Risk Controls (Already Enforced, Will Be Extended)
+- Max position size % check (existing)
+- Daily loss limit with auto-pause (existing)
+- Kill switch blocks all execution (existing)
+- Duplicate order detection within 10s window (existing)
+- NEW: Max drawdown auto-kill-switch activation
+- NEW: Portfolio concentration alerts
 
-### 6. Update `aiService.ts`
-- Add `invokeWarRoom(action, payload)` helper that calls the `seo-war-room` edge function
-- Add typed wrappers: `startWarRoomMission`, `getWarRoomState`, `advanceWarRoom`, `approveWarRoom`, `interveneWarRoom`, `getWarRoomReport`, `exportWarRoom`
+### Files to Create
+- `supabase/functions/trading-autonomous-loop/index.ts`
+- `supabase/functions/trading-research-agent/index.ts`
 
-### 7. Database Migration
-Alter `seo_sessions` table to ensure `workflow_state` JSONB column can hold the full state snapshot (mission + agents + phases + data + comms + config). No schema changes needed if the existing table already has the `workflow_state jsonb` column.
+### Files to Modify
+- `supabase/functions/trading-alert-executor/index.ts` (wire real order execution)
+- `supabase/functions/trading-order-gateway/index.ts` (add Binance/Coinbase support)
+- `src/pages/TradingDashboardPage.tsx` (real data display, autonomous status)
+- `src/components/trading/PortfolioOverview.tsx` (live Alpaca data)
+- `src/components/trading/RealTimeAgentExecutor.tsx` (autonomous mode indicator)
 
-## Files to Create
-- `src/hooks/useWarRoom.ts`
-- `supabase/functions/seo-war-room/index.ts`
-
-## Files to Modify
-- `src/types/agent.ts` (full type system replacement)
-- `src/services/aiService.ts` (add war room service calls)
-- `src/components/seo/AgentWarRoom.tsx` (complete rewrite using hook)
-- `src/components/seo/GlobalProgress.tsx` (health + DAG info)
-- `src/components/seo/AgentWorkspacePanel.tsx` (heartbeat + full status)
-- `src/components/seo/OrchestratorPanel.tsx` (DAG visualization)
-- `src/components/seo/ApprovalQueue.tsx` (full options + timeout)
-- `src/components/seo/CommunicationStream.tsx` (bus messages + filters)
-- `src/components/seo/AgentDeepDive.tsx` (intervention controls + report)
-- `src/components/seo/ExportPanel.tsx` (all export types)
-- `src/pages/BlogEmpirePage.tsx` (hook integration)
-
-## Implementation Order
-1. Replace type system in `agent.ts`
-2. Create `seo-war-room` edge function with full agent implementations
-3. Create `useWarRoom` hook
-4. Update `aiService.ts` with war room service calls
-5. Rebuild all UI components
-6. Update `BlogEmpirePage.tsx` to wire everything together
-
+### Database Changes
+- Add `autonomous_mode` boolean column to `trading_projects`
+- Add `last_sync_at` timestamp to `trading_projects`
+- Set up `pg_cron` schedule for the autonomous loop
