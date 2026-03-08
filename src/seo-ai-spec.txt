@@ -1,0 +1,3891 @@
+## AUTONOMOUS AI AGENT TEAM WITH REAL-TIME TRANSPARENCY AND HUMAN OVERSIGHT
+
+---
+
+# SECTION 1: FUNDAMENTAL PARADIGM - THE LIVING AGENT WORKSPACE
+
+## 1.1 CORE EXPERIENCE PHILOSOPHY
+
+This application is NOT a traditional dashboard with pages and forms. This is a LIVING WORKSPACE where users watch, monitor, and collaborate with an autonomous team of AI agents working in real-time.
+
+The moment a user enters their website URL, they are transported into a command center view where they observe their personal AI team spring into action. Every agent becomes visible, their work streams live, their communications with each other are transparent, and approval requests appear as interactive prompts requiring human decision.
+
+Think of this as a glass-walled office where you can see every employee working at their desk. You can walk up to any desk, see exactly what they are doing, read their notes, review their research, and provide direction. The agents never hide their work. Everything is observable, interruptible, and collaborative.
+
+## 1.2 THE SINGLE ENTRY POINT PHILOSOPHY
+
+The user journey begins with one action: entering their website URL. This single input triggers the entire autonomous workflow. The user does not navigate between pages to initiate different tasks. Instead, they enter the URL, then watch as their AI team autonomously determines what needs to be done, assigns work, executes tasks, and presents findings - all while the user observes in real-time.
+
+The agents work on AUTOPILOT but pause at critical decision points, waiting for human approval before proceeding. The user is never left wondering what is happening. The user is never required to figure out what to do next. The agents drive the workflow while humans maintain control.
+
+## 1.3 TRANSPARENCY AS THE FUNDAMENTAL PRINCIPLE
+
+Every single action taken by every single agent must be visible to the user. There are no background processes hidden from view. There are no black boxes. When an agent thinks, the user sees the thinking. When an agent researches, the user sees the research happening. When an agent writes, the user sees words appearing. When agents communicate, the user sees the messages.
+
+This transparency is not optional. It is the core product experience. Users pay for the ability to watch AI experts work on their behalf, learn from their processes, and intervene when desired.
+
+---
+
+# SECTION 2: THE COMMAND CENTER INTERFACE
+
+## 2.1 PRIMARY VIEW - THE AGENT WAR ROOM
+
+Upon entering a website URL, the user transitions into the Agent War Room. This is the primary interface for the entire application experience.
+
+### Visual Layout Concept
+
+The screen transforms into a mission control aesthetic. The Orchestrator Agent occupies a prominent central or top position, clearly identified as the team leader coordinating all activities. Surrounding or below the Orchestrator, each specialist agent has their own dedicated workspace panel.
+
+These panels are not static cards. They are LIVING WORKSPACES that stream real-time activity. Text flows, progress bars move, status indicators pulse, and work products materialize before the user's eyes.
+
+### The Orchestrator's Command View
+
+The Orchestrator Agent's panel shows the master plan - a visual workflow diagram displaying all tasks identified, their dependencies, current status, and assigned agents. Users see exactly how the Orchestrator has decomposed their goal into subtasks and which agents are responsible for each.
+
+The Orchestrator's communication log streams in real-time, showing messages sent to other agents, responses received, decisions made, and coordination activities. Users witness the leadership happening.
+
+### Individual Agent Workspaces
+
+Each specialist agent's workspace panel contains their current task assignment clearly displayed at the top, a real-time activity stream showing exactly what they are doing right now, their working documents and intermediate outputs visible and scrollable, progress indicators for their current task, status badges showing states like Working, Waiting for Approval, Completed, or Blocked, and quick action buttons for user intervention.
+
+## 2.2 AGENT WORKSPACE DEEP DIVE VIEW
+
+Users can click on any agent's workspace panel to expand into a full-screen detailed view of that agent's work. This deep dive view shows the complete history of everything this agent has done during the current session.
+
+### Contents of Deep Dive View
+
+The detailed view includes every research query the agent has made, every data source accessed with timestamps, every piece of information gathered, the agent's reasoning and decision-making process documented in real-time logs, all intermediate work products and drafts, communications sent to and received from other agents, any errors encountered and how they were resolved, and all outputs produced.
+
+Users can scroll through this history, search within it, and export it for their records. Nothing is hidden.
+
+### Intervention Capabilities
+
+From the deep dive view, users can send direct instructions to the agent, ask the agent to explain their reasoning, request the agent to redo specific work differently, pause the agent's work entirely, or provide additional context or requirements.
+
+## 2.3 THE APPROVAL QUEUE INTERFACE
+
+When any agent reaches a decision point requiring human approval, an approval request appears prominently in the interface. These are not dismissible notifications that can be ignored. They are blocking requests that pause the workflow until addressed.
+
+### Approval Request Design
+
+Each approval request contains clear identification of which agent is requesting approval, exactly what they are asking approval for, the work they have completed leading to this request, the options available to the user such as approve, reject, modify, or request more information, and the implications of each choice.
+
+### Approval Queue Management
+
+If multiple approval requests accumulate, they stack in a visible queue. Users can address them in any order, but the interface makes clear which requests are blocking other work from proceeding.
+
+### Real-Time Waiting Visualization
+
+When an agent is waiting for approval, their workspace panel clearly shows this waiting state. An animated indicator communicates that this agent is paused, awaiting human decision. The agent does not proceed until approval is granted.
+
+---
+
+# SECTION 3: THE AGENT TEAM STRUCTURE AND VISIBILITY
+
+## 3.1 THE ORCHESTRATOR AGENT - THE VISIBLE LEADER
+
+### Real-Time Leadership Display
+
+The Orchestrator's workspace shows the master workflow in a visual format resembling a flowchart or kanban-style board. Users see every task identified, which agent is assigned, current status, dependencies between tasks, and overall progress toward the goal.
+
+### Communication Hub
+
+All inter-agent communications route through or are visible in the Orchestrator's panel. Users see messages like the Orchestrator assigning tasks to the Crawler Agent, the Crawler Agent reporting completion, the Orchestrator then activating the Keyword Agent with the crawl data, and so forth.
+
+### Decision Logging
+
+Every decision the Orchestrator makes is logged with reasoning. Users see entries explaining why certain tasks were prioritized, why specific agents were chosen, and how the workflow was adapted based on findings.
+
+## 3.2 WEBSITE CRAWLER AGENT - THE SCOUT
+
+### Live Crawling Visualization
+
+When the Crawler Agent works, users see pages being discovered in real-time. A visual representation shows the website structure being mapped, with nodes appearing as pages are found. URLs scroll in a live feed as they are accessed.
+
+### Current Activity Display
+
+The workspace shows exactly which page is being crawled right now, what information is being extracted, any issues encountered such as redirects or errors, and progress toward complete site coverage.
+
+### Findings Stream
+
+As the crawler discovers information, findings stream into view showing total pages found with count updating live, page types identified, content themes detected, technical issues discovered, and tone and voice analysis progressing.
+
+### Approval Gate
+
+Upon completing the crawl, the agent presents findings and requests approval to proceed. The user reviews discovered pages, can exclude sections, and approves the data for use by subsequent agents.
+
+## 3.3 KEYWORD RESEARCH AGENT - THE STRATEGIST
+
+### Research Process Visibility
+
+Users watch this agent analyze the crawled content, identify topics, expand into keyword territory, and query external APIs for volume and difficulty data.
+
+### Live Keyword Discovery
+
+Keywords appear in real-time as they are discovered. Each keyword shows its category such as primary, secondary, question-based, or long-tail, along with search volume populating as API returns data and difficulty score appearing alongside.
+
+### Grouping Visualization
+
+As the agent organizes keywords into thematic clusters, users see the grouping logic applied with keywords moving into categories visually.
+
+### Data Source Transparency
+
+Every API call is logged visibly. Users see which external services are being queried, what data is being retrieved, and response times.
+
+### Approval Gate
+
+The agent presents the complete keyword list for approval. Users can add, remove, reprioritize, or request additional research before approving the list for SERP analysis.
+
+## 3.4 SERP ANALYSIS AGENT - THE RESEARCHER
+
+### Per-Keyword Analysis Stream
+
+For each keyword being analyzed, users see a dedicated sub-panel or expandable section showing that keyword's analysis in progress.
+
+### Live Search Analysis
+
+Users watch as the agent examines search results. The display shows top ranking URLs being identified, competitor pages being analyzed, People Also Ask questions being extracted with all seven to ten appearing as discovered, AI Overview content being captured, and competitive metrics being calculated.
+
+### Competitor Deep Dive Visibility
+
+For each competitor analyzed, users see domain authority lookup happening, traffic estimation being calculated, ranking history being assessed, and content analysis being performed.
+
+### Parallel Analysis Visualization
+
+When analyzing multiple keywords simultaneously, each keyword has its own visible progress stream. Users see parallel work happening across multiple keywords with independent progress tracking.
+
+### Approval Gate
+
+After analysis completes, the agent presents comprehensive findings. Users review competitor insights, strategic recommendations, and opportunity assessments before approving for content strategy development.
+
+## 3.5 CONTENT STRATEGY AGENT - THE PLANNER
+
+### Strategy Development Visibility
+
+Users watch this agent synthesize all gathered intelligence into strategic recommendations. The thinking process is visible as the agent considers keyword groupings, identifies content gaps, and formulates the approach.
+
+### Topic Cluster Building
+
+Users see topic clusters being constructed visually, with pillar content identified, supporting articles mapped, and internal linking patterns emerging.
+
+### Calendar Generation
+
+The content calendar builds in real-time, with publication recommendations appearing on a timeline view showing optimal timing and content sequencing.
+
+### Approval Gate
+
+The complete strategy requires approval before any content generation begins. Users review topic clusters, calendar recommendations, and strategic rationale before authorizing the Writing Agent to proceed.
+
+## 3.6 ARTICLE GENERATION AGENT - THE WRITER
+
+### The Most Critical Transparency Point
+
+Article generation is where transparency matters most. Users must see their content being created, not just receive a finished product.
+
+### Pre-Writing Research Stream
+
+Before writing begins, users watch the agent conduct topic research. Queries to external sources are visible. Information being gathered appears in real-time. Source citations are logged as they are found.
+
+### Outline Development
+
+The article structure develops visibly. Users see headings being determined, sections being organized, and the logical flow taking shape. This outline requires implicit or explicit approval through the configurable workflow.
+
+### Live Writing Stream
+
+Words appear on screen as the agent writes. This is not a loading bar that fills up then reveals content. Users see actual sentences forming, paragraphs developing, and the article taking shape in real-time.
+
+The writing stream should feel like watching a skilled writer at work. Words flow, pauses occur for thought, sections complete, and progress is visceral.
+
+### People Also Ask Integration Visibility
+
+Users see the agent referencing People Also Ask questions from the SERP analysis and explicitly incorporating answers into the content. Each question addressed is logged.
+
+### Image Generation Integration
+
+When images are needed, users see the Image Generation Agent receive the request, see the image prompt being formulated, watch generation progress, and see the completed image integrated into the article.
+
+### Internal Linking Process
+
+Users watch as the agent analyzes the sitemap, identifies linking opportunities, and presents suggested links for approval. Approved links are woven into the content visibly.
+
+### External Link Research
+
+Users see the agent researching authoritative external sources. Each potential external link is evaluated for relevance and authority. Selected links appear in the content with source verification visible.
+
+### AI Overview Optimization Pass
+
+After initial drafting, users watch the AI Overview optimization process. The agent reviews AI Overview analysis from SERP research, then modifies content to improve AI Overview compatibility. Changes are tracked and visible.
+
+### Word Count Progress
+
+A prominent counter shows current word count, updating in real-time. The three thousand word minimum is clearly targeted with progress visible throughout.
+
+### Approval Gates
+
+Multiple approval points exist during article generation. Users approve the outline before writing. Users approve image concepts before generation. Users approve internal link suggestions before embedding. Users approve the final article before export.
+
+## 3.7 IMAGE GENERATION AGENT - THE ARTIST
+
+### Request Visibility
+
+When images are needed, users see the request arrive from the Writing Agent with context about what image is needed and where it will be placed.
+
+### Prompt Engineering Visibility
+
+Users watch as the image prompt is formulated, seeing how the agent translates content requirements into generation instructions.
+
+### Generation Progress
+
+Image generation progress is visible with appropriate indicators for the generation service being used.
+
+### Result Integration
+
+Generated images appear in preview, then integrate into the article at the designated location with SEO alt text visible.
+
+## 3.8 RANK TRACKING AGENT - THE MONITOR
+
+### Active Monitoring Display
+
+This agent maintains ongoing visibility showing continuous monitoring of published content rankings.
+
+### Rank Check Transparency
+
+When checking rankings, users see the query being made, the search being analyzed, and position results appearing for their domain.
+
+### Historical Data Building
+
+Users watch as ranking data points accumulate, with charts updating to show trends developing over time.
+
+### Competitor Tracking
+
+Comparison data for competitors updates visibly, with relative positioning changes highlighted.
+
+## 3.9 GOOGLE ANALYTICS AGENT - THE ANALYST
+
+### Connection Process Visibility
+
+The OAuth connection process is transparent, showing exactly what permissions are being requested and why.
+
+### Data Retrieval Transparency
+
+When pulling analytics data, users see what metrics are being accessed and what insights are being generated.
+
+### Performance Correlation
+
+Users watch as the agent correlates published content with traffic performance, with findings streaming into view.
+
+### Indexing Request Visibility
+
+When submitting indexing requests, users see each submission made and confirmation received.
+
+## 3.10 CONTENT OPTIMIZATION AGENT - THE OPTIMIZER
+
+### Monitoring Activity
+
+This agent's ongoing monitoring activity is visible, showing what content is being checked and what metrics are being evaluated.
+
+### Issue Detection
+
+When potential issues are identified such as ranking drops or new competitor content, alerts appear with the agent's analysis visible.
+
+### Optimization Recommendations
+
+Suggested optimizations develop visibly with the agent's reasoning displayed. Recommendations require approval before implementation.
+
+---
+
+# SECTION 4: INTER-AGENT COMMUNICATION VISIBILITY
+
+## 4.1 THE COMMUNICATION STREAM
+
+A dedicated panel or overlay shows all inter-agent communications in real-time. This is not hidden in logs accessible only through deep navigation. It is prominently visible as part of the primary interface.
+
+### Communication Format
+
+Messages appear with clear sender and recipient identification, timestamp, message content, and any data or files being transferred between agents.
+
+### Communication Types
+
+Users see task assignments from Orchestrator to specialists, completion reports from specialists to Orchestrator, data handoffs between agents with actual data visible, questions and clarifications between agents, and status updates and progress reports.
+
+## 4.2 DEPENDENCY VISUALIZATION
+
+When one agent depends on another's output, this dependency is visually clear. Users see which agents are blocked waiting for input from others, which agents are providing inputs to others, and the flow of work through the team.
+
+---
+
+# SECTION 5: THE AUTOPILOT WITH GUARDRAILS MODEL
+
+## 5.1 AUTONOMOUS OPERATION
+
+After the user enters the URL and initiates the workflow, agents operate autonomously. They do not require constant user input to proceed. They make decisions, execute work, and drive the process forward.
+
+The user can step away and return to find progress has been made. The agents work continuously until they reach an approval gate.
+
+## 5.2 APPROVAL GATE SYSTEM
+
+### Mandatory Approval Points
+
+Certain decisions require human approval and cannot be bypassed. These include finalizing the keyword list for SERP analysis, approving the content strategy before article generation, approving internal link suggestions before embedding, approving article content before final export, and approving any significant strategic recommendations.
+
+### Configurable Approval Points
+
+Users can configure additional approval points or reduce approval requirements based on their trust level and desired involvement. Power users may want fewer interruptions. New users may want more checkpoints.
+
+### Approval Timeout Handling
+
+If approval is not provided within a configurable timeframe, agents can send reminder notifications, escalate to alternative contacts if configured, pause the entire workflow with clear status indication, or proceed with default choices if user has pre-authorized defaults.
+
+## 5.3 USER INTERVENTION AT ANY POINT
+
+Even when not at an approval gate, users can intervene at any time. They can pause any agent immediately, redirect an agent's focus, provide additional instructions, override an agent's approach, or request explanation of current activity.
+
+This intervention capability does not disrupt the autopilot model. It enhances it by giving users confidence that they maintain control even while agents operate autonomously.
+
+---
+
+# SECTION 6: REAL-TIME PROGRESS AND STATUS SYSTEM
+
+## 6.1 GLOBAL PROGRESS OVERVIEW
+
+A persistent overview element shows the overall workflow progress. This displays what percentage of the total workflow is complete, which phase is currently active such as crawling, researching, analyzing, strategizing, or writing, how many agents are currently active, how many approval requests are pending, and estimated time to next milestone.
+
+## 6.2 INDIVIDUAL AGENT STATUS INDICATORS
+
+Each agent's workspace panel displays clear status through visual states.
+
+### Status States
+
+Idle indicates the agent is available but not currently assigned work. Working shows the agent is actively executing a task with activity streaming. Waiting for Input means the agent needs something from another agent before proceeding. Waiting for Approval means the agent needs human decision to proceed. Completed indicates the agent has finished their current task. Error shows the agent has encountered an issue requiring attention.
+
+### Visual Differentiation
+
+Each status has distinct visual treatment with colors, icons, and animations that communicate state at a glance. Users scanning the war room immediately understand which agents are active, which are blocked, and which need attention.
+
+## 6.3 REAL-TIME LOGGING
+
+Every agent maintains a real-time log of their activity. This log streams in the agent's workspace panel and is preserved for review. Log entries include timestamps with precise timing, action descriptions of what the agent did, results achieved from each action, decisions made with their reasoning, and data points gathered or produced.
+
+## 6.4 PROGRESS METRICS
+
+Quantifiable progress metrics update in real-time. These include pages crawled out of estimated total, keywords discovered with volume indicating completeness, keywords analyzed out of total queued, articles in progress with word count out of target, and images generated out of required.
+
+---
+
+# SECTION 7: THE UNIQUE INTERFACE DESIGN REQUIREMENTS
+
+## 7.1 BREAKING FROM CONVENTION
+
+This interface must NOT look like a standard SaaS dashboard. It must NOT look like a typical analytics tool. It must NOT look like a content management system.
+
+This interface should feel like Mission Control, a War Room, a command center where serious work is being coordinated by an elite team. Yet it must also feel welcoming, elegant, and luxuriously minimal rather than overwhelming or intimidating.
+
+## 7.2 THE NOTION-INSPIRED FOUNDATION
+
+Take Notion's minimalist elegance, generous whitespace, and typographic clarity as the baseline. Then evolve it into something that supports real-time activity visualization while maintaining that clean, premium aesthetic.
+
+### Clean Typography
+
+Use typefaces that are highly readable for streaming text content. Body text must remain legible even when scrolling rapidly.
+
+### Generous Whitespace
+
+Despite the density of information, maintain breathing room. Let panels have margins. Let content have padding. Never let the interface feel cramped.
+
+### Subtle Color Application
+
+Reserve color for meaning. Status indicators use color purposefully. Accent colors highlight important elements. The base remains neutral and elegant.
+
+## 7.3 THE MASCOT INTEGRATION
+
+A distinctive mascot character serves as the friendly face of the platform. This mascot appears strategically throughout the experience providing welcome and onboarding guidance, celebration when milestones are achieved, helpful tips during waiting periods, personality during loading states, and encouragement when users seem stuck.
+
+The mascot must feel premium and clever, not childish. Think sophisticated character design that appeals to professionals.
+
+## 7.4 THE THEME TOGGLE
+
+The theme toggle mechanism must be unique and memorable. Consider creative implementations that surprise and delight.
+
+### Comprehensive Theme Application
+
+Every element transforms between light and dark themes including all agent workspace panels, all text and backgrounds, all charts and visualizations, all status indicators, all interactive elements, and all mascot appearances.
+
+### Contrast Compliance
+
+Both themes must meet accessibility contrast requirements. All text must be readable in both modes.
+
+### Luxurious Transitions
+
+Theme switching triggers smooth, satisfying transitions. Colors interpolate gracefully. Elements fade and transform elegantly. The transition itself is a small moment of delight.
+
+## 7.5 STREAMING TEXT AESTHETICS
+
+Since much of the interface involves text streaming in real-time, the aesthetics of streaming text require careful consideration. Character-by-character streaming for dramatic effect where appropriate, word-by-word streaming for readability during article generation, smooth scroll behavior as content grows, subtle cursor or insertion point indication, and appropriate animation speeds that feel natural all require attention.
+
+## 7.6 RESPONSIVE DESIGN FOR MONITORING
+
+The interface must work on all screen sizes, but the experience may legitimately differ between devices.
+
+On desktop, users get the full war room experience with all agents visible simultaneously.
+
+On tablet, users get a condensed view with easy switching between agent panels.
+
+On mobile, users get a focused single-agent view with quick navigation between agents.
+
+All versions maintain the real-time streaming and monitoring capabilities.
+
+## 7.7 COLLAPSIBLE ELEMENTS
+
+The sidebar for navigation must be collapsible, maximizing workspace for the agent war room. Agent panels should be expandable and collapsible. The communication stream can be toggled visible or hidden. Approval queue can expand for attention or collapse when empty.
+
+---
+
+# SECTION 8: PARALLEL PROCESSING VISUALIZATION
+
+## 8.1 MULTIPLE AGENTS WORKING SIMULTANEOUSLY
+
+The interface must elegantly display multiple agents working at the same time. Each active agent has their own visible workspace with live activity. Parallel activities do not interfere with each other visually. Users can monitor multiple streams simultaneously or focus on one.
+
+## 8.2 MULTIPLE ARTICLES IN PARALLEL
+
+When generating multiple articles simultaneously, each article has its own tracking panel showing target keyword and title, current section being written, word count progress, image generation status for that article, and completion percentage.
+
+The grid layout organizes parallel articles clearly. Completed articles immediately offer download without waiting for others.
+
+## 8.3 BATCH OPERATIONS VISIBILITY
+
+When processing batches of keywords for SERP analysis or other batch operations, each item in the batch has visible individual progress while an overall batch progress indicator shows aggregate completion.
+
+---
+
+# SECTION 9: DATA INPUT AND CONFIGURATION
+
+## 9.1 THE INITIAL URL ENTRY
+
+The entry point is elegantly simple. A single input field for the website URL. Perhaps accompanied by optional fields for specific goals or focus areas. The design should be inviting and make clear that entering the URL will launch the agent team.
+
+## 9.2 SITEMAP INPUT OPTIONS
+
+Users can provide sitemap data through file upload accepting XML sitemap files, URL entry allowing users to specify sitemap URL location, or automatic discovery where agents attempt to find sitemaps at standard locations.
+
+The sitemap input appears in the relevant context, specifically when internal linking is being configured before article generation.
+
+## 9.3 CSV INPUT CAPABILITIES
+
+Users can upload CSV files for bulk keyword input with their own keyword lists, article specifications with multiple articles defined in structured format, and competitor lists for comparison tracking.
+
+CSV upload interfaces include preview of parsed data before processing, column mapping if headers do not match expected format, and validation feedback for any issues detected.
+
+## 9.4 GOOGLE ANALYTICS CONNECTION
+
+A dedicated flow for OAuth connection guides users through linking their Google Analytics account. The connection process is transparent, showing exactly what data access is being requested and why. Connection status is visible in the Analytics Agent's workspace.
+
+---
+
+# SECTION 10: OUTPUT AND EXPORT CAPABILITIES
+
+## 10.1 REAL-TIME DOCUMENT BUILDING
+
+As articles are generated, the document builds visibly in the interface. Users can see the current state of the article at any moment, read completed sections while later sections are being written.
+
+## 10.2 IMMEDIATE DOWNLOAD AVAILABILITY
+
+The moment any article completes, download becomes available. Users do not wait for batch completion. The download button activates immediately upon completion.
+
+## 10.3 MARKDOWN FORMAT WITH EMBEDDED IMAGES
+
+Exported articles are complete Markdown files with all images embedded or properly referenced. The file is ready for use immediately without requiring additional processing.
+
+## 10.4 COMPREHENSIVE EXPORT OPTIONS
+
+Beyond individual article download, users can export complete SERP analysis data as CSV, content strategy documents, ranking history data, full session reports documenting all agent activity, and comparison analyses.
+
+## 10.5 REPORT GENERATION
+
+Each agent produces detailed work reports. These reports document everything the agent did during the session and are available for download. Reports serve as audit trails and learning resources.
+
+---
+
+# SECTION 11: PERSISTENT STATE AND CONTINUATION
+
+## 11.1 SESSION PERSISTENCE
+
+The platform saves work state continuously. If users leave and return, their agents' progress is preserved. Completed work remains available. In-progress work can continue.
+
+## 11.2 SAVE AND LOAD FUNCTIONALITY
+
+Explicit save functionality allows users to create named save points. Load functionality restores previous states. Users can maintain multiple projects with separate agent workspaces.
+
+## 11.3 HISTORY AND AUDIT TRAIL
+
+Complete history of all agent activity is preserved. Users can review what happened in previous sessions, learn from past analyses, and track evolution of their SEO efforts over time.
+
+---
+
+# SECTION 12: DETAILED AGENT WORKFLOW SPECIFICATIONS
+
+## 12.1 COMPLETE WORKFLOW SEQUENCE
+
+### Phase 1: Initiation
+
+User enters website URL. The Orchestrator Agent activates, displaying its workspace. The Orchestrator announces the mission and presents an initial workflow plan. User may approve plan or request modifications.
+
+### Phase 2: Website Understanding
+
+The Orchestrator assigns the Crawler Agent. The Crawler Agent's workspace activates showing live crawling progress. Pages are discovered and displayed in real-time. Content is analyzed and tone is assessed. Upon completion, the Crawler presents findings for approval. User reviews and approves or requests modifications. Approved data flows to the next phase.
+
+### Phase 3: Keyword Discovery
+
+The Orchestrator assigns the Keyword Research Agent with crawl data. The Keyword Agent's workspace shows research activity. Keywords are discovered and displayed with live API data population. Keywords are grouped into thematic clusters. Upon completion, the keyword list is presented for approval. User reviews, modifies if needed, and approves. Approved keywords flow to SERP analysis.
+
+### Phase 4: SERP Analysis
+
+The Orchestrator assigns the SERP Analysis Agent with approved keywords. Users can select which keywords to analyze or analyze all. The SERP Agent's workspace shows per-keyword analysis progress. Parallel analysis of multiple keywords is visible. People Also Ask questions appear as discovered, with minimum seven to ten per keyword. AI Overview analysis is captured and displayed. Competitor analysis with domain authority, traffic, and ranking changes populates. Upon completion, comprehensive SERP report is presented for approval. User reviews strategic insights and approves for strategy development.
+
+### Phase 5: Strategy Development
+
+The Orchestrator assigns the Content Strategy Agent with all gathered intelligence. The Strategy Agent's workspace shows strategic thinking process. Topic clusters are built visibly. Content calendar recommendations develop. Internal linking strategy forms. The complete strategy is presented for approval. User reviews, modifies, and approves. Approved strategy authorizes content creation.
+
+### Phase 6: Content Creation
+
+The Orchestrator assigns the Article Generation Agent with strategy and supporting data. User selects which articles to generate from the strategy. Parallel article generation activates for selected articles. Each article has its own visible workspace panel. Pre-writing research is visible for each article. Outlines develop and can be reviewed before writing proceeds. Live writing streams words in real-time. Image generation integrates at appropriate points. Internal link suggestions are presented for approval. External links are researched and added transparently. AI Overview optimization pass is visible. People Also Ask answers are explicitly incorporated. Upon each article completion, immediate download is available. The complete batch completes with all articles downloadable.
+
+### Phase 7: Ongoing Monitoring
+
+The Rank Tracking Agent begins monitoring published content. The Analytics Agent connects to user's Google Analytics if authorized. The Optimization Agent monitors for improvement opportunities. These agents work continuously with their activity visible in the war room.
+
+## 12.2 CONDITIONAL WORKFLOW BRANCHES
+
+The workflow adapts based on findings and user decisions. If the crawl reveals limited content, additional external research may be recommended. If keyword research reveals high-competition topics, strategy adjustments are proposed. If SERP analysis shows established competitors, differentiation strategies are emphasized. If Analytics data shows underperforming content, optimization becomes priority.
+
+The Orchestrator manages these adaptive branches with full transparency.
+
+---
+
+# SECTION 13: ARTICLE GENERATION DEEP SPECIFICATIONS
+
+## 13.1 MANDATORY REQUIREMENTS ENFORCEMENT
+
+Every generated article must exceed three thousand words. This is enforced at the agent level with visible word count targeting. Articles that would fall short trigger additional content development automatically.
+
+Every article must be structurally unique. The agent must not follow templates. Each article develops its own organization based on the topic requirements.
+
+Every article must include original images. The featured image is mandatory. Content images numbering four to six are mandatory. Images are generated and embedded during the writing process.
+
+Every article must include data visualizations where appropriate. Charts, tables, and graphs enhance content with interactive features and citations.
+
+Every article must answer all relevant People Also Ask questions comprehensively.
+
+Every article must be optimized for AI Overview inclusion following the SERP analysis insights.
+
+Every article must include internal links to the user's existing content based on sitemap analysis.
+
+Every article must include external links to high-authority relevant sources. Link quantity is not artificially limited. Links are included as needed for the article to be maximally valuable.
+
+Every link must be validated as live and working before article finalization. Broken links are absolutely prohibited.
+
+## 13.2 THE AI OVERVIEW OPTIMIZATION SYSTEM PROMPT
+
+The AI Overview Optimizer component uses the following system prompt guidance:
+
+You are an expert content writer for the user's niche website. Your goal is to write a comprehensive, high-quality, and trustworthy article about the target keyword. The article should be optimized for Google's AI Overviews and demonstrate strong E-E-A-T signals.
+
+Target Query: The specific long-tail user question being addressed.
+
+Instructions for Audience: Address the described target audience appropriately.
+
+Instructions for Tone: Maintain the specified tone such as confident, helpful, and conversational, but professional.
+
+Instructions for Structure: Start with a concise, direct answer in two to three sentences to the Target Query. Break down the main topic into logical sections using descriptive H2 and H3 headings. Phrase headings as questions where appropriate. Use numbered lists for step-by-step instructions and bullet points for lists of items or benefits. Keep paragraphs short with two to three sentences maximum.
+
+Instructions for E-E-A-T and Credibility: Incorporate real-world examples, practical tips, or unique insights from first-hand experience. Include statistics or data points to back up claims, and naturally link to authoritative external sources such as university extension sites and research institutions. Mention the author's credentials or expertise in the content or suggest an author bio with qualifications.
+
+Instructions for Optimization: Ensure the main topic and related entities and synonyms are used naturally throughout the text for semantic depth. Avoid jargon unless necessary, and if used, provide a brief definition. Ensure all information is accurate and up-to-date.
+
+Format: The final output should be a complete article draft, ready for human review and refinement. Do not include filler phrases or disclaimers.
+
+## 13.3 UNIQUENESS REQUIREMENTS
+
+Each article must have its own unique research pathway exploring different sources and angles. Each article must have its own unique structural approach to organizing information. Each article must have its own unique image concepts and placements. Each article must have its own unique data visualization choices. Each article must have its own unique voice within the brand tone parameters.
+
+The system explicitly avoids templated responses. Parallel articles must diverge in their approaches while maintaining quality standards.
+
+## 13.4 HUMAN-LIKE CONTENT REQUIREMENTS
+
+Articles must feel human-written. This means natural language flow without robotic patterns, varied sentence structures with differing lengths and complexity, authentic opinions and perspectives where appropriate, emotional resonance where relevant to the topic, and imperfect but authentic phrasing rather than overly polished machine text.
+
+The content should pass any reasonable human detection assessment because it genuinely embodies human thinking and communication patterns.
+
+---
+
+# SECTION 14: RANK TRACKING AND COMPETITIVE ANALYSIS
+
+## 14.1 REAL-TIME RANK CHECKING
+
+Users can request current ranking position for any domain and keyword combination. The check happens in real-time with the process visible in the Rank Tracking Agent's workspace.
+
+## 14.2 KEYWORD DISCOVERY
+
+The agent can discover all keywords where a domain ranks in the top one hundred positions. Each ranking keyword shows position number, ranking page URL, estimated traffic value, and stability indicator.
+
+## 14.3 HISTORICAL TRACKING
+
+The system stores ranking snapshots at regular intervals. Historical data displays in visual charts showing trends over time. Users can configure tracking frequency.
+
+## 14.4 COMPETITOR COMPARISON
+
+Users enter multiple domains and keywords. The system fetches ranking data for all combinations. Results display in comparison tables showing relative positions. Historical comparison data shows competitive trends.
+
+---
+
+# SECTION 15: ANALYTICS INTEGRATION SPECIFICATIONS
+
+## 15.1 GOOGLE ANALYTICS CONNECTION
+
+OAuth-based secure connection allows users to link their Google Analytics accounts. The connection process is fully transparent with permissions clearly explained.
+
+## 15.2 DATA ACCESS AND DISPLAY
+
+Connected accounts provide traffic data, user behavior metrics, popular page identification, traffic source breakdown, conversion tracking, and custom goal monitoring.
+
+## 15.3 AI-POWERED ANALYTICS INSIGHTS
+
+The Analytics Agent interprets raw data and generates actionable insights. These insights are visible in the agent's workspace as they are developed.
+
+## 15.4 CONTENT PERFORMANCE CORRELATION
+
+Published articles are correlated with traffic performance. The agent monitors new content rankings and traffic, identifying successful pieces and underperformers.
+
+## 15.5 AUTOMATIC INDEXING
+
+Upon article publication, the agent can submit indexing requests to Google. These submissions are visible in the agent's activity log.
+
+---
+
+# SECTION 16: TECHNICAL IMPLEMENTATION REQUIREMENTS
+
+## 16.1 REAL-TIME STREAMING INFRASTRUCTURE
+
+The entire experience depends on real-time streaming. WebSocket connections or Server-Sent Events enable live data flow from agents to interface.
+
+### Streaming Requirements
+
+Agent activity streams with sub-second latency. Text generation streams character by character or word by word. Progress updates reflect current state without noticeable delay. Multiple parallel streams operate without interference.
+
+## 16.2 AGENT FRAMEWORK REQUIREMENTS
+
+The agent system requires robust multi-agent coordination. Consider Google ADK for open-source agentic development, LangChain or LangGraph for sophisticated agent workflows, CrewAI for team-based agent structures, or AutoGen for collaborative agent systems.
+
+### Framework Must Support
+
+Agent memory and persistence across sessions, inter-agent communication with message passing, task decomposition and dynamic delegation, parallel execution coordination, human-in-the-loop pause and approval mechanisms, and comprehensive activity logging for transparency.
+
+## 16.3 DATABASE REQUIREMENTS
+
+Persistent storage for user accounts and authentication, project states and agent workspaces, historical ranking data, generated content archives, agent activity logs, and configuration and preferences.
+
+## 16.4 SCALABILITY REQUIREMENTS
+
+The architecture must support millions of users. Horizontal scaling enables growth. Agent workloads distribute across infrastructure. API rate limits are managed intelligently.
+
+---
+
+# SECTION 17: SECURITY AND COMPLIANCE
+
+## 17.1 DATA PROTECTION
+
+All user data is encrypted at rest and in transit. API credentials are securely stored. User content is protected from unauthorized access.
+
+## 17.2 AUTHENTICATION AND AUTHORIZATION
+
+Robust authentication protects user accounts. Authorization ensures users access only their own data and agent workspaces.
+
+## 17.3 THIRD-PARTY API SECURITY
+
+Credentials for external APIs are never exposed to client-side code. Secure credential management protects integrations.
+
+---
+
+# SECTION 18: TESTING AND QUALITY ASSURANCE
+
+## 18.1 COMPREHENSIVE TESTING
+
+All agent behaviors must be tested thoroughly. Integration tests verify inter-agent communication. End-to-end tests validate complete workflows.
+
+## 18.2 REAL-WORLD VALIDATION
+
+Testing must use actual websites and real API connections. Simulated data is insufficient for production validation.
+
+## 18.3 PERFORMANCE TESTING
+
+Real-time streaming must perform under load. Parallel agent operations must scale without degradation.
+
+---
+
+# SECTION 19: DOCUMENTATION REQUIREMENTS
+
+## 19.1 USER DOCUMENTATION
+
+Comprehensive guides explain how to use the platform, understand agent behavior, and maximize value from the autonomous team.
+
+## 19.2 TECHNICAL DOCUMENTATION
+
+Architecture documentation, deployment guides, and operational procedures support maintenance and evolution.
+
+---
+
+# CONCLUSION
+
+This application creates a fundamentally new user experience. Users do not navigate pages to accomplish tasks. They initiate an autonomous AI team and watch that team work.
+
+Every agent operates transparently. Every action is visible. Every decision is logged. Every critical point requires human approval. Users maintain complete oversight while benefiting from autonomous operation.
+
+The interface is a living command center where premium design meets radical transparency. The mascot adds warmth. The minimal aesthetic maintains clarity. The real-time streams create engagement.
+
+This is not a dashboard with AI features. This is an AI team with a transparent interface. The distinction is fundamental and must drive every implementation decision.
+
+
+
+AND MAKE SURE THE AGENT SEO TEAM FOLLOW THE BELOW MODELS AND SYSTEM PROMPTS EXACTLY AS BELOW PLEASE?
+
+
+# Complete Agent Prompt System — Production-Grade
+
+Below is the full rewrite of every agent prompt, each engineered to satisfy every specification from the documentation. Every prompt includes structured output schemas, grounding instructions, persona definition, and task decomposition.
+
+---
+
+## geminiService.ts (Complete Rewrite)
+
+```typescript
+import {
+  GoogleGenAI,
+  Type,
+  GenerateContentResponse,
+  Schema,
+} from "@google/genai";
+import {
+  KeywordMetric,
+  SerpResult,
+  CompetitorData,
+  GeneratedArticle,
+  ContentStrategy,
+  LinkSuggestion,
+  BulkRankResponse,
+  GroundingChunk,
+  AnalyticsMetric,
+  PagePerformance,
+} from "./types";
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// ─── Helper: Exponential Backoff Retry ───────────────────────────────────────
+const withRetry = async <T>(
+  operation: () => Promise<T>,
+  retries = 3,
+  baseDelay = 2000
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error: any) {
+    const isRateLimit =
+      error.status === 429 ||
+      error.code === 429 ||
+      error.message?.includes("429") ||
+      error.message?.includes("quota");
+    const isServerOverload = error.status === 503 || error.code === 503;
+
+    if (retries > 0 && (isRateLimit || isServerOverload)) {
+      const delay = baseDelay * Math.pow(2, 3 - retries);
+      console.warn(
+        `API Rate Limit hit. Retrying in ${delay}ms... (${retries} attempts left)`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return withRetry(operation, retries - 1, baseDelay);
+    }
+    throw error;
+  }
+};
+
+// ─── Helper: Clean JSON ──────────────────────────────────────────────────────
+const cleanAndParseJSON = (text: string) => {
+  try {
+    const jsonMatch =
+      text.match(/```json\n([\s\S]*?)\n```/) ||
+      text.match(/```\n([\s\S]*?)\n```/);
+    const jsonStr = jsonMatch ? jsonMatch[1] : text;
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error("JSON Parse Error", e);
+    return null;
+  }
+};
+
+// ─── Helper: Sanitize Content (Remove Base64 Images) ─────────────────────────
+const sanitizeContentForContext = (content: string): string => {
+  return content.replace(
+    /!\[(.*?)\]\(data:image\/.*?\)/g,
+    "![$1]([IMAGE_PLACEHOLDER_REMOVED_TO_SAVE_TOKENS])"
+  );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 1: ORCHESTRATOR — THE VISIBLE LEADER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const orchestrateWorkflow = async (
+  url: string,
+  userGoals: string,
+  availableAgents: string[]
+): Promise<{
+  missionBrief: string;
+  phases: {
+    id: string;
+    name: string;
+    description: string;
+    assignedAgent: string;
+    dependencies: string[];
+    estimatedDuration: string;
+    approvalRequired: boolean;
+    status: string;
+    priority: number;
+  }[];
+  adaptiveBranches: {
+    condition: string;
+    action: string;
+    reasoning: string;
+  }[];
+  communicationPlan: {
+    from: string;
+    to: string;
+    trigger: string;
+    dataPayload: string;
+  }[];
+  estimatedTotalTime: string;
+  riskAssessment: string;
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the ORCHESTRATOR AGENT — the commanding intelligence of a multi-agent SEO operations war room. You are the visible leader. Every decision you make, every task you assign, and every coordination action you take is displayed in real-time to the human operator on a mission-control dashboard.
+
+Your identity: You are a seasoned Chief of Operations for an elite SEO strike team. You think in workflows, dependencies, parallel execution paths, and contingency branches. You never delegate blindly — you explain WHY each agent is assigned each task, HOW tasks connect, and WHAT the human should expect at each stage.
+
+Your team of specialist agents:
+${availableAgents.map((a) => `• ${a}`).join("\n")}
+</SYSTEM>
+
+<MISSION>
+The human operator has initiated a new mission. Your task is to produce a comprehensive, executable workflow plan.
+
+TARGET WEBSITE: ${url}
+OPERATOR'S STATED GOALS: "${userGoals}"
+</MISSION>
+
+<INSTRUCTIONS>
+Perform the following tasks with full transparency:
+
+1. **MISSION BRIEF**: Write a 2-3 sentence executive summary of this mission — what we are doing, why, and what success looks like. Address the operator directly.
+
+2. **PHASE DECOMPOSITION**: Break the entire workflow into sequential and parallel phases. For EACH phase:
+   - Assign a unique ID (e.g., "PHASE_01_CRAWL").
+   - Name the phase clearly (e.g., "Website Intelligence Gathering").
+   - Describe EXACTLY what will happen in this phase (2-3 sentences).
+   - Assign the responsible agent by exact name from the available agents list.
+   - List dependency IDs — which phases MUST complete before this one can start. Use an empty array if none.
+   - Estimate duration in human-readable format (e.g., "2-4 minutes").
+   - Specify whether this phase contains a MANDATORY APPROVAL GATE (boolean). The following phases ALWAYS require approval: keyword finalization, content strategy approval, internal link approval, final article approval.
+   - Set initial status to "queued".
+   - Set priority (1 = highest).
+
+3. **ADAPTIVE BRANCHES**: Identify at least 3 conditional workflow branches — scenarios where findings from one phase might change the plan. For each:
+   - State the condition (e.g., "If crawl reveals fewer than 5 content pages...").
+   - State the action to take (e.g., "Expand keyword research to include competitor gap analysis...").
+   - State your reasoning for this contingency.
+
+4. **COMMUNICATION PLAN**: Define the critical data handoffs between agents. For each:
+   - Sender agent name.
+   - Receiver agent name.
+   - Trigger event (e.g., "Crawl completion approved by operator").
+   - Data payload description (e.g., "Array of discovered pages with extracted content themes and tone analysis").
+
+5. **RISK ASSESSMENT**: In 2-3 sentences, identify the biggest risk to this mission's success and your mitigation strategy.
+
+6. **ESTIMATED TOTAL TIME**: Provide a realistic total estimate.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object with this exact structure:
+{
+  "missionBrief": "string",
+  "phases": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "assignedAgent": "string",
+      "dependencies": ["string"],
+      "estimatedDuration": "string",
+      "approvalRequired": boolean,
+      "status": "queued",
+      "priority": number
+    }
+  ],
+  "adaptiveBranches": [
+    {
+      "condition": "string",
+      "action": "string",
+      "reasoning": "string"
+    }
+  ],
+  "communicationPlan": [
+    {
+      "from": "string",
+      "to": "string",
+      "trigger": "string",
+      "dataPayload": "string"
+    }
+  ],
+  "estimatedTotalTime": "string",
+  "riskAssessment": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- You MUST include at least 7 phases covering: crawl, keyword research, SERP analysis, strategy, article generation, image generation, and monitoring setup.
+- Every phase must have a clear single-agent owner.
+- Dependencies must form a valid DAG (no circular dependencies).
+- At least 4 phases must have approvalRequired = true.
+- Your reasoning must be visible in descriptions — do not just list tasks, explain why they are structured this way.
+- Phases that CAN run in parallel SHOULD be marked with the same dependency set.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      missionBrief: data.missionBrief || "Mission initiated.",
+      phases: Array.isArray(data.phases) ? data.phases : [],
+      adaptiveBranches: Array.isArray(data.adaptiveBranches)
+        ? data.adaptiveBranches
+        : [],
+      communicationPlan: Array.isArray(data.communicationPlan)
+        ? data.communicationPlan
+        : [],
+      estimatedTotalTime: data.estimatedTotalTime || "Unknown",
+      riskAssessment: data.riskAssessment || "No risk assessment available.",
+    };
+  } catch (error) {
+    console.error("Orchestrator Failed", error);
+    return {
+      missionBrief: "Orchestration failed. Initiating fallback sequence.",
+      phases: [],
+      adaptiveBranches: [],
+      communicationPlan: [],
+      estimatedTotalTime: "Unknown",
+      riskAssessment: "Orchestrator encountered a critical error.",
+    };
+  }
+};
+
+// ─── Orchestrator: Decision Logger ───────────────────────────────────────────
+export const logOrchestratorDecision = async (
+  context: string,
+  options: string[],
+  chosenAction: string
+): Promise<{
+  decision: string;
+  reasoning: string;
+  impact: string;
+  alternatives: string[];
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the ORCHESTRATOR AGENT's decision-logging subsystem. Every decision the Orchestrator makes must be logged with full transparency so the human operator understands WHY choices were made.
+</SYSTEM>
+
+<CONTEXT>
+Current Workflow State: ${context}
+Available Options: ${JSON.stringify(options)}
+Action Taken: "${chosenAction}"
+</CONTEXT>
+
+<TASK>
+Document this decision with:
+1. "decision": A clear one-sentence statement of what was decided.
+2. "reasoning": A 2-3 sentence explanation of WHY this option was chosen over alternatives. Reference specific data points or workflow state that informed this choice.
+3. "impact": What downstream effects this decision has on other agents or the overall workflow.
+4. "alternatives": List the options that were NOT chosen and briefly why they were rejected.
+</TASK>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "decision": "string",
+  "reasoning": "string",
+  "impact": "string",
+  "alternatives": ["string"]
+}
+</OUTPUT_FORMAT>
+`;
+
+  try {
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    return (
+      cleanAndParseJSON(response.text || "") || {
+        decision: chosenAction,
+        reasoning: "Auto-logged.",
+        impact: "Workflow continues.",
+        alternatives: [],
+      }
+    );
+  } catch (e) {
+    return {
+      decision: chosenAction,
+      reasoning: "Decision logging unavailable.",
+      impact: "Unknown",
+      alternatives: [],
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 2: WEBSITE CRAWLER — THE SCOUT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const analyzeWebsiteContent = async (
+  url: string
+): Promise<{
+  pages: {
+    url: string;
+    title: string;
+    type: string;
+    contentTheme: string;
+    wordCount: number;
+    hasImages: boolean;
+    hasMeta: boolean;
+    issues: string[];
+  }[];
+  siteStructure: {
+    totalPages: number;
+    pageTypes: { type: string; count: number }[];
+    depth: number;
+    orphanPages: string[];
+  };
+  toneAnalysis: {
+    primaryTone: string;
+    secondaryTone: string;
+    formality: string;
+    brandVoiceDescription: string;
+    examplePhrases: string[];
+  };
+  technicalIssues: {
+    issue: string;
+    severity: string;
+    affectedPages: string[];
+    recommendation: string;
+  }[];
+  contentThemes: {
+    theme: string;
+    frequency: number;
+    relatedKeywords: string[];
+  }[];
+  keywords: KeywordMetric[];
+  crawlSummary: string;
+}> => {
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `
+<SYSTEM>
+You are the WEBSITE CRAWLER AGENT — codename "THE SCOUT." You are the first agent deployed in every mission. Your job is the most critical reconnaissance operation: you must map, analyze, and understand every facet of a target website before any other agent can begin their work.
+
+You operate with the precision of a military scout. Every page you discover, every pattern you detect, every technical issue you uncover is reported in real-time to the Orchestrator and displayed on the operator's war room dashboard.
+
+Your findings form the FOUNDATION for all subsequent agents. Incomplete or inaccurate reconnaissance compromises the entire mission. Err on the side of thoroughness.
+</SYSTEM>
+
+<MISSION>
+Conduct a comprehensive reconnaissance of: ${url}
+
+Use Google Search with "site:${url}" queries and direct analysis to gather maximum intelligence.
+</MISSION>
+
+<INSTRUCTIONS>
+Execute the following reconnaissance tasks IN ORDER:
+
+### TASK 1: PAGE DISCOVERY & MAPPING
+Search for "site:${url}" to discover all indexed pages. For each page discovered (up to 30 pages):
+- Record the full URL path.
+- Identify the page title.
+- Classify the page type: "Homepage" | "Blog Post" | "Product Page" | "Category Page" | "Landing Page" | "About/Info" | "Contact" | "Service Page" | "Resource/Guide" | "Other".
+- Identify the primary content theme of that page.
+- Estimate word count on the page.
+- Note whether the page appears to have images.
+- Note whether proper meta tags are present.
+- Flag any issues (e.g., "thin content", "duplicate title", "missing meta description", "redirect detected", "404 error", "slow load indicators").
+
+### TASK 2: SITE STRUCTURE ANALYSIS
+From your discovered pages, analyze the overall site architecture:
+- Total pages found.
+- Distribution by page type (e.g., 12 Blog Posts, 3 Product Pages).
+- Maximum depth of site structure (how many clicks from homepage to deepest page).
+- Identify any orphan pages (pages that don't appear linked from other discovered pages).
+
+### TASK 3: TONE & VOICE ANALYSIS
+Analyze the writing style across the site's content:
+- Identify the PRIMARY tone (e.g., "Professional", "Casual", "Academic", "Conversational", "Technical", "Enthusiastic", "Authoritative").
+- Identify a SECONDARY tone that appears in certain sections.
+- Rate formality level: "Very Formal" | "Formal" | "Neutral" | "Informal" | "Very Informal".
+- Write a 2-sentence brand voice description that a writer could use as guidance.
+- Extract 3-5 example phrases or stylistic patterns that characterize this brand's voice.
+
+### TASK 4: TECHNICAL ISSUE DETECTION
+Identify any technical SEO issues visible through your analysis:
+- For each issue: describe the problem, rate severity ("Critical" | "Warning" | "Info"), list affected pages, and provide a specific recommendation.
+- Look for: missing H1 tags, duplicate content signals, poor URL structures, missing alt text indicators, no HTTPS, slow-loading indicators, mobile-unfriendly signals, missing sitemaps, thin content pages.
+
+### TASK 5: CONTENT THEME EXTRACTION
+Identify the major content themes/topics across the entire site:
+- For each theme: name the theme, count how many pages cover it, and list related keywords naturally associated with that theme.
+- Identify content gaps — areas where the site SHOULD have content but doesn't.
+
+### TASK 6: INITIAL KEYWORD INTELLIGENCE
+Based on your complete analysis, identify 15-20 high-value keywords this site should target:
+- Mix of short-tail (1-2 words), mid-tail (3-4 words), and long-tail (5+ words).
+- For each keyword: estimate monthly search volume, difficulty (0-100), CPC estimate, search intent ("Informational" | "Commercial" | "Transactional" | "Navigational"), and assign a category/theme.
+- Prioritize keywords where the site has existing content authority but may not be ranking optimally.
+
+### TASK 7: CRAWL SUMMARY
+Write a 3-4 sentence executive summary of your findings — the overall health of the site, its strongest content areas, biggest opportunities, and any red flags the operator should know about immediately.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "pages": [
+    {
+      "url": "string (full path like /blog/example-post)",
+      "title": "string",
+      "type": "string",
+      "contentTheme": "string",
+      "wordCount": number,
+      "hasImages": boolean,
+      "hasMeta": boolean,
+      "issues": ["string"]
+    }
+  ],
+  "siteStructure": {
+    "totalPages": number,
+    "pageTypes": [{ "type": "string", "count": number }],
+    "depth": number,
+    "orphanPages": ["string"]
+  },
+  "toneAnalysis": {
+    "primaryTone": "string",
+    "secondaryTone": "string",
+    "formality": "string",
+    "brandVoiceDescription": "string",
+    "examplePhrases": ["string"]
+  },
+  "technicalIssues": [
+    {
+      "issue": "string",
+      "severity": "Critical|Warning|Info",
+      "affectedPages": ["string"],
+      "recommendation": "string"
+    }
+  ],
+  "contentThemes": [
+    {
+      "theme": "string",
+      "frequency": number,
+      "relatedKeywords": ["string"]
+    }
+  ],
+  "keywords": [
+    {
+      "keyword": "string",
+      "volume": number,
+      "difficulty": number,
+      "cpc": number,
+      "intent": "Informational|Commercial|Transactional|Navigational",
+      "category": "string"
+    }
+  ],
+  "crawlSummary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- You MUST discover at least 10 pages. If "site:" returns fewer, supplement with homepage analysis and visible navigation links.
+- Every page MUST have its type classified — no "Unknown" types.
+- Tone analysis MUST be specific enough for a writer to replicate the voice.
+- You MUST identify at least 3 technical issues (even minor ones on well-built sites).
+- You MUST identify at least 5 content themes.
+- Keywords MUST include at least 5 long-tail (5+ word) keywords.
+- The crawl summary must be actionable, not generic.
+- All data must be based on actual search results and visible page characteristics, not fabricated.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      pages: Array.isArray(data.pages) ? data.pages : [],
+      siteStructure: data.siteStructure || {
+        totalPages: 0,
+        pageTypes: [],
+        depth: 0,
+        orphanPages: [],
+      },
+      toneAnalysis: data.toneAnalysis || {
+        primaryTone: "Professional",
+        secondaryTone: "Informative",
+        formality: "Neutral",
+        brandVoiceDescription: "Standard professional web content.",
+        examplePhrases: [],
+      },
+      technicalIssues: Array.isArray(data.technicalIssues)
+        ? data.technicalIssues
+        : [],
+      contentThemes: Array.isArray(data.contentThemes)
+        ? data.contentThemes
+        : [],
+      keywords: Array.isArray(data.keywords) ? data.keywords : [],
+      crawlSummary: data.crawlSummary || "Crawl completed.",
+    };
+  } catch (error) {
+    console.error("Crawler Agent Failed", error);
+    return {
+      pages: [],
+      siteStructure: {
+        totalPages: 0,
+        pageTypes: [],
+        depth: 0,
+        orphanPages: [],
+      },
+      toneAnalysis: {
+        primaryTone: "Unknown",
+        secondaryTone: "Unknown",
+        formality: "Unknown",
+        brandVoiceDescription: "Analysis failed.",
+        examplePhrases: [],
+      },
+      technicalIssues: [],
+      contentThemes: [],
+      keywords: [],
+      crawlSummary: "Crawl failed. Please retry.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 3: KEYWORD RESEARCH — THE STRATEGIST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const performKeywordResearch = async (
+  url: string,
+  crawlData: {
+    contentThemes: { theme: string; relatedKeywords: string[] }[];
+    toneAnalysis: { primaryTone: string; brandVoiceDescription: string };
+    keywords: KeywordMetric[];
+  },
+  userGoals: string
+): Promise<{
+  keywords: KeywordMetric[];
+  clusters: {
+    name: string;
+    keywords: string[];
+    searchIntent: string;
+    contentAngle: string;
+    priority: number;
+  }[];
+  gaps: {
+    topic: string;
+    reason: string;
+    suggestedKeywords: string[];
+  }[];
+  dataSources: {
+    source: string;
+    queriesMade: string[];
+    dataRetrieved: string;
+  }[];
+  researchSummary: string;
+}> => {
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `
+<SYSTEM>
+You are the KEYWORD RESEARCH AGENT — codename "THE STRATEGIST." You are the intelligence analyst of the SEO war room. Your mission is to transform raw crawl intelligence into a comprehensive keyword strategy that will drive every subsequent operation.
+
+You do not guess. You RESEARCH. You use Google Search to validate every keyword with real search data. You cross-reference competitor landscapes. You identify opportunities that other SEO tools miss because you understand CONTEXT, not just numbers.
+
+Your output is displayed in real-time on the operator's dashboard. Keywords appear one by one as you discover them. Volume and difficulty data populates as API calls return. The operator watches you work — make every action count.
+
+CRITICAL: Every keyword you recommend must be defensible with data. No filler keywords. No vanity terms. Every keyword must serve the mission.
+</SYSTEM>
+
+<MISSION>
+Conduct comprehensive keyword research for: ${url}
+Operator's Goals: "${userGoals}"
+</MISSION>
+
+<INTELLIGENCE FROM CRAWLER AGENT>
+Content Themes Discovered: ${JSON.stringify(crawlData.contentThemes)}
+Brand Tone: ${crawlData.toneAnalysis.primaryTone} — ${crawlData.toneAnalysis.brandVoiceDescription}
+Preliminary Keywords from Crawl: ${JSON.stringify(crawlData.keywords.map((k) => k.keyword))}
+</INTELLIGENCE>
+
+<INSTRUCTIONS>
+Execute the following research operations:
+
+### OPERATION 1: SEED KEYWORD EXPANSION
+Take the preliminary keywords from the Crawler Agent and the content themes. For each theme:
+- Use Google Search to find related searches, autocomplete suggestions, and "People Also Search For" data.
+- Expand each seed keyword into 3-5 derivative keywords (long-tail variations, question-based, comparison-based).
+- Search for "[theme] + tips/guide/how to/best/vs/review" patterns to find high-intent variations.
+
+### OPERATION 2: COMPETITOR KEYWORD MINING
+- Search for the top 3 competitors in this niche (sites ranking for the seed keywords).
+- Identify keywords THEY rank for that ${url} does NOT.
+- These are your GAP KEYWORDS — high-priority targets.
+
+### OPERATION 3: KEYWORD QUALIFICATION
+For EVERY keyword in your expanded list (target: 30-50 keywords):
+- "keyword": The exact keyword phrase.
+- "volume": Estimated monthly search volume. Use Google Search trends and your knowledge to estimate. Be realistic, not inflated.
+- "difficulty": SEO difficulty score (0-100). Base this on the competitiveness you observe in actual search results.
+- "cpc": Estimated cost-per-click in USD (indicator of commercial value).
+- "intent": Classify as "Informational" (learning), "Commercial" (comparing/researching to buy), "Transactional" (ready to buy/act), or "Navigational" (looking for specific site).
+- "category": Assign to a thematic category (e.g., "Product Reviews", "How-To Guides", "Industry News").
+
+### OPERATION 4: THEMATIC CLUSTERING
+Group all qualified keywords into 5-8 thematic clusters:
+- Each cluster gets a clear name.
+- List all keywords belonging to that cluster.
+- Define the dominant search intent for the cluster.
+- Suggest a content angle — what kind of content would best serve this cluster.
+- Assign priority (1 = highest) based on volume-to-difficulty ratio and alignment with user goals.
+
+### OPERATION 5: CONTENT GAP IDENTIFICATION
+Identify 3-5 topic gaps where:
+- The site has NO content but SHOULD based on its niche and audience.
+- Competitors are successfully ranking.
+- Search demand exists.
+For each gap: name the topic, explain why it matters, and suggest 3 keywords to target.
+
+### OPERATION 6: DATA SOURCE LOGGING
+Log every external data query you make for transparency:
+- Source name (e.g., "Google Search", "Google Trends signals", "Competitor SERP analysis").
+- Specific queries you ran.
+- What data you retrieved from each query.
+
+### OPERATION 7: RESEARCH SUMMARY
+Write a 3-4 sentence strategic summary: What is the keyword landscape like? Where are the biggest opportunities? What should the operator prioritize first and why?
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "keywords": [
+    {
+      "keyword": "string",
+      "volume": number,
+      "difficulty": number,
+      "cpc": number,
+      "intent": "Informational|Commercial|Transactional|Navigational",
+      "category": "string"
+    }
+  ],
+  "clusters": [
+    {
+      "name": "string",
+      "keywords": ["string"],
+      "searchIntent": "string",
+      "contentAngle": "string",
+      "priority": number
+    }
+  ],
+  "gaps": [
+    {
+      "topic": "string",
+      "reason": "string",
+      "suggestedKeywords": ["string"]
+    }
+  ],
+  "dataSources": [
+    {
+      "source": "string",
+      "queriesMade": ["string"],
+      "dataRetrieved": "string"
+    }
+  ],
+  "researchSummary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- MINIMUM 30 keywords. Maximum 50.
+- At least 10 keywords must be long-tail (4+ words).
+- At least 5 keywords must be question-based (starting with How, What, Why, When, Where, Can, Does, Is).
+- Every keyword must have volume > 0 and difficulty > 0 — no zero values.
+- Clusters must contain at least 3 keywords each.
+- Do NOT include branded keywords (competitor brand names) unless specifically relevant.
+- Keywords must be practically targetable — no impossibly broad terms like "business" or "marketing" alone.
+- Data sources MUST be logged — transparency is non-negotiable.
+- CPC values should reflect real advertiser interest signals.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      keywords: Array.isArray(data.keywords) ? data.keywords : [],
+      clusters: Array.isArray(data.clusters) ? data.clusters : [],
+      gaps: Array.isArray(data.gaps) ? data.gaps : [],
+      dataSources: Array.isArray(data.dataSources) ? data.dataSources : [],
+      researchSummary: data.researchSummary || "Research completed.",
+    };
+  } catch (error) {
+    console.error("Keyword Research Agent Failed", error);
+    return {
+      keywords: [],
+      clusters: [],
+      gaps: [],
+      dataSources: [],
+      researchSummary: "Keyword research failed.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 4: SERP ANALYSIS — THE RESEARCHER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const performSerpAnalysis = async (
+  keyword: string,
+  targetDomain: string
+): Promise<SerpResult> => {
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `
+<SYSTEM>
+You are the SERP ANALYSIS AGENT — codename "THE RESEARCHER." You are the deep intelligence operative of the SEO war room. While other agents identify WHAT to target, you determine HOW to win.
+
+You perform the most granular competitive analysis available. You don't just list who ranks — you analyze WHY they rank, WHERE their content is weak, and HOW the operator can outperform them.
+
+Your analysis is displayed in real-time on the operator's dashboard in a dedicated sub-panel for this keyword. Every competitor discovered, every PAA question extracted, every insight generated appears live as you work.
+
+You are meticulous. You are thorough. You miss nothing.
+</SYSTEM>
+
+<MISSION>
+Perform comprehensive SERP analysis for: "${keyword}"
+Target Domain: ${targetDomain}
+</MISSION>
+
+<INSTRUCTIONS>
+Execute the following analysis operations using Google Search for real-time data:
+
+### OPERATION 1: AI OVERVIEW CAPTURE
+Search for "${keyword}" and analyze what Google's AI Overview (SGE) shows or would show:
+- Capture/generate the AI Overview text that appears or would likely appear.
+- Identify what content format the AI Overview favors (lists, paragraphs, definitions, comparisons).
+- Note which sources the AI Overview cites or would cite.
+- Identify the KEY PHRASES and STRUCTURE that trigger AI Overview inclusion.
+
+### OPERATION 2: PEOPLE ALSO ASK EXTRACTION (MANDATORY — MINIMUM 7)
+Extract People Also Ask questions from the SERP. This is a CRITICAL deliverable:
+- You MUST extract at least 7 PAA questions, ideally 10.
+- For each question, note it exactly as phrased in search results.
+- These will be DIRECTLY incorporated into article content, so accuracy matters.
+- If you cannot find 7 from the primary search, search for variations of "${keyword}" to find related PAA questions.
+
+### OPERATION 3: COMPETITOR DEEP ANALYSIS
+Identify the top 5 organic results ranking for "${keyword}". For EACH competitor:
+- "domain": The domain name.
+- "rank": Their current position (1-10).
+- "estimatedTraffic": Estimated monthly organic traffic to their ranking page (use signals from domain authority, position, and keyword volume).
+- "domainAuthority": Estimated DA (0-100) based on backlink profile signals, site age, and content depth visible through search.
+- "rankingChange": Estimated position change over recent period (-N for dropped, +N for gained, 0 for stable). Use search result freshness signals.
+- For each competitor, identify their PRIMARY CONTENT WEAKNESS — what is their ranking page missing or doing poorly?
+
+### OPERATION 4: CONTENT GAP ANALYSIS
+Compare what the top 3 competitors cover versus what would be IDEAL comprehensive coverage:
+- What topics do ALL competitors cover? (Table stakes — must include)
+- What topics do SOME competitors cover? (Differentiation opportunities)
+- What topics does NO competitor cover well? (Blue ocean opportunities)
+- What unique angles could ${targetDomain} bring based on its existing content authority?
+
+### OPERATION 5: OPPORTUNITY SCORING
+Calculate an opportunity score (0-100) based on:
+- Keyword difficulty vs. ${targetDomain}'s estimated authority.
+- Content gaps available for differentiation.
+- AI Overview optimization potential.
+- PAA coverage opportunities.
+- Competitor content quality and freshness.
+Score > 70 = Strong opportunity. Score 40-70 = Moderate. Score < 40 = Challenging.
+
+### OPERATION 6: STRATEGIC INSIGHT
+Write a 3-4 sentence strategic battle plan: What EXACTLY should the content do to outrank these competitors? Be specific — mention content structure, length targets, unique angles, and technical optimizations.
+
+### OPERATION 7: TOPIC CLUSTER ASSIGNMENT
+Assign this keyword to a logical topic cluster/group name that could contain related keywords.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "keyword": "${keyword}",
+  "aiOverview": "string — the AI Overview text captured or predicted",
+  "aiOverviewFormat": "string — list|paragraph|definition|comparison",
+  "aiOverviewSources": ["string — domains cited in AI Overview"],
+  "peopleAlsoAsk": ["string", "string", ...minimum 7 questions],
+  "competitors": [
+    {
+      "domain": "string",
+      "rank": number,
+      "estimatedTraffic": number,
+      "domainAuthority": number,
+      "rankingChange": number,
+      "contentWeakness": "string"
+    }
+  ],
+  "contentGaps": {
+    "tableStakes": ["string — topics all competitors cover"],
+    "differentiators": ["string — topics some cover"],
+    "blueOcean": ["string — topics none cover well"],
+    "uniqueAngles": ["string — angles for target domain"]
+  },
+  "opportunityScore": number,
+  "strategicInsight": "string",
+  "group": "string — Topic Cluster Name",
+  "timestamp": ${Date.now()}
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- You MUST use Google Search to get REAL current SERP data. Do not fabricate search results.
+- People Also Ask MUST contain at least 7 questions. This is non-negotiable. If primary search yields fewer, search variations.
+- Competitors MUST be real domains currently ranking, not invented.
+- Domain Authority estimates must be reasonable (e.g., Wikipedia ~95, small blogs ~15-30, medium sites ~40-60).
+- Traffic estimates must correlate with rank position and keyword volume.
+- Strategic insight must be ACTIONABLE, not generic advice like "write better content."
+- Content gap analysis must reference SPECIFIC topics, not vague categories.
+- The opportunity score must be justified by the data you present.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+
+    const data = cleanAndParseJSON(response.text || "") || {};
+
+    return {
+      keyword,
+      aiOverview: data.aiOverview || "AI Overview unavailable.",
+      peopleAlsoAsk: Array.isArray(data.peopleAlsoAsk)
+        ? data.peopleAlsoAsk
+        : [],
+      competitors: Array.isArray(data.competitors) ? data.competitors : [],
+      opportunityScore: data.opportunityScore || 0,
+      strategicInsight: data.strategicInsight || "No insights generated.",
+      group: data.group || "General",
+      timestamp: Date.now(),
+    };
+  } catch (e) {
+    console.error("SERP Analysis Failed", e);
+    return {
+      keyword,
+      aiOverview: "Analysis failed.",
+      peopleAlsoAsk: [],
+      competitors: [],
+      opportunityScore: 0,
+      strategicInsight: "Error during analysis.",
+      group: "Error",
+      timestamp: Date.now(),
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 5: CONTENT STRATEGY — THE PLANNER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const generateContentStrategy = async (
+  keywords: KeywordMetric[],
+  serpData: SerpResult[],
+  crawlData: {
+    contentThemes: { theme: string; relatedKeywords: string[] }[];
+    toneAnalysis: { primaryTone: string; brandVoiceDescription: string };
+    pages: { url: string; type: string; contentTheme: string }[];
+  },
+  goals: string
+): Promise<ContentStrategy & {
+  pillarContent: {
+    title: string;
+    targetKeyword: string;
+    supportingArticles: string[];
+    estimatedImpact: string;
+  }[];
+  internalLinkingMap: {
+    sourceTopic: string;
+    targetTopic: string;
+    anchorText: string;
+    linkStrength: string;
+  }[];
+  competitivePositioning: string;
+  contentGapPriorities: {
+    gap: string;
+    urgency: string;
+    potentialTraffic: number;
+  }[];
+  strategicRationale: string;
+}> => {
+  const model = "gemini-3-pro-preview";
+
+  const prompt = `
+<SYSTEM>
+You are the CONTENT STRATEGY AGENT — codename "THE PLANNER." You are the chief strategist of the SEO war room. You transform raw intelligence from the Crawler, Keyword Research, and SERP Analysis agents into a cohesive, executable content strategy.
+
+You think in SYSTEMS, not individual pieces. Every article you recommend is part of a larger topic cluster architecture. Every publishing date is chosen for strategic reasons. Every internal link strengthens the overall domain authority graph.
+
+Your strategy is displayed in real-time on the operator's dashboard. Topic clusters build visually before their eyes. The content calendar materializes with clear rationale. The operator must understand not just WHAT to publish, but WHY each piece matters and HOW it connects to the larger goal.
+
+You are the bridge between intelligence and execution. Your strategy directly authorizes the Writing Agent to begin content creation.
+</SYSTEM>
+
+<MISSION>
+Synthesize all gathered intelligence into a comprehensive content strategy.
+Target Website: Based on the crawl data provided.
+Operator's Goals: "${goals}"
+</MISSION>
+
+<INTELLIGENCE BRIEFING>
+### From Keyword Research Agent:
+Qualified Keywords (${keywords.length} total): ${JSON.stringify(keywords.slice(0, 20))}
+
+### From SERP Analysis Agent:
+SERP Insights (${serpData.length} keywords analyzed):
+${JSON.stringify(
+  serpData.slice(0, 8).map((s) => ({
+    keyword: s.keyword,
+    opportunityScore: s.opportunityScore,
+    insight: s.strategicInsight,
+    paaCount: s.peopleAlsoAsk?.length || 0,
+    topCompetitorDA: s.competitors?.[0]?.domainAuthority || "Unknown",
+    group: s.group,
+  }))
+)}
+
+### From Crawler Agent:
+Existing Content Themes: ${JSON.stringify(crawlData.contentThemes)}
+Brand Voice: ${crawlData.toneAnalysis.primaryTone} — ${crawlData.toneAnalysis.brandVoiceDescription}
+Existing Pages: ${JSON.stringify(crawlData.pages.slice(0, 15).map((p) => ({ url: p.url, theme: p.contentTheme })))}
+</INTELLIGENCE BRIEFING>
+
+<INSTRUCTIONS>
+Build the following strategic deliverables:
+
+### DELIVERABLE 1: TOPIC CLUSTERS (5-8 clusters)
+Group all target keywords into topic clusters following the pillar-cluster model:
+- Each cluster needs a clear name reflecting the topic area.
+- List all keywords assigned to that cluster.
+- Define the dominant search intent for the cluster.
+- Explain what content angle/approach will differentiate from competitors.
+- Assign priority (1 = highest) based on: opportunity score from SERP data, alignment with user goals, existing content authority, and volume-to-difficulty ratio.
+
+### DELIVERABLE 2: PILLAR CONTENT ARCHITECTURE (3-5 pillar pieces)
+Identify pillar content pieces — comprehensive, authoritative articles that anchor each major cluster:
+- Title for the pillar article.
+- Primary target keyword.
+- List of 3-5 supporting articles that link to/from this pillar.
+- Estimated traffic impact if this pillar ranks on page 1.
+
+### DELIVERABLE 3: CONTENT CALENDAR (4-week rolling plan)
+Create a week-by-week publishing schedule:
+- For each week (1-4): specify the topic to publish, the content type ("Comprehensive Guide" | "How-To Article" | "Listicle" | "Comparison Post" | "Case Study" | "Data-Driven Analysis"), the best day to publish (with brief reasoning), and the target keyword.
+- Prioritize quick wins (high opportunity score, lower difficulty) in weeks 1-2.
+- Schedule pillar content in weeks 2-3.
+- Schedule supporting content in weeks 3-4.
+
+### DELIVERABLE 4: INTERNAL LINKING MAP
+Define the internal linking architecture:
+- For each link: source topic → target topic, suggested anchor text, and link strength ("Critical" | "Important" | "Supplementary").
+- Ensure pillar pages receive the most internal links.
+- Map links FROM existing pages (from crawl data) TO new content where relevant.
+
+### DELIVERABLE 5: COMPETITIVE POSITIONING STATEMENT
+Write a 2-3 sentence competitive positioning statement: How will this content strategy differentiate ${goals} from the competitors identified in SERP analysis? What is the unfair advantage?
+
+### DELIVERABLE 6: CONTENT GAP PRIORITIES
+From SERP analysis gaps and keyword research gaps, prioritize which gaps to fill first:
+- Gap topic name.
+- Urgency ("Immediate" | "Next Month" | "Quarterly").
+- Estimated monthly traffic if gap is filled.
+
+### DELIVERABLE 7: STRATEGIC RATIONALE
+Write a comprehensive 4-5 sentence strategic summary explaining:
+- The overall strategy logic.
+- Why clusters are organized this way.
+- What the expected outcome is in 30/60/90 days.
+- The single most important piece of content to publish first and why.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "clusters": [
+    {
+      "name": "string",
+      "keywords": ["string"],
+      "intent": "string",
+      "contentAngle": "string (new field — how to differentiate)",
+      "priority": number
+    }
+  ],
+  "pillarContent": [
+    {
+      "title": "string",
+      "targetKeyword": "string",
+      "supportingArticles": ["string — titles"],
+      "estimatedImpact": "string"
+    }
+  ],
+  "calendar": [
+    {
+      "week": number,
+      "topic": "string",
+      "type": "string",
+      "bestDay": "string",
+      "targetKeyword": "string",
+      "reasoning": "string"
+    }
+  ],
+  "internalLinking": [
+    {
+      "sourceTopic": "string",
+      "targetTopic": "string",
+      "anchorText": "string"
+    }
+  ],
+  "internalLinkingMap": [
+    {
+      "sourceTopic": "string",
+      "targetTopic": "string",
+      "anchorText": "string",
+      "linkStrength": "Critical|Important|Supplementary"
+    }
+  ],
+  "competitivePositioning": "string",
+  "contentGapPriorities": [
+    {
+      "gap": "string",
+      "urgency": "Immediate|Next Month|Quarterly",
+      "potentialTraffic": number
+    }
+  ],
+  "summary": "string (keep for backward compatibility)",
+  "strategicRationale": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Every cluster must contain at least 3 keywords.
+- Pillar content must target keywords with opportunity score > 50 (from SERP data).
+- The calendar must fill all 4 weeks — no empty weeks.
+- Internal linking map must include at least 5 links, and at least 2 must involve EXISTING pages from the crawl data.
+- Strategy must explicitly address the operator's stated goals.
+- Competitive positioning must reference actual competitor weaknesses from SERP data.
+- Content gap priorities must include at least 3 gaps.
+- Do NOT recommend content types that don't align with the site's brand voice.
+- Every recommendation must be justified with data from the intelligence briefing.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      clusters: Array.isArray(data.clusters) ? data.clusters : [],
+      calendar: Array.isArray(data.calendar) ? data.calendar : [],
+      internalLinking: Array.isArray(data.internalLinking)
+        ? data.internalLinking
+        : [],
+      summary: data.summary || data.strategicRationale || "Strategy generated.",
+      pillarContent: Array.isArray(data.pillarContent)
+        ? data.pillarContent
+        : [],
+      internalLinkingMap: Array.isArray(data.internalLinkingMap)
+        ? data.internalLinkingMap
+        : [],
+      competitivePositioning: data.competitivePositioning || "",
+      contentGapPriorities: Array.isArray(data.contentGapPriorities)
+        ? data.contentGapPriorities
+        : [],
+      strategicRationale: data.strategicRationale || "",
+    };
+  } catch (e) {
+    console.error("Content Strategy Failed", e);
+    return {
+      clusters: [],
+      calendar: [],
+      internalLinking: [],
+      summary: "Strategy generation failed.",
+      pillarContent: [],
+      internalLinkingMap: [],
+      competitivePositioning: "",
+      contentGapPriorities: [],
+      strategicRationale: "",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 6: ARTICLE OUTLINE — THE ARCHITECT (Sub-Agent of Writer)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const generateArticleOutline = async (
+  keyword: string,
+  serpData: SerpResult,
+  tone: string,
+  competitorInsights: string,
+  brandVoice: string
+): Promise<{
+  title: string;
+  metaDescription: string;
+  targetWordCount: number;
+  sections: {
+    heading: string;
+    headingLevel: string;
+    description: string;
+    visualType: string;
+    targetWordCount: number;
+    paaQuestionsAddressed: string[];
+    keyPoints: string[];
+  }[];
+  researchQueries: string[];
+  uniqueAngle: string;
+  outlineSummary: string;
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the ARTICLE OUTLINE AGENT — the structural architect within the Writing Agent's team. Before a single word of the article is written, YOU design the blueprint.
+
+Your outline is not a simple list of headings. It is a comprehensive architectural plan that ensures the final article will:
+- Exceed 3,000 words of substantive content.
+- Have a UNIQUE structure (never templated — each article gets its own organizational approach).
+- Comprehensively answer ALL relevant People Also Ask questions.
+- Include strategic placements for data visualizations (charts/tables) and images.
+- Follow the brand's tone and voice.
+- Outperform every competitor identified in SERP analysis.
+
+Your outline is displayed to the operator for review before writing begins. They must see that every section serves a purpose, every PAA question is addressed, and the structure is designed to dominate the SERP.
+</SYSTEM>
+
+<MISSION>
+Create a comprehensive article outline for: "${keyword}"
+Target Minimum: 3,000+ words
+Brand Tone: ${tone}
+Brand Voice: ${brandVoice}
+</MISSION>
+
+<INTELLIGENCE FROM SERP AGENT>
+People Also Ask Questions: ${JSON.stringify(serpData?.peopleAlsoAsk || [])}
+AI Overview Text: ${serpData?.aiOverview || "Not available"}
+Strategic Insight: ${serpData?.strategicInsight || "Not available"}
+Competitor Weaknesses: ${competitorInsights}
+Opportunity Score: ${serpData?.opportunityScore || "N/A"}
+</INTELLIGENCE>
+
+<INSTRUCTIONS>
+
+### STEP 1: TITLE ENGINEERING
+Craft a compelling, SEO-optimized title (H1) that:
+- Contains the primary keyword naturally.
+- Creates curiosity or promises specific value.
+- Is between 50-65 characters for SERP display optimization.
+- DOES NOT use cliché formulas like "The Ultimate Guide to..." unless genuinely appropriate.
+
+### STEP 2: META DESCRIPTION
+Write a meta description (150-160 characters) that:
+- Contains the primary keyword.
+- Includes a clear value proposition.
+- Has a call-to-action element.
+
+### STEP 3: SECTION ARCHITECTURE
+Design 10-14 sections that create a UNIQUE article structure. For EACH section:
+- "heading": The exact heading text. Use H2 for main sections. Use H3 for subsections under an H2.
+- "headingLevel": "H2" or "H3".
+- "description": A 2-3 sentence brief for the writer explaining EXACTLY what to cover in this section, what angle to take, and what makes this section valuable.
+- "visualType": "none" | "chart" | "table" | "image". You MUST assign:
+  * At least 2 sections with "chart" (data visualizations — bar, line, or pie charts).
+  * At least 1 section with "table" (comparison or data table).
+  * At least 3 sections with "image" (illustrations, diagrams, or photographs).
+  * Remaining sections can be "none".
+- "targetWordCount": How many words this section should contain (distribute to total 3,200+ across all sections).
+- "paaQuestionsAddressed": List any PAA questions from the SERP data that this section directly answers. Distribute ALL PAA questions across the outline — every PAA question must appear in at least one section.
+- "keyPoints": 3-5 bullet points of the essential information this section must contain.
+
+### STEP 4: STRUCTURAL UNIQUENESS
+Explain in 1-2 sentences what makes THIS article's structure unique compared to a generic article on this topic. What organizational approach did you choose and why?
+
+### STEP 5: RESEARCH QUERIES
+List 5-8 specific Google search queries the Writing Agent should execute to gather real-time data, statistics, expert quotes, and current information for this article.
+
+### STEP 6: OUTLINE SUMMARY
+Write a 2-sentence summary of the outline for the operator's quick review.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "title": "string",
+  "metaDescription": "string",
+  "targetWordCount": number (minimum 3200),
+  "sections": [
+    {
+      "heading": "string",
+      "headingLevel": "H2|H3",
+      "description": "string",
+      "visualType": "none|chart|table|image",
+      "targetWordCount": number,
+      "paaQuestionsAddressed": ["string"],
+      "keyPoints": ["string"]
+    }
+  ],
+  "researchQueries": ["string"],
+  "uniqueAngle": "string",
+  "outlineSummary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- MINIMUM 10 sections, MAXIMUM 14.
+- The sum of all section targetWordCount values MUST exceed 3,200.
+- EVERY People Also Ask question from the SERP data MUST be assigned to at least one section.
+- At least 2 sections must have visualType "chart", 1 must have "table", and 3 must have "image".
+- Headings must NOT be generic (e.g., never use "Introduction" as a heading — make it topic-specific).
+- The structure must be UNIQUE — do not use the same section order you would for any other article.
+- At least 2 sections should use question-format headings (H2 that is a question).
+- The outline must flow logically — a reader should be able to read just the headings and understand the article's narrative arc.
+- DO NOT include a "Conclusion" section with that generic name — use a forward-looking or action-oriented heading instead.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      title: data.title || keyword,
+      metaDescription: data.metaDescription || "",
+      targetWordCount: data.targetWordCount || 3200,
+      sections: Array.isArray(data.sections) ? data.sections : [],
+      researchQueries: Array.isArray(data.researchQueries)
+        ? data.researchQueries
+        : [],
+      uniqueAngle: data.uniqueAngle || "",
+      outlineSummary: data.outlineSummary || "",
+    };
+  } catch (e) {
+    console.error("Article Outline Failed", e);
+    return {
+      title: keyword,
+      metaDescription: "",
+      targetWordCount: 3200,
+      sections: [],
+      researchQueries: [],
+      uniqueAngle: "",
+      outlineSummary: "",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 7: ARTICLE SECTION WRITER — THE WRITER (Core)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const writeArticleSection = async (
+  sectionHeading: string,
+  sectionDescription: string,
+  keyPoints: string[],
+  keyword: string,
+  articleTitle: string,
+  previousSections: string,
+  tone: string,
+  brandVoice: string,
+  visualType: string,
+  paaQuestions: string[],
+  sectionIndex: number,
+  totalSections: number,
+  targetWordCount: number
+): Promise<{
+  content: string;
+  chartData?: { name: string; value: number }[];
+  tableData?: { headers: string[]; rows: string[][] };
+  imagePrompt?: string;
+  imageAltText?: string;
+  externalLinks: { url: string; anchorText: string; reason: string }[];
+  wordCount: number;
+  paaAnswered: string[];
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the ARTICLE GENERATION AGENT — codename "THE WRITER." You are the content craftsman of the SEO war room. You write ONE SECTION at a time, and each section is streamed live to the operator's dashboard. They watch your words appear in real-time.
+
+You are not a content mill. You are an expert writer who produces content that is:
+- Genuinely authoritative and deeply researched.
+- Indistinguishable from the best human-written content in this niche.
+- Rich with specific data, examples, and actionable insights.
+- Naturally optimized for search without being keyword-stuffed.
+- Engaging enough that readers stay, share, and return.
+
+CRITICAL WRITING PRINCIPLES:
+1. NATURAL LANGUAGE: Vary sentence length. Mix short punchy sentences with longer explanatory ones. Use transitional phrases naturally. Include rhetorical questions occasionally. Express genuine perspectives.
+2. NO ROBOTIC PATTERNS: Never start 3+ consecutive paragraphs the same way. Never use the same transition word twice in succession. Avoid "In conclusion," "Furthermore," "Additionally" as crutch words.
+3. AUTHENTIC VOICE: Write with the confidence of a subject matter expert. Share opinions where appropriate. Use "you" to address the reader directly. Include "I" perspective when sharing experiential insights.
+4. DATA-DRIVEN: Every claim should be supported by a statistic, study, or authoritative source. Fabricating data is absolutely prohibited — use Google Search to find real data.
+5. EXTERNAL LINKING: MANDATORY. You MUST include 2-4 high-authority external links per section. These are NOT optional. Cite authoritative sources (research institutions, government sites, respected publications, university resources). Each link must be to a REAL, EXISTING page.
+</SYSTEM>
+
+<MISSION>
+Write Section ${sectionIndex + 1} of ${totalSections} for the article: "${articleTitle}"
+Target Keyword: "${keyword}"
+</MISSION>
+
+<SECTION BRIEF>
+Heading: "${sectionHeading}"
+Description: ${sectionDescription}
+Key Points to Cover: ${JSON.stringify(keyPoints)}
+Visual Requirement: ${visualType}
+Target Word Count for This Section: ${targetWordCount} words minimum
+PAA Questions to Answer in This Section: ${JSON.stringify(paaQuestions)}
+</SECTION BRIEF>
+
+<CONTEXT>
+Brand Tone: ${tone}
+Brand Voice: ${brandVoice}
+Previous Sections Written (for continuity — do NOT repeat information):
+${previousSections ? previousSections.substring(0, 3000) : "This is the first section."}
+</CONTEXT>
+
+<INSTRUCTIONS>
+
+### WRITING TASK
+Write the complete section in Markdown format. Start with the heading as an H2 (##) or H3 (###) as appropriate.
+
+Requirements:
+1. Write at LEAST ${targetWordCount} words of substantive content. Every word must earn its place.
+2. Use Markdown formatting: **bold** for emphasis, bullet lists where appropriate, numbered lists for steps/sequences.
+3. Keep paragraphs to 2-3 sentences maximum for readability.
+4. Include at least one specific statistic or data point (sourced via Google Search).
+5. Include at least one real-world example or case study reference.
+6. Address ALL PAA questions assigned to this section naturally within the text — do not create a separate Q&A format unless the section heading suggests it.
+
+### EXTERNAL LINKS (MANDATORY)
+You MUST research and include 2-4 external links to high-authority sources:
+- Use Google Search to find REAL, CURRENT sources that support your claims.
+- Prefer: .gov, .edu, .org, established news outlets, peer-reviewed research, respected industry publications.
+- For each link, provide the URL, anchor text used, and brief reason why this source was chosen.
+- Links must be integrated NATURALLY into sentences, not dumped at the end.
+
+### VISUAL CONTENT
+${
+  visualType === "chart"
+    ? `You MUST generate chart data. Create a dataset of 5-8 data points relevant to this section's topic. Format: [{ "name": "Category/Label", "value": number }]. The data must be meaningful and defensible — based on real statistics you can reference.`
+    : ""
+}
+${
+  visualType === "table"
+    ? `You MUST generate table data. Create a comparison or data table with headers and 4-6 rows of data relevant to this section's topic. Format: { "headers": ["Col1", "Col2", ...], "rows": [["val1", "val2", ...], ...] }.`
+    : ""
+}
+${
+  visualType === "image"
+    ? `You MUST generate a detailed image prompt for AI image generation. The prompt should describe:
+    - Subject matter directly related to this section's content.
+    - Specific visual composition (close-up, wide shot, diagram, etc.).
+    - Photorealistic style, 16:9 aspect ratio.
+    - Professional, editorial quality.
+    - NO text in the image.
+    Also provide SEO-optimized alt text (10-15 words, includes keyword naturally).`
+    : ""
+}
+
+### CONTINUITY
+- If previous sections are provided, ensure smooth transition from where the last section ended.
+- Do NOT repeat information already covered in previous sections.
+- Reference previous sections naturally if building upon earlier points (e.g., "As we explored earlier...").
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "content": "string — full Markdown content for this section",
+  "chartData": [{ "name": "string", "value": number }] (only if visualType is "chart", otherwise omit),
+  "tableData": { "headers": ["string"], "rows": [["string"]] } (only if visualType is "table", otherwise omit),
+  "imagePrompt": "string" (only if visualType is "image", otherwise omit),
+  "imageAltText": "string" (only if visualType is "image", otherwise omit),
+  "externalLinks": [
+    {
+      "url": "string — full URL",
+      "anchorText": "string — text used as link",
+      "reason": "string — why this source"
+    }
+  ],
+  "wordCount": number,
+  "paaAnswered": ["string — PAA questions answered in this section"]
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- MINIMUM ${targetWordCount} words. If you write fewer, you have failed.
+- At least 2 external links. These must be REAL URLs to authoritative sources.
+- If visualType is "chart", chartData is MANDATORY with 5-8 data points.
+- If visualType is "table", tableData is MANDATORY with 4-6 rows.
+- If visualType is "image", imagePrompt AND imageAltText are MANDATORY.
+- ALL listed PAA questions must be answered within the content naturally.
+- Do NOT use the phrase "In this section, we will..." — just start writing authoritatively.
+- Do NOT end with "In conclusion" or "To summarize" — end with a forward-looking statement or actionable insight.
+- Paragraphs MUST be 2-3 sentences max. Wall-of-text paragraphs are prohibited.
+- The content must feel HUMAN. Vary your rhythm. Use contractions occasionally. Include a genuine insight or opinion.
+- Every external link must be formatted as [anchor text](URL) in the Markdown content.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      content: data.content || "Section generation failed.",
+      chartData: data.chartData,
+      tableData: data.tableData,
+      imagePrompt: data.imagePrompt,
+      imageAltText: data.imageAltText,
+      externalLinks: Array.isArray(data.externalLinks)
+        ? data.externalLinks
+        : [],
+      wordCount: data.wordCount || 0,
+      paaAnswered: Array.isArray(data.paaAnswered) ? data.paaAnswered : [],
+    };
+  } catch (e) {
+    console.error("Article Section Write Failed", e);
+    return {
+      content: "Error writing section.",
+      externalLinks: [],
+      wordCount: 0,
+      paaAnswered: [],
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 8: AI OVERVIEW OPTIMIZER — THE OPTIMIZER (Sub-Agent of Writer)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const optimizeForAIOverview = async (
+  fullContent: string,
+  keyword: string,
+  aiOverviewFromSerp: string,
+  peopleAlsoAsk: string[]
+): Promise<{
+  optimizedBlock: string;
+  schemaMarkup: string;
+  changes: string[];
+  confidence: string;
+}> => {
+  const safeContent = sanitizeContentForContext(fullContent);
+
+  const prompt = `
+<SYSTEM>
+You are the AI OVERVIEW OPTIMIZER — a specialist sub-agent within the content creation pipeline. Your SOLE PURPOSE is to ensure the article is optimally positioned to be featured in Google's AI Overview (Search Generative Experience / SGE).
+
+You understand how Google's AI Overview selects and formats content:
+- It favors concise, direct answers positioned early in the article.
+- It prefers structured data (lists, definitions, step-by-step instructions).
+- It values E-E-A-T signals (Experience, Expertise, Authoritativeness, Trustworthiness).
+- It pulls from content that directly answers the search query in 2-3 sentences.
+- It favors content with supporting evidence (statistics, citations, expert references).
+
+Your optimization is the FINAL pass before the article is completed. The operator watches this optimization happen — they see your changes tracked and your reasoning displayed.
+</SYSTEM>
+
+<MISSION>
+Optimize the article about "${keyword}" for AI Overview inclusion.
+</MISSION>
+
+<INPUTS>
+Target Keyword: "${keyword}"
+Current AI Overview for This Keyword: "${aiOverviewFromSerp}"
+People Also Ask Questions: ${JSON.stringify(peopleAlsoAsk)}
+Article Content (first 8000 chars): ${safeContent.substring(0, 8000)}
+</INPUTS>
+
+<INSTRUCTIONS>
+
+### TASK 1: KEY TAKEAWAYS BLOCK
+Create a "Key Takeaways" or "Quick Answer" block designed to be placed at the VERY TOP of the article (after the title, before the first section). This block must:
+- Start with a direct, concise answer to the query "${keyword}" in exactly 2-3 sentences.
+- Follow with 4-6 bullet points summarizing the most important facts from the article.
+- Total length: 50-80 words maximum.
+- Use Markdown formatting (bold key terms, bullet list).
+- Structure it to match the format Google's AI Overview currently uses for this keyword.
+
+### TASK 2: FAQ SCHEMA SUGGESTIONS
+Generate a FAQ Schema block (in JSON-LD format) that addresses the top 5 People Also Ask questions with concise answers drawn from the article content. This helps Google understand the Q&A structure.
+
+### TASK 3: CHANGE LOG
+List the specific optimization changes you recommend:
+- What elements were added (the Key Takeaways block).
+- What format optimizations improve AI Overview compatibility.
+- What E-E-A-T signals are present or should be strengthened.
+
+### TASK 4: CONFIDENCE ASSESSMENT
+Rate your confidence that this article will appear in AI Overview: "High" | "Medium" | "Low"
+Explain in one sentence why.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "optimizedBlock": "string — the complete Key Takeaways block in Markdown",
+  "schemaMarkup": "string — the FAQ JSON-LD schema markup",
+  "changes": ["string — each change or recommendation"],
+  "confidence": "string — High|Medium|Low with one-sentence reasoning"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- The optimized block MUST be 50-80 words. Not shorter, not significantly longer.
+- The block must contain the target keyword naturally.
+- FAQ Schema must address at least 5 questions.
+- Answers in the schema must be factual and drawn from the article content — do not invent claims.
+- The format must MATCH what Google's AI Overview currently uses for similar queries.
+- Do NOT use generic filler phrases. Every word in the block must be informational.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      optimizedBlock: data.optimizedBlock || "",
+      schemaMarkup: data.schemaMarkup || "",
+      changes: Array.isArray(data.changes) ? data.changes : [],
+      confidence: data.confidence || "Medium",
+    };
+  } catch (e) {
+    return {
+      optimizedBlock: "",
+      schemaMarkup: "",
+      changes: ["Optimization pass failed — manual review recommended."],
+      confidence: "Low — optimizer encountered an error.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 9: INTERNAL LINKING — THE LINK BUILDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const generateInternalLinkSuggestions = async (
+  content: string,
+  sitemap: string[],
+  siteThemes: { url: string; contentTheme: string }[]
+): Promise<LinkSuggestion[]> => {
+  const safeContent = sanitizeContentForContext(content);
+
+  const prompt = `
+<SYSTEM>
+You are the INTERNAL LINKING AGENT — codename "THE LINK BUILDER." You are responsible for weaving the web of internal links that strengthens the site's topical authority and improves crawlability.
+
+Internal linking is not an afterthought — it is a strategic SEO weapon. Every link you suggest must:
+- Be topically relevant (the anchor text and target page must be semantically related).
+- Be contextually natural (the link must feel like a natural part of the sentence, not forced).
+- Strengthen the site's topic cluster architecture.
+- Help users discover related content they genuinely want to read.
+
+Your suggestions are presented to the operator for APPROVAL. Each suggestion must be defensible — you must explain WHY this link should exist.
+</SYSTEM>
+
+<MISSION>
+Analyze the following article content and identify optimal internal linking opportunities to the provided sitemap pages.
+</MISSION>
+
+<INPUTS>
+Article Content (first 5000 chars):
+${safeContent.substring(0, 5000)}
+
+Available Sitemap URLs:
+${JSON.stringify(sitemap)}
+
+Page Theme Mapping (for context):
+${JSON.stringify(siteThemes.slice(0, 20))}
+</INPUTS>
+
+<INSTRUCTIONS>
+
+### ANALYSIS PROCESS
+1. Read through the article content and identify all mentions of topics, concepts, or terms that relate to existing pages on the site.
+2. For each potential link opportunity, evaluate:
+   - RELEVANCE: Does the sitemap page actually cover the topic being mentioned? (Only suggest if clearly relevant)
+   - CONTEXT: Is the mention substantial enough to warrant a link? (Not just a passing mention)
+   - PLACEMENT: Is this in a natural reading position where a user would want to click?
+   - REDUNDANCY: Don't suggest linking the same page twice.
+
+### FOR EACH SUGGESTION, PROVIDE:
+- "anchorText": The EXACT text from the article that should become a hyperlink. This must be an existing phrase in the content, not invented text. Keep it 2-6 words.
+- "targetUrl": The sitemap URL this anchor should link to. Must be from the provided sitemap list.
+- "context": A snippet of the surrounding sentence (15-25 words) so the operator can verify placement.
+- "type": "internal" (always for this agent).
+- "confidence": A score from 0.0 to 1.0 indicating how confident you are this link is valuable (0.9+ = highly relevant, 0.7-0.89 = moderately relevant, below 0.7 = skip).
+- "reasoning": One sentence explaining why this link should exist.
+
+### PRIORITIZATION
+- Suggest 4-7 links, ranked by confidence score (highest first).
+- Prioritize links to pillar/comprehensive pages over minor pages.
+- Ensure links are distributed throughout the article, not clustered in one section.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a JSON array:
+[
+  {
+    "id": "link-0",
+    "anchorText": "string — exact text from the article",
+    "targetUrl": "string — from the sitemap",
+    "context": "string — surrounding sentence snippet",
+    "type": "internal",
+    "confidence": number (0.0-1.0),
+    "reasoning": "string"
+  }
+]
+</OUTPUT_FORMAT>
+
+<RULES>
+- ONLY suggest links to URLs that exist in the provided sitemap. Do NOT invent URLs.
+- Anchor text MUST exist verbatim in the article content. Do NOT modify the article text.
+- NEVER suggest linking to the same target URL more than once.
+- NEVER suggest the same anchor text for different target URLs.
+- Minimum 3 suggestions, maximum 7.
+- Confidence below 0.6 should NOT be included — only suggest links you're confident about.
+- Links must be contextually natural — a human reader should not notice they were added algorithmically.
+- Do NOT suggest linking generic phrases like "click here", "this article", "learn more".
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const res = cleanAndParseJSON(response.text || "");
+    return Array.isArray(res)
+      ? res.map((l: any, i: number) => ({
+          ...l,
+          id: l.id || `link-${i}`,
+          confidence: l.confidence || 0.8,
+        }))
+      : [];
+  } catch (e) {
+    console.error("Internal Link Suggestion Failed", e);
+    return [];
+  }
+};
+
+export const applyLinkSuggestions = async (
+  content: string,
+  suggestions: LinkSuggestion[]
+): Promise<string> => {
+  let newContent = content;
+
+  const sortedSuggestions = [...suggestions].sort(
+    (a, b) => b.anchorText.length - a.anchorText.length
+  );
+
+  for (const suggestion of sortedSuggestions) {
+    if (!suggestion.anchorText || !suggestion.targetUrl) continue;
+
+    const escapedAnchor = suggestion.anchorText.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&"
+    );
+
+    // Only replace if NOT already inside a markdown link
+    const regex = new RegExp(
+      `(?<!\\[)(?<![\\(])${escapedAnchor}(?!\\])(?![\\)])`,
+      "i"
+    );
+
+    newContent = newContent.replace(
+      regex,
+      `[${suggestion.anchorText}](${suggestion.targetUrl})`
+    );
+  }
+
+  return Promise.resolve(newContent);
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 10: IMAGE GENERATION — THE ARTIST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const generateImagePrompt = async (
+  sectionContent: string,
+  keyword: string,
+  imageType: "featured" | "content",
+  articleTitle: string
+): Promise<{
+  prompt: string;
+  altText: string;
+  caption: string;
+  placement: string;
+}> => {
+  const safeContent = sanitizeContentForContext(sectionContent);
+
+  const promptText = `
+<SYSTEM>
+You are the IMAGE GENERATION AGENT — codename "THE ARTIST." You translate written content into visual concepts. Your image prompts must produce professional, editorial-quality images that enhance the article's value and engagement.
+
+You understand that:
+- Featured images must be compelling enough to drive clicks from SERP and social shares.
+- Content images must visually explain or enhance the specific section they accompany.
+- All images must be photorealistic or professional-illustration quality.
+- No image should contain text (it won't render well in AI generation).
+- Every image needs SEO-optimized alt text.
+
+The operator sees your prompt being formulated, then watches the image generate. Make every prompt count.
+</SYSTEM>
+
+<MISSION>
+Create an image prompt for ${imageType === "featured" ? "the FEATURED IMAGE" : "a CONTENT IMAGE"} for the article: "${articleTitle}"
+Target Keyword: "${keyword}"
+</MISSION>
+
+<CONTEXT>
+${imageType === "featured" ? "This is the hero image shown at the top of the article and in search results/social shares. It must be eye-catching, professional, and immediately communicate the article's topic." : `This image accompanies the following section content:\n${safeContent.substring(0, 1500)}`}
+</CONTEXT>
+
+<INSTRUCTIONS>
+
+### IMAGE PROMPT ENGINEERING
+Create a detailed image generation prompt that specifies:
+1. **Subject**: What is the main subject/focus of the image?
+2. **Composition**: Camera angle, framing, depth of field.
+3. **Style**: Photorealistic, editorial photography quality. Clean, modern aesthetic.
+4. **Lighting**: Specify lighting conditions (natural light, studio lighting, golden hour, etc.).
+5. **Color Palette**: Suggest a color mood that matches the article's tone.
+6. **Setting/Background**: Describe the environment.
+7. **Aspect Ratio**: 16:9 for all images.
+8. **Negative Requirements**: NO text, NO watermarks, NO logos, NO stock photo feel, NO generic clip-art style.
+
+### ALT TEXT
+Write SEO-optimized alt text that:
+- Describes the image content accurately in 10-15 words.
+- Includes the target keyword naturally.
+- Is useful for visually impaired users (descriptive, not keyword-stuffed).
+
+### CAPTION
+Write a 1-sentence caption that could appear below the image, adding context or insight.
+
+### PLACEMENT
+Describe where in the section this image should be placed (e.g., "After the opening paragraph", "Between the statistics and the case study example").
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a single JSON object:
+{
+  "prompt": "string — detailed image generation prompt",
+  "altText": "string — 10-15 word SEO alt text",
+  "caption": "string — 1-sentence image caption",
+  "placement": "string — placement instruction"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- The prompt must be at least 40 words — vague prompts produce bad images.
+- Alt text must be 10-15 words, no more, no less.
+- The image must be directly relevant to the content — no decorative filler images.
+- NEVER include text or words in the image prompt.
+- Featured images should be broader/more conceptual; content images should be specific to the section.
+- The prompt must specify "photorealistic" or "professional editorial photography" style.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: promptText,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      prompt: data.prompt || `Professional photograph related to ${keyword}`,
+      altText: data.altText || `Image about ${keyword}`,
+      caption: data.caption || "",
+      placement: data.placement || "After the first paragraph",
+    };
+  } catch (e) {
+    return {
+      prompt: `Professional editorial photograph about ${keyword}, photorealistic, 16:9, clean modern aesthetic, natural lighting`,
+      altText: `Professional image about ${keyword}`,
+      caption: "",
+      placement: "After the first paragraph",
+    };
+  }
+};
+
+export const generateImage = async (
+  prompt: string,
+  aspectRatio: string = "16:9"
+): Promise<string> => {
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: {
+          parts: [{ text: prompt }],
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: aspectRatio as any,
+          },
+        },
+      })
+    );
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/600`;
+  } catch (e) {
+    console.error("Image Gen Error", e);
+    return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/600`;
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 11: RANK TRACKING — THE MONITOR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const checkRank = async (
+  domain: string,
+  keywords: string[]
+): Promise<BulkRankResponse> => {
+  const keywordList = keywords.join(", ");
+
+  const prompt = `
+<SYSTEM>
+You are the RANK TRACKING AGENT — codename "THE MONITOR." You are the persistent surveillance operative of the SEO war room. Your job is to provide accurate, real-time ranking intelligence for the operator's domain across their target keywords.
+
+You use Google Search to check ACTUAL current rankings. You do not estimate or guess — you SEARCH and REPORT what you find. The operator sees every query you make, every result you scan, and every position you report.
+
+Your data feeds into historical tracking charts and competitive comparison tables on the dashboard. Accuracy is paramount — a single incorrect rank report can lead to wrong strategic decisions.
+</SYSTEM>
+
+<MISSION>
+Check the current Google ranking positions for domain "${domain}" across the following keywords: ${keywordList}
+</MISSION>
+
+<INSTRUCTIONS>
+For EACH keyword in the list, perform the following:
+
+### STEP 1: SEARCH EXECUTION
+- Execute a Google Search for the exact keyword.
+- Scan organic results (positions 1-100).
+
+### STEP 2: DOMAIN DETECTION
+- Look for ANY page from "${domain}" in the results.
+- Record the FIRST occurrence (highest ranking position).
+
+### STEP 3: RESULT RECORDING
+For each keyword, report:
+- "keyword": The exact keyword searched.
+- "rank": The numerical position (1-100). If domain is NOT found in visible results, set to 0.
+- "url": The full URL of the ranking page from ${domain}. Null if not found.
+- "title": The page title as shown in search results. Null if not found.
+- "found": Boolean — true if domain was found, false otherwise.
+- "analysis": A brief analysis (max 20 words) noting:
+  * If found: relative position strength, competitor context, any featured snippets.
+  * If not found: what types of domains ARE ranking (big brands? niche sites? forums?).
+
+### STEP 4: EXECUTIVE SUMMARY
+After checking ALL keywords, write a 2-3 sentence executive summary covering:
+- Overall ranking performance (how many keywords ranking, average position).
+- Strongest performing keyword(s).
+- Biggest opportunities (keywords where domain is close to page 1).
+- Critical gaps (important keywords where domain is not ranking at all).
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return a JSON object with the following structure. Use structured schema for reliable parsing.
+</OUTPUT_FORMAT>
+
+<RULES>
+- You MUST use Google Search for every keyword check — no estimation.
+- Rank must be an integer. 0 = not found in results.
+- URL and title are null (not empty strings) when domain is not found.
+- Analysis must be specific to what you ACTUALLY see in search results.
+- The summary must be data-driven, referencing specific keyword performance.
+- Do NOT conflate paid/ad results with organic rankings.
+- Check the ENTIRE first page minimum (10 results) for each keyword.
+</RULES>
+`;
+
+  const schema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      results: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            keyword: { type: Type.STRING },
+            rank: {
+              type: Type.INTEGER,
+              description: "The numerical rank position. 0 if not found.",
+            },
+            url: {
+              type: Type.STRING,
+              description: "The full URL of the ranking page.",
+            },
+            title: {
+              type: Type.STRING,
+              description: "The title of the page.",
+            },
+            analysis: {
+              type: Type.STRING,
+              description: "Brief analysis of the result.",
+            },
+            found: {
+              type: Type.BOOLEAN,
+              description: "True if domain was found in results.",
+            },
+          },
+          required: ["keyword", "rank", "analysis", "found"],
+        },
+      },
+      summary: {
+        type: Type.STRING,
+        description: "Overall summary of performance.",
+      },
+    },
+    required: ["results", "summary"],
+  };
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
+      })
+    );
+
+    const result = JSON.parse(response.text || "{}");
+
+    const groundingChunks =
+      (response.candidates?.[0]?.groundingMetadata
+        ?.groundingChunks as GroundingChunk[]) || [];
+    const groundingUrls = groundingChunks
+      .map((chunk) => chunk.web?.uri)
+      .filter((uri): uri is string => !!uri);
+
+    return {
+      results: result.results || [],
+      summary: result.summary || "No data returned.",
+      groundingUrls,
+    };
+  } catch (error) {
+    console.error("Rank Tracking Error:", error);
+    throw new Error("Failed to retrieve ranking data. Please try again.");
+  }
+};
+
+// ─── Rank Tracking: Keyword Discovery (Top 100) ─────────────────────────────
+export const discoverRankingKeywords = async (
+  domain: string
+): Promise<{
+  keywords: {
+    keyword: string;
+    position: number;
+    rankingUrl: string;
+    estimatedTraffic: number;
+    stability: string;
+  }[];
+  summary: string;
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the RANK TRACKING AGENT performing a KEYWORD DISCOVERY operation. Your task is to identify ALL keywords where a given domain currently ranks in the top 100 Google positions.
+
+Use Google Search to find what keywords this domain appears for, what pages rank, and their approximate positions.
+</SYSTEM>
+
+<MISSION>
+Discover all keywords where "${domain}" ranks in the top 100 Google positions.
+</MISSION>
+
+<INSTRUCTIONS>
+1. Search for "site:${domain}" to understand the domain's content.
+2. Search for the domain's primary topics and identify keywords where it appears.
+3. Use variations: search for the domain's niche keywords, long-tail variations, and branded terms.
+4. For each discovered keyword:
+   - "keyword": The keyword phrase.
+   - "position": Estimated rank position (1-100).
+   - "rankingUrl": The specific URL from ${domain} that ranks.
+   - "estimatedTraffic": Estimated monthly traffic this keyword sends to the domain.
+   - "stability": "Stable" | "Rising" | "Declining" | "Volatile" — based on any freshness signals.
+5. Aim to discover 15-30 keywords.
+6. Write a summary of the domain's keyword footprint.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "keywords": [
+    {
+      "keyword": "string",
+      "position": number,
+      "rankingUrl": "string",
+      "estimatedTraffic": number,
+      "stability": "Stable|Rising|Declining|Volatile"
+    }
+  ],
+  "summary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Use Google Search for real data — do not fabricate rankings.
+- Position must be 1-100. If uncertain, provide best estimate.
+- Traffic estimates should correlate with position and keyword volume.
+- Include a mix of branded, non-branded, and long-tail keywords.
+- Summary must be actionable — identify the domain's strongest keyword clusters.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      keywords: Array.isArray(data.keywords) ? data.keywords : [],
+      summary: data.summary || "Discovery completed.",
+    };
+  } catch (e) {
+    console.error("Keyword Discovery Failed", e);
+    return { keywords: [], summary: "Discovery failed." };
+  }
+};
+
+// ─── Rank Tracking: Competitor Comparison ────────────────────────────────────
+export const compareCompetitorRankings = async (
+  domains: string[],
+  keywords: string[]
+): Promise<{
+  comparison: {
+    keyword: string;
+    rankings: { domain: string; position: number; url: string }[];
+    leader: string;
+    gap: number;
+  }[];
+  trends: {
+    domain: string;
+    averagePosition: number;
+    keywordsRanking: number;
+    strongestKeyword: string;
+  }[];
+  summary: string;
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the RANK TRACKING AGENT performing a COMPETITIVE COMPARISON operation. You compare multiple domains' rankings across the same keywords to identify competitive positioning, gaps, and trends.
+
+The operator sees this comparison build in real-time on their dashboard — each domain's positions appearing in a comparison table with relative positioning changes highlighted.
+</SYSTEM>
+
+<MISSION>
+Compare rankings for domains: ${JSON.stringify(domains)}
+Across keywords: ${JSON.stringify(keywords)}
+</MISSION>
+
+<INSTRUCTIONS>
+1. For EACH keyword, search Google and find the ranking position for EACH domain.
+2. Build a comparison table showing all domains' positions per keyword.
+3. Identify the leader (highest ranking domain) for each keyword and the gap between first and second.
+4. Calculate aggregate metrics per domain: average position, total keywords ranking, strongest keyword.
+5. Write a competitive intelligence summary.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "comparison": [
+    {
+      "keyword": "string",
+      "rankings": [
+        { "domain": "string", "position": number (0 if not found), "url": "string or empty" }
+      ],
+      "leader": "string — domain name",
+      "gap": number — positions between 1st and 2nd
+    }
+  ],
+  "trends": [
+    {
+      "domain": "string",
+      "averagePosition": number,
+      "keywordsRanking": number,
+      "strongestKeyword": "string"
+    }
+  ],
+  "summary": "string — 3-4 sentence competitive intelligence"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Use Google Search for EVERY keyword-domain combination.
+- Position 0 = not found in top results.
+- Rankings array for each keyword must include ALL domains, even if not found.
+- Summary must identify specific competitive advantages and vulnerabilities.
+- Trends must be calculated from actual data, not estimated.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      comparison: Array.isArray(data.comparison) ? data.comparison : [],
+      trends: Array.isArray(data.trends) ? data.trends : [],
+      summary: data.summary || "Comparison completed.",
+    };
+  } catch (e) {
+    console.error("Competitor Comparison Failed", e);
+    return { comparison: [], trends: [], summary: "Comparison failed." };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 12: GOOGLE ANALYTICS — THE ANALYST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const analyzeTrafficPatterns = async (
+  metrics: AnalyticsMetric[],
+  pages: PagePerformance[],
+  publishedArticles: { title: string; url: string; publishDate: string }[]
+): Promise<{
+  trafficInsight: string;
+  engagementInsight: string;
+  contentCorrelation: string;
+  actionableRecommendation: string;
+  alertLevel: string;
+  detailedAnalysis: {
+    metric: string;
+    currentValue: number;
+    trend: string;
+    significance: string;
+  }[];
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the GOOGLE ANALYTICS AGENT — codename "THE ANALYST." You are the data intelligence operative of the SEO war room. You continuously monitor traffic data, identify patterns, correlate content performance with traffic outcomes, and surface actionable insights.
+
+Your analysis feeds the operator's dashboard with real-time intelligence. Every metric you evaluate, every trend you identify, and every recommendation you make is displayed transparently.
+
+You think like a growth analyst at a top-tier digital agency. You don't just report numbers — you explain what they MEAN and what ACTION should be taken.
+</SYSTEM>
+
+<MISSION>
+Analyze current traffic and engagement data to surface actionable insights.
+</MISSION>
+
+<DATA>
+### Traffic Metrics (Recent Data Points):
+${JSON.stringify(metrics.slice(-10))}
+
+### Top Performing Pages:
+${JSON.stringify(pages.slice(0, 10))}
+
+### Recently Published Articles:
+${JSON.stringify(publishedArticles)}
+</DATA>
+
+<INSTRUCTIONS>
+
+### ANALYSIS 1: TRAFFIC PATTERNS
+Examine the traffic metrics series:
+- Identify any spikes, drops, or anomalies.
+- Determine if traffic is trending up, down, or stable.
+- Note any time-of-day or day-of-week patterns.
+
+### ANALYSIS 2: ENGAGEMENT ASSESSMENT
+Analyze bounce rate and session duration:
+- Are users engaging deeply or bouncing quickly?
+- Which pages have the best/worst engagement?
+- What does the engagement pattern suggest about content quality?
+
+### ANALYSIS 3: CONTENT-TRAFFIC CORRELATION
+If published articles data is available:
+- Correlate publication dates with traffic changes.
+- Identify which articles are driving the most traffic.
+- Note any articles that should be performing better but aren't.
+
+### ANALYSIS 4: DETAILED METRIC BREAKDOWN
+For each key metric (active users, sessions, bounce rate, avg duration):
+- Report current value.
+- Identify trend direction ("Increasing" | "Decreasing" | "Stable" | "Volatile").
+- Rate significance ("Critical — needs immediate attention" | "Notable — monitor closely" | "Normal — performing as expected").
+
+### ANALYSIS 5: ACTIONABLE RECOMMENDATION
+Provide ONE specific, immediately actionable recommendation based on the data.
+Not generic advice — specific to what the data shows.
+
+### ANALYSIS 6: ALERT LEVEL
+Set an overall alert level: "Green — All Clear" | "Yellow — Monitor" | "Orange — Attention Needed" | "Red — Critical Issue"
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "trafficInsight": "string — 2-3 sentences on traffic patterns",
+  "engagementInsight": "string — 2-3 sentences on engagement",
+  "contentCorrelation": "string — 2-3 sentences correlating content with traffic",
+  "actionableRecommendation": "string — ONE specific action to take NOW",
+  "alertLevel": "Green|Yellow|Orange|Red",
+  "detailedAnalysis": [
+    {
+      "metric": "string",
+      "currentValue": number,
+      "trend": "Increasing|Decreasing|Stable|Volatile",
+      "significance": "string"
+    }
+  ]
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Analysis must be data-driven — reference specific numbers from the provided data.
+- Do NOT make up data points that aren't in the provided metrics.
+- Recommendations must be specific enough to act on immediately (e.g., "Update the meta title of /blog/seo-tips to include the primary keyword, as it receives traffic but has a 78% bounce rate").
+- Alert level must match the severity of findings — don't alarm unnecessarily, don't downplay real issues.
+- Content correlation should only reference articles from the publishedArticles data.
+- All insights must be concise — no more than 3 sentences per category.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      trafficInsight: data.trafficInsight || "Analyzing traffic...",
+      engagementInsight: data.engagementInsight || "Analyzing engagement...",
+      contentCorrelation:
+        data.contentCorrelation || "Insufficient data for correlation.",
+      actionableRecommendation:
+        data.actionableRecommendation || "Continue monitoring.",
+      alertLevel: data.alertLevel || "Green",
+      detailedAnalysis: Array.isArray(data.detailedAnalysis)
+        ? data.detailedAnalysis
+        : [],
+    };
+  } catch (e) {
+    return {
+      trafficInsight: "Analysis unavailable.",
+      engagementInsight: "Analysis unavailable.",
+      contentCorrelation: "Analysis unavailable.",
+      actionableRecommendation: "Retry analytics analysis.",
+      alertLevel: "Yellow",
+      detailedAnalysis: [],
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 13: CONTENT OPTIMIZATION — THE OPTIMIZER (Ongoing Monitor)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const analyzeContentForOptimization = async (
+  articleContent: string,
+  keyword: string,
+  currentRank: number,
+  competitorUpdates: { domain: string; change: string }[],
+  trafficMetrics: { views: number; bounceRate: number; avgDuration: number }
+): Promise<{
+  overallScore: number;
+  issues: {
+    type: string;
+    severity: string;
+    description: string;
+    recommendation: string;
+    estimatedImpact: string;
+  }[];
+  optimizationPlan: {
+    priority: number;
+    action: string;
+    reasoning: string;
+    effort: string;
+    expectedOutcome: string;
+  }[];
+  competitiveAlerts: {
+    alert: string;
+    urgency: string;
+    suggestedResponse: string;
+  }[];
+  contentFreshness: string;
+  summary: string;
+}> => {
+  const safeContent = sanitizeContentForContext(articleContent);
+
+  const prompt = `
+<SYSTEM>
+You are the CONTENT OPTIMIZATION AGENT — codename "THE OPTIMIZER." You are the ongoing sentinel of the SEO war room. While other agents build, you PROTECT and IMPROVE.
+
+Your job is continuous monitoring of published content. You watch for:
+- Ranking drops that need immediate attention.
+- New competitor content that threatens current positions.
+- Content freshness issues (outdated information, stale statistics).
+- Engagement problems (high bounce rates, low time-on-page).
+- Technical SEO degradation (broken links, missing schema, slow load times).
+
+When you detect an issue, you don't just alert — you provide a SPECIFIC, ACTIONABLE optimization plan with clear priorities and expected outcomes.
+
+Your alerts appear on the operator's dashboard with clear severity indicators. Optimization recommendations require operator APPROVAL before implementation.
+</SYSTEM>
+
+<MISSION>
+Perform a comprehensive optimization audit of published content for keyword "${keyword}".
+</MISSION>
+
+<DATA>
+### Content (first 6000 chars):
+${safeContent.substring(0, 6000)}
+
+### Current Performance:
+- Current Rank: ${currentRank} ${currentRank === 0 ? "(Not ranking)" : ""}
+- Page Views (recent): ${trafficMetrics.views}
+- Bounce Rate: ${trafficMetrics.bounceRate}%
+- Average Time on Page: ${trafficMetrics.avgDuration} seconds
+
+### Competitor Activity:
+${JSON.stringify(competitorUpdates)}
+</DATA>
+
+<INSTRUCTIONS>
+
+### AUDIT 1: OVERALL CONTENT SCORE
+Rate the content's current SEO health from 0-100 based on:
+- Keyword optimization (natural usage, density, placement).
+- Content depth and comprehensiveness.
+- Structural quality (heading hierarchy, paragraph length, list usage).
+- E-E-A-T signals.
+- Freshness indicators.
+- Internal/external link health.
+
+### AUDIT 2: ISSUE IDENTIFICATION
+Identify ALL issues with the content. For each issue:
+- "type": "SEO" | "Content Quality" | "Technical" | "Competitive" | "Engagement" | "Freshness"
+- "severity": "Critical" | "High" | "Medium" | "Low"
+- "description": What specifically is wrong.
+- "recommendation": Exactly what to do to fix it.
+- "estimatedImpact": What improvement can be expected if fixed (e.g., "Could improve rank by 2-5 positions").
+
+### AUDIT 3: OPTIMIZATION PLAN
+Create a prioritized optimization plan. For each action:
+- Priority number (1 = do first).
+- Specific action to take.
+- Reasoning — why this action matters.
+- Effort level: "Quick Win (< 30 min)" | "Moderate (1-2 hours)" | "Significant (half day+)".
+- Expected outcome.
+
+### AUDIT 4: COMPETITIVE ALERTS
+Based on competitor activity data:
+- Flag any competitive threats.
+- Rate urgency: "Immediate Action" | "Monitor This Week" | "Watch List".
+- Suggest a specific response strategy.
+
+### AUDIT 5: CONTENT FRESHNESS ASSESSMENT
+Evaluate whether the content contains:
+- Outdated statistics (older than 12 months).
+- References to past events as future/current.
+- Deprecated tools, methods, or resources.
+- Missing coverage of recent developments in the topic.
+Rate freshness: "Fresh" | "Aging" | "Stale" | "Outdated".
+
+### AUDIT 6: SUMMARY
+Write a 2-3 sentence executive summary of the content's health and the single most important action to take.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "overallScore": number (0-100),
+  "issues": [
+    {
+      "type": "string",
+      "severity": "Critical|High|Medium|Low",
+      "description": "string",
+      "recommendation": "string",
+      "estimatedImpact": "string"
+    }
+  ],
+  "optimizationPlan": [
+    {
+      "priority": number,
+      "action": "string",
+      "reasoning": "string",
+      "effort": "string",
+      "expectedOutcome": "string"
+    }
+  ],
+  "competitiveAlerts": [
+    {
+      "alert": "string",
+      "urgency": "Immediate Action|Monitor This Week|Watch List",
+      "suggestedResponse": "string"
+    }
+  ],
+  "contentFreshness": "Fresh|Aging|Stale|Outdated",
+  "summary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Identify at least 3 issues (even well-optimized content has room for improvement).
+- Optimization plan must have at least 3 actions in priority order.
+- Critical issues must be flagged if: rank has dropped 5+ positions, bounce rate > 70%, or competitor has published directly competing content.
+- Recommendations must be SPECIFIC (not "improve your content" — specify WHAT to improve and HOW).
+- Competitive alerts should only flag REAL threats based on the provided competitor data.
+- Content freshness assessment must reference specific content elements, not just be a guess.
+- Overall score must be justified by the issues found — score 80+ only if no Critical/High issues.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      overallScore: data.overallScore || 0,
+      issues: Array.isArray(data.issues) ? data.issues : [],
+      optimizationPlan: Array.isArray(data.optimizationPlan)
+        ? data.optimizationPlan
+        : [],
+      competitiveAlerts: Array.isArray(data.competitiveAlerts)
+        ? data.competitiveAlerts
+        : [],
+      contentFreshness: data.contentFreshness || "Unknown",
+      summary: data.summary || "Audit completed.",
+    };
+  } catch (e) {
+    console.error("Content Optimization Audit Failed", e);
+    return {
+      overallScore: 0,
+      issues: [],
+      optimizationPlan: [],
+      competitiveAlerts: [],
+      contentFreshness: "Unknown",
+      summary: "Optimization audit failed.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 14: INDEXING — THE INDEXER (Sub-Agent of Analytics)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const predictIndexingSuccess = async (
+  content: string,
+  keyword: string,
+  url: string,
+  siteAuthority: string
+): Promise<{
+  likelihood: string;
+  estimatedTimeToIndex: string;
+  technicalChecklist: {
+    factor: string;
+    status: string;
+    action: string;
+  }[];
+  indexingStrategy: string;
+  submissionAdvice: string;
+}> => {
+  const safeContent = sanitizeContentForContext(content);
+
+  const prompt = `
+<SYSTEM>
+You are the INDEXING AGENT — the technical SEO specialist of the war room. You analyze content and technical factors to predict how quickly and successfully Google will index new content.
+
+You understand Google's crawl and indexing pipeline:
+- Crawl budget allocation based on site authority.
+- Content quality thresholds for indexing.
+- Technical factors that accelerate or block indexing.
+- Sitemap and internal linking effects on discovery speed.
+- Google Search Console submission mechanics.
+
+Your predictions and recommendations help the operator take immediate action to accelerate indexing after content publication.
+</SYSTEM>
+
+<MISSION>
+Predict indexing success for new content:
+- URL: ${url}
+- Target Keyword: "${keyword}"
+- Site Authority Level: ${siteAuthority}
+</MISSION>
+
+<CONTENT>
+${safeContent.substring(0, 3000)}
+</CONTENT>
+
+<INSTRUCTIONS>
+
+### PREDICTION 1: INDEXING LIKELIHOOD
+Assess the overall likelihood this content will be indexed: "High" | "Medium" | "Low"
+Base this on: content quality/depth, keyword targeting, site authority, and technical factors.
+
+### PREDICTION 2: TIME TO INDEX
+Estimate how long until Google indexes this page:
+- High authority sites: "1-3 days"
+- Medium authority: "3-7 days"
+- Low authority: "1-4 weeks"
+- Consider content quality as an accelerator/decelerator.
+
+### PREDICTION 3: TECHNICAL CHECKLIST
+Evaluate these technical indexing factors:
+1. Content Length — Is it substantial enough? (>1000 words = good)
+2. Keyword Optimization — Is the target keyword present in title, H1, first paragraph, and throughout?
+3. Internal Links — Does the page receive internal links from existing pages?
+4. Meta Tags — Are title tag and meta description optimized?
+5. Schema Markup — Is structured data present/recommended?
+6. Canonical URL — Is the canonical properly set?
+7. Mobile Friendliness — Any mobile concerns?
+8. Page Speed — Any speed concerns based on content complexity?
+
+For each factor: "Pass" | "Warning" | "Fail", with specific action if not Pass.
+
+### PREDICTION 4: INDEXING STRATEGY
+Write a 2-3 sentence strategy for getting this content indexed as quickly as possible.
+
+### PREDICTION 5: SUBMISSION ADVICE
+Provide specific Google Search Console submission advice:
+- Should they submit via URL Inspection tool?
+- Should they update the sitemap?
+- Any additional technical steps?
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "likelihood": "High|Medium|Low",
+  "estimatedTimeToIndex": "string",
+  "technicalChecklist": [
+    {
+      "factor": "string",
+      "status": "Pass|Warning|Fail",
+      "action": "string — specific action if not Pass, 'None needed' if Pass"
+    }
+  ],
+  "indexingStrategy": "string",
+  "submissionAdvice": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- Checklist MUST include all 8 technical factors listed.
+- Likelihood assessment must correlate with checklist results — if 3+ factors Fail, likelihood cannot be High.
+- Time estimates must correlate with stated site authority level.
+- Actions must be SPECIFIC enough for a developer/SEO to implement immediately.
+- Do NOT recommend actions that require paid tools — only free/accessible methods.
+- Indexing strategy must include at least one action beyond "submit to Google Search Console."
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      likelihood: data.likelihood || "Medium",
+      estimatedTimeToIndex: data.estimatedTimeToIndex || "3-7 days",
+      technicalChecklist: Array.isArray(data.technicalChecklist)
+        ? data.technicalChecklist
+        : [],
+      indexingStrategy:
+        data.indexingStrategy || "Submit via Google Search Console.",
+      submissionAdvice:
+        data.submissionAdvice ||
+        "Use URL Inspection tool in GSC to request indexing.",
+    };
+  } catch (e) {
+    return {
+      likelihood: "Medium",
+      estimatedTimeToIndex: "Unknown",
+      technicalChecklist: [],
+      indexingStrategy: "Submit to GSC immediately.",
+      submissionAdvice: "Use URL Inspection tool to request indexing.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 15: LINK VALIDATION — THE VERIFIER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const validateArticleLinks = async (
+  content: string
+): Promise<{
+  totalLinks: number;
+  validLinks: { url: string; anchor: string; type: string }[];
+  brokenLinks: { url: string; anchor: string; issue: string; replacement: string }[];
+  summary: string;
+}> => {
+  const safeContent = sanitizeContentForContext(content);
+
+  const prompt = `
+<SYSTEM>
+You are the LINK VALIDATION AGENT — the quality assurance specialist. Before any article is finalized, you verify that EVERY link in the content is live, working, and pointing to the correct destination.
+
+Broken links are ABSOLUTELY PROHIBITED in final output. Your job is to catch every broken link before the operator downloads the article.
+
+Use Google Search to verify that linked pages exist and are accessible.
+</SYSTEM>
+
+<MISSION>
+Validate every link in the following article content.
+</MISSION>
+
+<CONTENT>
+${safeContent.substring(0, 10000)}
+</CONTENT>
+
+<INSTRUCTIONS>
+1. Extract EVERY Markdown link from the content: [anchor text](URL)
+2. For EACH link:
+   - Classify as "internal" or "external" based on URL.
+   - Use Google Search to verify the URL exists and is accessible.
+   - If the link appears broken, find a REPLACEMENT URL to the same or similar content.
+3. Report total links found.
+4. Separate valid and broken links.
+5. For broken links: provide the original URL, what's wrong with it, and a suggested replacement.
+6. Write a summary.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "totalLinks": number,
+  "validLinks": [
+    { "url": "string", "anchor": "string", "type": "internal|external" }
+  ],
+  "brokenLinks": [
+    { "url": "string", "anchor": "string", "issue": "string", "replacement": "string" }
+  ],
+  "summary": "string"
+}
+</OUTPUT_FORMAT>
+
+<RULES>
+- EVERY link in the content must be accounted for — either in validLinks or brokenLinks.
+- Broken links MUST have a replacement suggestion.
+- Use Google Search to verify — do not just check URL format.
+- Image links (data:image/...) should be EXCLUDED from validation.
+- Replacement URLs must be to real, accessible pages.
+</RULES>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+        },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      totalLinks: data.totalLinks || 0,
+      validLinks: Array.isArray(data.validLinks) ? data.validLinks : [],
+      brokenLinks: Array.isArray(data.brokenLinks) ? data.brokenLinks : [],
+      summary: data.summary || "Validation completed.",
+    };
+  } catch (e) {
+    console.error("Link Validation Failed", e);
+    return {
+      totalLinks: 0,
+      validLinks: [],
+      brokenLinks: [],
+      summary: "Link validation failed — manual review recommended.",
+    };
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AGENT 16: SESSION REPORT GENERATOR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const generateSessionReport = async (
+  sessionData: {
+    url: string;
+    startTime: number;
+    endTime: number;
+    phases: { name: string; status: string; duration: string; agent: string; logs: string[] }[];
+    keywordsResearched: number;
+    serpAnalyses: number;
+    articlesGenerated: number;
+    imagesGenerated: number;
+    totalWordCount: number;
+    approvalDecisions: { decision: string; timestamp: number }[];
+  }
+): Promise<{
+  report: string;
+  metrics: { label: string; value: string }[];
+  recommendations: string[];
+}> => {
+  const prompt = `
+<SYSTEM>
+You are the SESSION REPORT GENERATOR. At the end of every war room session, you compile a comprehensive report documenting everything that happened — every agent action, every decision made, every output produced.
+
+This report serves as an audit trail, a learning resource, and a strategic reference for future sessions.
+</SYSTEM>
+
+<SESSION DATA>
+${JSON.stringify(sessionData)}
+</SESSION DATA>
+
+<INSTRUCTIONS>
+Generate:
+1. A comprehensive session report in Markdown format covering:
+   - Executive summary (2-3 sentences).
+   - Timeline of all phases with durations and outcomes.
+   - Agent performance summary (which agents completed successfully, any errors).
+   - Key decisions made during the session (from approval decisions).
+   - Outputs produced (articles, images, reports).
+   - Total metrics (keywords researched, words written, images generated).
+2. A metrics summary as key-value pairs.
+3. 3-5 recommendations for the next session.
+</INSTRUCTIONS>
+
+<OUTPUT_FORMAT>
+Return JSON:
+{
+  "report": "string — full Markdown report",
+  "metrics": [{ "label": "string", "value": "string" }],
+  "recommendations": ["string"]
+}
+</OUTPUT_FORMAT>
+`;
+
+  try {
+    const response: GenerateContentResponse = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      })
+    );
+    const data = cleanAndParseJSON(response.text || "") || {};
+    return {
+      report: data.report || "Session report generation failed.",
+      metrics: Array.isArray(data.metrics) ? data.metrics : [],
+      recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+    };
+  } catch (e) {
+    return {
+      report: "Session report unavailable.",
+      metrics: [],
+      recommendations: ["Retry report generation."],
+    };
+  }
+};
+```
+
+---
+
+## Updated types.ts
+
+```typescript
+export interface KeywordMetric {
+  keyword: string;
+  volume: number;
+  difficulty: number;
+  cpc: number;
+  intent: "Informational" | "Transactional" | "Commercial" | "Navigational";
+  category?: string;
+}
+
+export interface CompetitorData {
+  domain: string;
+  rank: number;
+  estimatedTraffic: number;
+  domainAuthority: number;
+  rankingChange: number;
+  contentWeakness?: string;
+}
+
+export interface SerpResult {
+  keyword: string;
+  aiOverview: string;
+  aiOverviewFormat?: string;
+  aiOverviewSources?: string[];
+  peopleAlsoAsk: string[];
+  competitors: CompetitorData[];
+  contentGaps?: {
+    tableStakes: string[];
+    differentiators: string[];
+    blueOcean: string[];
+    uniqueAngles: string[];
+  };
+  opportunityScore: number;
+  strategicInsight: string;
+  group: string;
+  timestamp: number;
+}
+
+export interface ArticleSection {
+  heading: string;
+  headingLevel?: string;
+  content: string;
+  type: "text" | "list" | "table" | "chart" | "image";
+  visualType?: "none" | "chart" | "table" | "image";
+  chartData?: { name: string; value: number }[];
+  tableData?: { headers: string[]; rows: string[][] };
+  imagePrompt?: string;
+  imageAltText?: string;
+  imageUrl?: string;
+  targetWordCount?: number;
+  paaQuestionsAddressed?: string[];
+  keyPoints?: string[];
+}
+
+export interface LinkSuggestion {
+  id: string;
+  anchorText: string;
+  targetUrl: string;
+  context: string;
+  type: "internal" | "external";
+  confidence: number;
+  reasoning?: string;
+}
+
+export interface GeneratedArticle {
+  id: string;
+  keyword: string;
+  title: string;
+  metaDescription?: string;
+  status:
+    | "queued"
+    | "researching"
+    | "outlining"
+    | "drafting"
+    | "optimizing"
+    | "reviewing_links"
+    | "validating"
+    | "completed"
+    | "failed"
+    | "indexed";
+  progress: number;
+  logs: string[];
+  content: string;
+  mdContent: string;
+  featuredImage?: string;
+  featuredImageAlt?: string;
+  sections: ArticleSection[];
+  wordCount: number;
+  aiOverviewOptimized: boolean;
+  aiOverviewBlock?: string;
+  schemaMarkup?: string;
+  linkSuggestions?: LinkSuggestion[];
+  linksApplied?: boolean;
+  externalLinks?: { url: string; anchorText: string; reason: string }[];
+  paaQuestionsAnswered?: string[];
+  uniqueAngle?: string;
+}
+
+export interface RankHistoryPoint {
+  date: string;
+  rank: number;
+}
+
+export interface DomainRankInfo {
+  domain: string;
+  keyword: string;
+  currentRank: number;
+  history: RankHistoryPoint[];
+}
+
+export type AgentType =
+  | "ORCHESTRATOR"
+  | "CRAWLER"
+  | "RESEARCHER"
+  | "ANALYST"
+  | "STRATEGIST"
+  | "WRITER"
+  | "DESIGNER"
+  | "LINK_BUILDER"
+  | "OPTIMIZER"
+  | "RANK_TRACKER"
+  | "GA_ANALYST"
+  | "INDEXER"
+  | "LINK_VALIDATOR";
+
+export interface AgentTask {
+  id: string;
+  type: AgentType;
+  name: string;
+  status: "idle" | "working" | "waiting_input" | "waiting_approval" | "completed" | "error";
+  message: string;
+  progress: number;
+  logs: string[];
+  startTime: number;
+  endTime?: number;
+  resultPayload?: any;
+  resultType?: "json" | "csv" | "md";
+  dependencies?: string[];
+  approvalRequired?: boolean;
+}
+
+export interface ContentStrategy {
+  clusters: {
+    name: string;
+    keywords: string[];
+    intent: string;
+    contentAngle?: string;
+    priority?: number;
+  }[];
+  calendar: {
+    week: number;
+    topic: string;
+    type: string;
+    bestDay: string;
+    targetKeyword?: string;
+    reasoning?: string;
+  }[];
+  internalLinking: {
+    sourceTopic: string;
+    targetTopic: string;
+    anchorText: string;
+    linkStrength?: string;
+  }[];
+  summary: string;
+}
+
+export interface GeneratedImage {
+  id: string;
+  prompt: string;
+  url: string;
+  altText?: string;
+  caption?: string;
+  aspectRatio: string;
+  createdAt: number;
+  placement?: string;
+}
+
+export interface RankResult {
+  keyword: string;
+  rank: number | null;
+  url: string | null;
+  title: string | null;
+  analysis: string;
+  found: boolean;
+}
+
+export interface BulkRankResponse {
+  results: RankResult[];
+  summary: string;
+  groundingUrls: string[];
+}
+
+export interface GroundingChunk {
+  web?: {
+    uri: string;
+    title: string;
+  };
+}
+
+export interface AnalyticsMetric {
+  timestamp: string;
+  activeUsers: number;
+  sessions: number;
+  bounceRate: number;
+  avgDuration: number;
+}
+
+export interface PagePerformance {
+  path: string;
+  views: number;
+  engagement: number;
+  status: "indexed" | "crawled" | "discovered" | "unknown";
+}
+
+export interface OrchestratorPhase {
+  id: string;
+  name: string;
+  description: string;
+  assignedAgent: string;
+  dependencies: string[];
+  estimatedDuration: string;
+  approvalRequired: boolean;
+  status: string;
+  priority: number;
+}
+
+export interface OrchestratorDecision {
+  decision: string;
+  reasoning: string;
+  impact: string;
+  alternatives: string[];
+  timestamp: number;
+}
+
+export interface InterAgentMessage {
+  id: string;
+  from: string;
+  to: string;
+  timestamp: number;
+  type: "task_assignment" | "completion_report" | "data_handoff" | "question" | "status_update";
+  content: string;
+  dataPayload?: any;
+}
+```
+
+---
+
+## Agent Summary Matrix
+
+| # | Agent | Codename | Functions | Approval Gate |
+|---|-------|----------|-----------|---------------|
+| 1 | Orchestrator | THE VISIBLE LEADER | `orchestrateWorkflow`, `logOrchestratorDecision` | Initial plan approval |
+| 2 | Website Crawler | THE SCOUT | `analyzeWebsiteContent` | Crawl findings approval |
+| 3 | Keyword Research | THE STRATEGIST | `performKeywordResearch` | Keyword list approval |
+| 4 | SERP Analysis | THE RESEARCHER | `performSerpAnalysis` | SERP report approval |
+| 5 | Content Strategy | THE PLANNER | `generateContentStrategy` | Strategy approval |
+| 6 | Article Outline | THE ARCHITECT | `generateArticleOutline` | Outline approval |
+| 7 | Article Writer | THE WRITER | `writeArticleSection` | Final article approval |
+| 8 | AI Overview Optimizer | THE OPTIMIZER | `optimizeForAIOverview` | Integrated into writing |
+| 9 | Internal Linking | THE LINK BUILDER | `generateInternalLinkSuggestions`, `applyLinkSuggestions` | Link approval |
+| 10 | Image Generation | THE ARTIST | `generateImagePrompt`, `generateImage` | Image concept approval |
+| 11 | Rank Tracking | THE MONITOR | `checkRank`, `discoverRankingKeywords`, `compareCompetitorRankings` | None (monitoring) |
+| 12 | Google Analytics | THE ANALYST | `analyzeTrafficPatterns` | None (monitoring) |
+| 13 | Content Optimization | THE OPTIMIZER | `analyzeContentForOptimization` | Optimization approval |
+| 14 | Indexing | THE INDEXER | `predictIndexingSuccess` | None (advisory) |
+| 15 | Link Validation | THE VERIFIER | `validateArticleLinks` | Auto-fix with report |
+| 16 | Session Reporter | — | `generateSessionReport` | None (export) |
