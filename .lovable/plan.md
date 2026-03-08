@@ -1,117 +1,116 @@
 
+# Plan: Production-Grade Autonomous Trading Company
 
-# Plan: Replace Blog Empire Dashboard with SEO Agent War Room
+## Current State Assessment
 
-## What This Is
+After thorough review, the trading system already has significant production infrastructure in place:
 
-The uploaded file describes an entirely different application paradigm: an **SEO Agent War Room** where users enter a website URL and watch a team of 16 specialized AI agents autonomously crawl, research, analyze, strategize, write articles, generate images, track rankings, and optimize content -- all in real-time with full transparency and approval gates.
+**What Already Works (Real, Not Mock):**
+- `mcp-alpaca` edge function connects to real Alpaca API (paper + live) using user-provided API keys
+- `trading-order-gateway` performs real risk checks (position sizing, daily loss limits, buying power, duplicate detection) before routing orders to Alpaca
+- `trading-ai-agent` executes real DCA, Grid, and Momentum strategies through the order gateway
+- `trading-ceo-orchestrator` manages a full candidate lifecycle pipeline (research → backtest → paper → staged_live → full_live) with dual CEO/user approval gates
+- `trading-scheduler-worker` generates tasks from real project data (not synthetic)
+- Kill switch, reconciliation, and compliance audit trail exist in the database
+- 23 trading-related database tables with proper schema
 
-This replaces the current Blog Empire page (a tab-based blog management dashboard) with a **living command center** interface.
+**What Is Broken / Missing / Simulated:**
 
-## Existing Infrastructure Already In Place
+1. **No Autonomous Loop**: Agents only execute when user clicks "Execute" button. There is no scheduled autonomous execution cycle that continuously monitors markets, generates signals, and places trades.
 
-The project already has significant foundational pieces:
-- **`src/types/agent.ts`**: Types for `AgentTask`, `AgentStatus`, `WarRoomState`, `ApprovalRequest`, `InterAgentMessage`, `WorkflowStep`, `GeneratedArticle`, etc.
-- **`src/components/seo/SEOWarRoom.tsx`**: A partial war room component with agent panels, status indicators, and basic workflow
-- **`src/components/seo/ArticleWriter.tsx`**: Streaming text article writer with section-by-section display
-- **`src/services/aiService.ts`**: Service layer calling `ai-seo` edge function with `analyzeWebsite`, `serpAnalysis`, `keywordResearch`, `contentStrategy`, `generateArticle`, `rankCheck`, etc.
-- **`supabase/functions/ai-seo/index.ts`**: Edge function handling SEO agent operations
+2. **Alert Auto-Actions Are Fake**: `trading-alert-executor` has an `executeAutoAction` function that just returns strings like `"Bought 100 shares of AAPL"` without actually calling the order gateway.
 
-## What Changes
+3. **No Real-Time Market Data Pipeline**: Market data is only fetched on-demand. No continuous polling/streaming of prices to power alerts, P&L tracking, or strategy signals.
 
-### 1. Create New Edge Function: `seo-agent-orchestrator`
-A production-grade edge function implementing the 16 agents from the uploaded specification with their exact system prompts, using Lovable AI models (`gemini-3-pro-preview`, `gemini-3-flash-preview`). This replaces the basic `ai-seo` function with the full agent implementations including:
-- Orchestrator workflow planning
-- Website Crawler with page discovery
-- Keyword Research with clustering
-- SERP Analysis with PAA extraction and AI Overview capture
-- Content Strategy with pillar content mapping
-- Article Outline architect
-- Section-by-section article writer
-- AI Overview optimizer
-- Internal link suggester
-- Image generation (prompts + Gemini image model)
-- Rank tracking with Google Search grounding
-- Analytics integration
-- Content optimization monitoring
-- Indexing predictor
-- Link validator
-- Session report generator
+4. **Portfolio Sync Is Missing**: `PortfolioOverview` shows data from `trading_portfolio_snapshots` table but nothing populates it from Alpaca's real account endpoint on a schedule.
 
-### 2. Update `src/types/agent.ts`
-Expand types to match the full specification: add `OrchestratorPhase`, `OrchestratorDecision`, extended `ContentStrategy` with `pillarContent`/`internalLinkingMap`, extended `GeneratedArticle` with `metaDescription`/`schemaMarkup`/`externalLinks`/`paaQuestionsAnswered`, and all 16 agent types.
+5. **P&L Tracking Is Stale**: `trading_projects.total_pnl` is set to 0 on creation and never updated from real execution data.
 
-### 3. Update `src/services/aiService.ts`
-Add service functions for all 16 agents routing through the new edge function, including `orchestrateWorkflow`, `crawlWebsite`, `performKeywordResearch`, `performSerpAnalysis`, `generateContentStrategy`, `generateArticleOutline`, `writeArticleSection`, `optimizeForAIOverview`, `suggestInternalLinks`, `generateImage`, `checkRanks`, `analyzeTraffic`, `analyzeContentOptimization`, `predictIndexing`, `validateLinks`, `generateSessionReport`.
+6. **Strategy Execution Scheduler Missing**: Active strategies (DCA daily, Grid monitoring, Momentum signals) have no cron or scheduled trigger — they only run on manual button press.
 
-### 4. Replace `BlogEmpirePage.tsx` with SEO War Room
-Delete the current blog empire dashboard and replace with the **Agent War Room** interface:
+7. **No AI-Driven Research/Analysis Agent**: The Research phase agent doesn't use AI to analyze market conditions and generate actionable trade ideas. It just collects database records.
 
-- **Entry Screen**: Single URL input with optional goals field. Clean, minimal, inviting design.
-- **War Room View** (after URL entry):
-  - **Orchestrator Command Panel** (top): Master workflow flowchart, communication log, decision log
-  - **Agent Grid** (main area): 16 agent workspace panels, each showing live status, current task, activity stream, progress bars, and status badges (Idle/Working/Waiting for Approval/Completed/Error)
-  - **Approval Queue** (right sidebar or overlay): Blocking approval requests with approve/reject/modify options
-  - **Inter-Agent Communication Stream** (toggleable panel): Real-time message feed between agents
-  - **Global Progress Bar**: Overall workflow %, active phase, active agents count, pending approvals
-- **Agent Deep Dive View**: Click any agent to expand full-screen with complete history, reasoning logs, intervention controls (pause, redirect, instruct)
-- **Article Generation View**: Live streaming text, word count counter, image generation integration, internal link approval, section-by-section progress
-- **Export Panel**: Markdown download, SERP data CSV, strategy docs, session reports
+8. **Binance/Coinbase Not Production-Ready**: Only Alpaca is wired to the order gateway. Binance and Coinbase MCPs exist but don't route through the risk-checked gateway.
 
-### 5. Update Routing
-Change `/blog-empire` route to render the new War Room page. Update sidebar navigation label.
+## Implementation Plan
 
-### 6. Database Migration
-Add table `seo_sessions` to persist war room state:
-```sql
-CREATE TABLE public.seo_sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  target_url text NOT NULL,
-  goals text,
-  status text NOT NULL DEFAULT 'active',
-  workflow_state jsonb DEFAULT '{}',
-  agent_logs jsonb DEFAULT '[]',
-  articles jsonb DEFAULT '[]',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.seo_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own sessions" ON public.seo_sessions FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+### Task 1: Autonomous Trading Loop Edge Function
+Create `trading-autonomous-loop` edge function that:
+- Runs as a scheduled cron job (every 5 minutes during market hours)
+- For each active project: fetches real portfolio from Alpaca, updates `trading_portfolio_snapshots`, syncs `trading_projects.total_pnl`
+- Checks all active price alerts against live market data and routes triggered alerts through `trading-order-gateway` (not fake strings)
+- Executes all active strategies (DCA interval checks, Grid level monitoring, Momentum signal generation) through the real order gateway
+- Logs all activity to `trading_activity_logs` for real-time feed visibility
+
+### Task 2: Fix Alert Auto-Execution
+Update `trading-alert-executor` so `executeAutoAction` calls `trading-order-gateway` for BUY/SELL actions instead of returning placeholder strings. Wire alert checking into the autonomous loop.
+
+### Task 3: AI-Powered Market Research Agent
+Create `trading-research-agent` edge function that uses Lovable AI (`google/gemini-2.5-flash`) to:
+- Analyze current positions, recent executions, and market data
+- Generate actionable trade recommendations with reasoning
+- Auto-create strategy candidates with risk scores
+- Store research outputs in `trading_team_tasks` with real AI-generated analysis
+
+### Task 4: Real-Time Portfolio Sync
+Add a portfolio sync job inside the autonomous loop that:
+- Calls `mcp-alpaca` `get_account` and `get_positions` for each user's active project
+- Upserts into `trading_portfolio_snapshots` with real equity, cash, positions, and P&L
+- Updates `trading_projects.total_pnl` and `trading_projects.capital` from broker data
+- Calculates and stores max drawdown in `trading_risk_controls`
+
+### Task 5: Strategy Execution Scheduler (Cron)
+Set up a `pg_cron` job that invokes `trading-autonomous-loop` every 5 minutes. This makes the system truly autonomous — agents work continuously without user intervention.
+
+### Task 6: Update Frontend to Show Real Data
+- Update `TradingDashboardPage` to fetch portfolio from real Alpaca data (via the synced snapshots) instead of showing static project capital
+- Add a "Live" indicator when autonomous loop is active
+- Show real AI research recommendations in the Research phase
+- Display real-time P&L updates from portfolio sync
+- Add connection status indicator showing whether Alpaca keys are configured and valid
+
+### Task 7: Wire Binance/Coinbase Through Order Gateway
+Extend `trading-order-gateway` to support Binance and Coinbase exchanges by routing through their respective MCP functions with the same risk checks applied.
+
+## Technical Details
+
+### Autonomous Loop Architecture
+```text
+pg_cron (every 5 min)
+  └─► trading-autonomous-loop
+        ├─► For each active project:
+        │     ├─► mcp-alpaca: get_account + get_positions
+        │     ├─► Update trading_portfolio_snapshots
+        │     ├─► Update trading_projects.total_pnl
+        │     ├─► Check trading_alerts vs live prices
+        │     │     └─► trading-order-gateway (if triggered)
+        │     ├─► Execute active strategies
+        │     │     └─► trading-order-gateway (risk-checked)
+        │     └─► Log to trading_activity_logs
+        └─► AI Research (hourly subset)
+              └─► Lovable AI → strategy candidates
 ```
 
+### Risk Controls (Already Enforced, Will Be Extended)
+- Max position size % check (existing)
+- Daily loss limit with auto-pause (existing)
+- Kill switch blocks all execution (existing)
+- Duplicate order detection within 10s window (existing)
+- NEW: Max drawdown auto-kill-switch activation
+- NEW: Portfolio concentration alerts
+
 ### Files to Create
-- `supabase/functions/seo-agent-orchestrator/index.ts` (full 16-agent implementation)
-- `src/components/seo/WarRoomEntry.tsx` (URL entry screen)
-- `src/components/seo/AgentWarRoom.tsx` (main war room layout)
-- `src/components/seo/OrchestratorPanel.tsx` (orchestrator command view)
-- `src/components/seo/AgentWorkspacePanel.tsx` (individual agent panel)
-- `src/components/seo/AgentDeepDive.tsx` (full-screen agent detail)
-- `src/components/seo/ApprovalQueue.tsx` (approval gate UI)
-- `src/components/seo/CommunicationStream.tsx` (inter-agent messages)
-- `src/components/seo/GlobalProgress.tsx` (overall progress bar)
-- `src/components/seo/ArticleGenerationView.tsx` (live article writing)
-- `src/components/seo/ExportPanel.tsx` (download/export)
+- `supabase/functions/trading-autonomous-loop/index.ts`
+- `supabase/functions/trading-research-agent/index.ts`
 
 ### Files to Modify
-- `src/pages/BlogEmpirePage.tsx` (complete rewrite)
-- `src/types/agent.ts` (expand types)
-- `src/services/aiService.ts` (add all 16 agent service calls)
-- `src/App.tsx` (update route if needed)
+- `supabase/functions/trading-alert-executor/index.ts` (wire real order execution)
+- `supabase/functions/trading-order-gateway/index.ts` (add Binance/Coinbase support)
+- `src/pages/TradingDashboardPage.tsx` (real data display, autonomous status)
+- `src/components/trading/PortfolioOverview.tsx` (live Alpaca data)
+- `src/components/trading/RealTimeAgentExecutor.tsx` (autonomous mode indicator)
 
-### Files to Delete (components no longer needed)
-- `src/components/blog/BlogAgentTeamGrid.tsx`
-- `src/components/blog/BlogWorkflowEngine.tsx`
-- `src/components/blog/BlogFeaturesGrid.tsx`
-- `src/components/blog/BlogContentPipeline.tsx`
-- `src/components/blog/BlogEmpireCEOHeader.tsx`
-
-## Implementation Order
-1. Database migration for `seo_sessions`
-2. Expand `types/agent.ts` with full type system
-3. Create `seo-agent-orchestrator` edge function with all 16 agents
-4. Update `aiService.ts` with all service calls
-5. Build War Room UI components (entry, panels, approval queue, communication stream)
-6. Replace `BlogEmpirePage.tsx` with new War Room page
-7. Clean up old blog empire components
-
+### Database Changes
+- Add `autonomous_mode` boolean column to `trading_projects`
+- Add `last_sync_at` timestamp to `trading_projects`
+- Set up `pg_cron` schedule for the autonomous loop

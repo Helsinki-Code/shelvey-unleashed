@@ -1,4 +1,4 @@
-// AI Service Layer - Uses Lovable AI via Edge Functions
+// AI Service Layer - SEO Agent War Room with 16 Agents
 
 import { supabase } from '@/integrations/supabase/client';
 import type {
@@ -60,23 +60,34 @@ export const sendBuilderRequest = async (
   };
 };
 
-// --- SEO Agent Services ---
-async function callSEO(action: string, params: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('ai-seo', {
-    body: { action, ...params },
+// --- SEO Agent Orchestrator Services (16 agents) ---
+async function callAgent(agent: string, params: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke('seo-agent-orchestrator', {
+    body: { agent, ...params },
   });
   if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
   return data;
 }
 
-export const analyzeWebsiteContent = async (url: string): Promise<{ pages: string[]; keywords: KeywordMetric[] }> => {
-  const data = await callSEO('analyzeWebsite', { url });
-  return { pages: data?.pages || [], keywords: data?.keywords || [] };
+// 1. Orchestrator
+export const orchestrateWorkflow = async (url: string, goals: string) => {
+  return callAgent('orchestrator', { url, goals });
 };
 
+// 2. Website Crawler
+export const crawlWebsiteAgent = async (url: string) => {
+  return callAgent('crawler', { url });
+};
+
+// 3. Keyword Researcher
+export const performKeywordResearch = async (url: string, contentThemes: string[], pages: string[]): Promise<{ keywords: KeywordMetric[]; clusters: any[]; summary: string }> => {
+  return callAgent('keyword_researcher', { url, contentThemes, pages });
+};
+
+// 4. SERP Analyst
 export const performSerpAnalysis = async (keyword: string): Promise<SerpResult> => {
-  const data = await callSEO('serpAnalysis', { keyword });
+  const data = await callAgent('serp_analyst', { keyword });
   return {
     keyword,
     aiOverview: data?.aiOverview || '',
@@ -89,40 +100,84 @@ export const performSerpAnalysis = async (keyword: string): Promise<SerpResult> 
   };
 };
 
+// 5. Content Strategist
 export const generateContentStrategy = async (
   keywords: KeywordMetric[], serpData: SerpResult[], goals: string
 ): Promise<ContentStrategy> => {
-  const data = await callSEO('contentStrategy', { keywords, serpData, goals });
+  const data = await callAgent('content_strategist', { keywords, serpData, goals });
   return {
     clusters: data?.clusters || [],
+    pillarContent: data?.pillarContent || [],
     calendar: data?.calendar || [],
     internalLinking: data?.internalLinking || [],
+    internalLinkingMap: data?.internalLinkingMap || [],
     summary: data?.summary || 'Strategy unavailable.',
   };
 };
 
-export const generateArticleOutline = async (keyword: string, serpData: SerpResult, tone: string) => {
-  const data = await callSEO('articleOutline', { keyword, serpData, tone });
-  return { title: data?.title || keyword, sections: data?.sections || [] };
+// 6. Outline Architect
+export const generateArticleOutline = async (keyword: string, serpData: SerpResult, tone: string, paaQuestions: string[]) => {
+  return callAgent('outline_architect', { keyword, serpData, tone, paaQuestions });
 };
 
+// 7. Article Writer
 export const writeArticleSection = async (
-  sectionHeading: string, keyword: string, context: string, tone: string, visualType: string
+  sectionHeading: string, keyword: string, context: string, tone: string, visualType: string, paaQuestions?: string[]
 ): Promise<{ content: string; chartData?: any[]; imagePrompt?: string }> => {
-  const data = await callSEO('writeSection', { sectionHeading, keyword, context, tone, visualType });
+  const data = await callAgent('article_writer', { sectionHeading, keyword, context, tone, visualType, paaQuestions });
   return { content: data?.content || 'Section generation failed.', chartData: data?.chartData, imagePrompt: data?.imagePrompt };
 };
 
-export const optimizeForAIOverview = async (fullContent: string, keyword: string): Promise<string> => {
-  const data = await callSEO('optimizeAIOverview', { content: fullContent, keyword });
-  return data?.content || '';
+// 8. AI Overview Optimizer
+export const optimizeForAIOverview = async (fullContent: string, keyword: string, aiOverview?: string): Promise<{ content: string; changes: string[] }> => {
+  const data = await callAgent('ai_overview_optimizer', { content: fullContent, keyword, aiOverview });
+  return { content: data?.content || fullContent, changes: data?.changes || [] };
 };
 
+// 9. Internal Link Suggester
 export const generateInternalLinkSuggestions = async (content: string, sitemap: string[]): Promise<LinkSuggestion[]> => {
-  const data = await callSEO('internalLinks', { content, sitemap });
+  const data = await callAgent('internal_linker', { content, sitemap });
   return Array.isArray(data) ? data : [];
 };
 
+// 10. Image Generator
+export const generateImagePrompt = async (sectionHeading: string, keyword: string, context: string) => {
+  return callAgent('image_generator', { sectionHeading, keyword, context });
+};
+
+// 11. Rank Tracker
+export const checkRank = async (domain: string, keywords: string[]): Promise<BulkRankResponse> => {
+  const data = await callAgent('rank_tracker', { domain, keywords });
+  return { results: data?.results || [], summary: data?.summary || 'No data.', groundingUrls: [] };
+};
+
+// 12. Analytics Agent
+export const analyzeTrafficPatterns = async (metrics: AnalyticsMetric[], pages: PagePerformance[]) => {
+  return callAgent('analytics_agent', { metrics, pages });
+};
+
+// 13. Content Optimizer
+export const analyzeContentOptimization = async (content: string, keyword: string, currentRank?: number) => {
+  return callAgent('content_optimizer', { content, keyword, currentRank });
+};
+
+// 14. Indexing Predictor
+export const predictIndexingSuccess = async (content: string, keyword: string): Promise<{ likelihood: string; score: number; factors: any[]; advice: string }> => {
+  const data = await callAgent('indexing_predictor', { content, keyword });
+  return { likelihood: data?.likelihood || 'Unknown', score: data?.score || 0, factors: data?.factors || [], advice: data?.advice || 'Check Search Console.' };
+};
+
+// 15. Link Validator
+export const validateLinks = async (links: string[]) => {
+  return callAgent('link_validator', { links });
+};
+
+// 16. Report Generator
+export const generateSessionReport = async (sessionData: any) => {
+  return callAgent('report_generator', { sessionData });
+};
+
+// --- Legacy compatibility ---
 export const applyLinkSuggestions = async (content: string, suggestions: LinkSuggestion[]): Promise<string> => {
   let newContent = content;
   const sorted = [...suggestions].sort((a, b) => b.anchorText.length - a.anchorText.length);
@@ -135,23 +190,12 @@ export const applyLinkSuggestions = async (content: string, suggestions: LinkSug
   return newContent;
 };
 
-export const generateImage = async (prompt: string, _aspectRatio: string = '16:9'): Promise<string> => {
+export const generateImage = async (prompt: string): Promise<string> => {
   return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/600`;
 };
 
-export const checkRank = async (domain: string, keywords: string[]): Promise<BulkRankResponse> => {
-  const data = await callSEO('checkRank', { domain, keywords });
-  return { results: data?.results || [], summary: data?.summary || 'No data.', groundingUrls: [] };
-};
-
-export const analyzeTrafficPatterns = async (metrics: AnalyticsMetric[], pages: PagePerformance[]): Promise<string> => {
-  const data = await callSEO('analyzeTraffic', { metrics, pages });
-  return data?.content || 'Analysis unavailable.';
-};
-
-export const predictIndexingSuccess = async (content: string, keyword: string): Promise<{ likelihood: string; advice: string }> => {
-  const data = await callSEO('predictIndexing', { content, keyword });
-  return { likelihood: data?.likelihood || 'Unknown', advice: data?.advice || 'Check Search Console.' };
+export const analyzeWebsiteContent = async (url: string) => {
+  return crawlWebsiteAgent(url);
 };
 
 export const crawlWebsite = async (url: string) => {
@@ -177,9 +221,6 @@ const generateFallbackComponent = (prompt: string): string => `() => {
       <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">${prompt.slice(0, 40)}...</h1>
         <p className="text-gray-600 mb-6">This is a fallback component. Please try again.</p>
-        <button className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-          Retry
-        </button>
       </div>
     </div>
   );
@@ -188,18 +229,25 @@ const generateFallbackComponent = (prompt: string): string => `() => {
 export default {
   sendChatMessage,
   sendBuilderRequest,
-  analyzeWebsiteContent,
+  orchestrateWorkflow,
+  crawlWebsiteAgent,
+  performKeywordResearch,
   performSerpAnalysis,
   generateContentStrategy,
   generateArticleOutline,
   writeArticleSection,
   optimizeForAIOverview,
   generateInternalLinkSuggestions,
-  applyLinkSuggestions,
-  generateImage,
+  generateImagePrompt,
   checkRank,
   analyzeTrafficPatterns,
+  analyzeContentOptimization,
   predictIndexingSuccess,
+  validateLinks,
+  generateSessionReport,
+  applyLinkSuggestions,
+  generateImage,
+  analyzeWebsiteContent,
   crawlWebsite,
   mapWebsite,
 };
