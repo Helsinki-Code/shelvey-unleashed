@@ -462,7 +462,7 @@ export default function Phase4Page() {
 
             <TabsContent value="seo-warroom">
               <div className="h-[700px] border border-border rounded-lg overflow-hidden">
-                <SEOWarRoom />
+                <AgentWarRoom url="" goals="" onStop={() => {}} />
               </div>
             </TabsContent>
 
