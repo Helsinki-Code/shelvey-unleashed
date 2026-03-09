@@ -1,116 +1,138 @@
 
-# Plan: Production-Grade Autonomous Trading Company
+# Blog Empire Entry Redesign Plan
 
-## Current State Assessment
+## Overview
+Transform Blog Empire from URL-only SEO War Room to a dual-path wizard supporting both existing websites and topic-based auto-generated blogs with 24/7 autonomous operation.
 
-After thorough review, the trading system already has significant production infrastructure in place:
+## Current State Analysis
+- **BlogEmpirePage.tsx**: Uses SEO War Room components (`WarRoomEntry` + `AgentWarRoom`)
+- **Database**: `blog_projects` table with niche, domain, platform, status fields
+- **Execution**: `RealTimeBlogAgentExecutor` for autonomous 7-phase workflow
+- **Backend**: Multiple edge functions (blog-generator, content-strategy-generator, blog-publishing-executor)
 
-**What Already Works (Real, Not Mock):**
-- `mcp-alpaca` edge function connects to real Alpaca API (paper + live) using user-provided API keys
-- `trading-order-gateway` performs real risk checks (position sizing, daily loss limits, buying power, duplicate detection) before routing orders to Alpaca
-- `trading-ai-agent` executes real DCA, Grid, and Momentum strategies through the order gateway
-- `trading-ceo-orchestrator` manages a full candidate lifecycle pipeline (research → backtest → paper → staged_live → full_live) with dual CEO/user approval gates
-- `trading-scheduler-worker` generates tasks from real project data (not synthetic)
-- Kill switch, reconciliation, and compliance audit trail exist in the database
-- 23 trading-related database tables with proper schema
+## Technical Architecture Changes
 
-**What Is Broken / Missing / Simulated:**
+### 1. New Entry Flow Components
+**Create `BlogEmpireEntry.tsx`** - 2-step wizard:
+- **Step 1**: Choice between "I have a website" vs "Build from topic"
+- **Step 2a**: URL input (existing website path)
+- **Step 2b**: Topic/niche input + platform selection (auto-build path)
 
-1. **No Autonomous Loop**: Agents only execute when user clicks "Execute" button. There is no scheduled autonomous execution cycle that continuously monitors markets, generates signals, and places trades.
+**Replace in `BlogEmpirePage.tsx`**:
+- Remove `WarRoomEntry` dependency
+- Add routing logic for the two different workflows
 
-2. **Alert Auto-Actions Are Fake**: `trading-alert-executor` has an `executeAutoAction` function that just returns strings like `"Bought 100 shares of AAPL"` without actually calling the order gateway.
+### 2. Auto-Build Website Flow
+**New Edge Function: `blog-website-builder`**:
+- Generate complete blog website from topic
+- Use existing website generation pipeline (v0-website-generator, deploy-to-vercel)
+- Create WordPress/Ghost setup if needed
+- Auto-populate initial content structure
 
-3. **No Real-Time Market Data Pipeline**: Market data is only fetched on-demand. No continuous polling/streaming of prices to power alerts, P&L tracking, or strategy signals.
+**Integration Points**:
+- Connects to existing `generate-vite-project` and `deploy-vite-project` functions
+- Creates domain via existing domain purchase flow
+- Sets up hosting via existing Vercel deployment
 
-4. **Portfolio Sync Is Missing**: `PortfolioOverview` shows data from `trading_portfolio_snapshots` table but nothing populates it from Alpaca's real account endpoint on a schedule.
+### 3. Enhanced Blog Project Management
+**Update `blog_projects` table usage**:
+- Add `auto_generated` boolean field (differentiate manual vs auto-built)
+- Add `website_url` field for deployed site URL
+- Enhanced metadata for build configuration
 
-5. **P&L Tracking Is Stale**: `trading_projects.total_pnl` is set to 0 on creation and never updated from real execution data.
+**Project Creation Flow**:
+- URL Path: Create project with existing domain
+- Topic Path: Create project → Build website → Deploy → Populate content
 
-6. **Strategy Execution Scheduler Missing**: Active strategies (DCA daily, Grid monitoring, Momentum signals) have no cron or scheduled trigger — they only run on manual button press.
+### 4. Continuous Autopilot System
+**New Edge Function: `blog-autopilot-scheduler`**:
+- Runs every 4-6 hours via pg_cron
+- Checks active blog projects with autopilot enabled
+- Triggers content generation, publishing, SEO tasks
+- Manages social media posting schedule
 
-7. **No AI-Driven Research/Analysis Agent**: The Research phase agent doesn't use AI to analyze market conditions and generate actionable trade ideas. It just collects database records.
+**Enhanced `RealTimeBlogAgentExecutor`**:
+- Add autopilot toggle control
+- Continuous execution mode (vs. single-phase execution)
+- Real-time progress tracking across all 7 phases
 
-8. **Binance/Coinbase Not Production-Ready**: Only Alpaca is wired to the order gateway. Binance and Coinbase MCPs exist but don't route through the risk-checked gateway.
+### 5. Multi-Platform Publishing Integration
+**Enhanced publishing system**:
+- WordPress API integration (existing wordpress-automation function)
+- Medium API publishing (existing medium-automation function)  
+- Ghost API integration (new)
+- Cross-platform content syndication
 
-## Implementation Plan
+## User Experience Flow
 
-### Task 1: Autonomous Trading Loop Edge Function
-Create `trading-autonomous-loop` edge function that:
-- Runs as a scheduled cron job (every 5 minutes during market hours)
-- For each active project: fetches real portfolio from Alpaca, updates `trading_portfolio_snapshots`, syncs `trading_projects.total_pnl`
-- Checks all active price alerts against live market data and routes triggered alerts through `trading-order-gateway` (not fake strings)
-- Executes all active strategies (DCA interval checks, Grid level monitoring, Momentum signal generation) through the real order gateway
-- Logs all activity to `trading_activity_logs` for real-time feed visibility
+### Path A: Existing Website
+1. User selects "I have a website"
+2. Enters URL + optional goals
+3. Agents analyze existing site (SEO War Room style)
+4. Continuous content creation and optimization begins
 
-### Task 2: Fix Alert Auto-Execution
-Update `trading-alert-executor` so `executeAutoAction` calls `trading-order-gateway` for BUY/SELL actions instead of returning placeholder strings. Wire alert checking into the autonomous loop.
+### Path B: Topic-Based Auto-Build
+1. User selects "Build from topic"
+2. Enters niche/topic + platform preference
+3. **Auto-build sequence**:
+   - Generate blog website design
+   - Deploy to custom domain
+   - Create initial content structure
+   - Set up publishing pipeline
+4. Agents begin 24/7 autonomous operation:
+   - Research and content strategy
+   - Daily article generation
+   - SEO optimization
+   - Social media promotion
+   - Analytics monitoring
 
-### Task 3: AI-Powered Market Research Agent
-Create `trading-research-agent` edge function that uses Lovable AI (`google/gemini-2.5-flash`) to:
-- Analyze current positions, recent executions, and market data
-- Generate actionable trade recommendations with reasoning
-- Auto-create strategy candidates with risk scores
-- Store research outputs in `trading_team_tasks` with real AI-generated analysis
+## Implementation Strategy
 
-### Task 4: Real-Time Portfolio Sync
-Add a portfolio sync job inside the autonomous loop that:
-- Calls `mcp-alpaca` `get_account` and `get_positions` for each user's active project
-- Upserts into `trading_portfolio_snapshots` with real equity, cash, positions, and P&L
-- Updates `trading_projects.total_pnl` and `trading_projects.capital` from broker data
-- Calculates and stores max drawdown in `trading_risk_controls`
+### Phase 1: Entry Interface
+- Create `BlogEmpireEntry.tsx` wizard component
+- Update `BlogEmpirePage.tsx` routing logic
+- Add new UI states and form validation
 
-### Task 5: Strategy Execution Scheduler (Cron)
-Set up a `pg_cron` job that invokes `trading-autonomous-loop` every 5 minutes. This makes the system truly autonomous — agents work continuously without user intervention.
+### Phase 2: Auto-Build Pipeline
+- Create `blog-website-builder` edge function
+- Integrate with existing website generation tools
+- Add blog-specific templates and configurations
 
-### Task 6: Update Frontend to Show Real Data
-- Update `TradingDashboardPage` to fetch portfolio from real Alpaca data (via the synced snapshots) instead of showing static project capital
-- Add a "Live" indicator when autonomous loop is active
-- Show real AI research recommendations in the Research phase
-- Display real-time P&L updates from portfolio sync
-- Add connection status indicator showing whether Alpaca keys are configured and valid
+### Phase 3: Autopilot Infrastructure
+- Create `blog-autopilot-scheduler` edge function
+- Set up pg_cron scheduling
+- Enhanced continuous execution in `RealTimeBlogAgentExecutor`
 
-### Task 7: Wire Binance/Coinbase Through Order Gateway
-Extend `trading-order-gateway` to support Binance and Coinbase exchanges by routing through their respective MCP functions with the same risk checks applied.
+### Phase 4: Multi-Platform Publishing
+- Enhance existing publishing functions
+- Add Ghost API integration
+- Cross-platform syndication logic
 
-## Technical Details
+## Technical Specifications
 
-### Autonomous Loop Architecture
-```text
-pg_cron (every 5 min)
-  └─► trading-autonomous-loop
-        ├─► For each active project:
-        │     ├─► mcp-alpaca: get_account + get_positions
-        │     ├─► Update trading_portfolio_snapshots
-        │     ├─► Update trading_projects.total_pnl
-        │     ├─► Check trading_alerts vs live prices
-        │     │     └─► trading-order-gateway (if triggered)
-        │     ├─► Execute active strategies
-        │     │     └─► trading-order-gateway (risk-checked)
-        │     └─► Log to trading_activity_logs
-        └─► AI Research (hourly subset)
-              └─► Lovable AI → strategy candidates
-```
+### New Components
+- `BlogEmpireEntry.tsx` - 2-step wizard interface
+- `BlogAutoBuilder.tsx` - Auto-build progress tracking
+- `ContinuousAutopilotPanel.tsx` - 24/7 operation controls
 
-### Risk Controls (Already Enforced, Will Be Extended)
-- Max position size % check (existing)
-- Daily loss limit with auto-pause (existing)
-- Kill switch blocks all execution (existing)
-- Duplicate order detection within 10s window (existing)
-- NEW: Max drawdown auto-kill-switch activation
-- NEW: Portfolio concentration alerts
-
-### Files to Create
-- `supabase/functions/trading-autonomous-loop/index.ts`
-- `supabase/functions/trading-research-agent/index.ts`
-
-### Files to Modify
-- `supabase/functions/trading-alert-executor/index.ts` (wire real order execution)
-- `supabase/functions/trading-order-gateway/index.ts` (add Binance/Coinbase support)
-- `src/pages/TradingDashboardPage.tsx` (real data display, autonomous status)
-- `src/components/trading/PortfolioOverview.tsx` (live Alpaca data)
-- `src/components/trading/RealTimeAgentExecutor.tsx` (autonomous mode indicator)
+### Enhanced Edge Functions
+- `blog-website-builder` - Full website generation
+- `blog-autopilot-scheduler` - Continuous operation scheduling
+- Enhanced `blog-generator` for template-based content
 
 ### Database Changes
-- Add `autonomous_mode` boolean column to `trading_projects`
-- Add `last_sync_at` timestamp to `trading_projects`
-- Set up `pg_cron` schedule for the autonomous loop
+- Add `auto_generated`, `website_url` fields to `blog_projects`
+- New `blog_autopilot_schedules` table for scheduling
+- Enhanced metadata schemas for build configurations
+
+## Success Metrics
+- **Immediate**: User can choose between URL and topic paths
+- **Short-term**: Topic → fully deployed website in <10 minutes
+- **Long-term**: 24/7 autonomous content creation with measurable traffic growth
+
+## Risk Considerations
+- **Resource Usage**: Continuous autopilot may consume significant API quotas
+- **Content Quality**: Automated content needs quality controls
+- **User Control**: Balance automation with user oversight capabilities
+
+This redesign transforms Blog Empire from a single-use SEO tool into a comprehensive autonomous blog business builder that can either optimize existing websites or create entire blog empires from scratch, operating continuously without human intervention.
