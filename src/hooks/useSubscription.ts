@@ -82,7 +82,7 @@ export const useSubscription = () => {
         error: err instanceof Error ? err.message : 'Failed to check subscription',
       }));
     }
-  }, [session?.access_token, isSuperAdmin]);
+  }, [session?.access_token, isSuperAdmin, user]);
 
   const createCheckout = useCallback(async (includeSetupFee: boolean = true, planType: string = 'standard') => {
     if (!session?.access_token) {
