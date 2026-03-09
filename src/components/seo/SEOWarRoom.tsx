@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useWarRoom } from '@/hooks/useWarRoom';
+import { BlogEmpireEntry } from './BlogEmpireEntry';
 import { MissionControlBar } from './MissionControlBar';
 import { AgentStatusGrid } from './AgentStatusGrid';
 import { PhaseDAGView } from './PhaseDAGView';
 import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import { CommunicationLog } from './CommunicationLog';
-import { MissionStartDialog } from './MissionStartDialog';
 import { AgentDeepDive } from './AgentDeepDive';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,34 +13,29 @@ import { Zap, Target, MessageSquare, CheckCircle, Activity } from 'lucide-react'
 import type { AgentId } from '@/types/agent';
 
 export function SEOWarRoom() {
-  const { state, startMission, pauseMission, resumeMission, approveRequest, intervene, sessionId } = useWarRoom();
-  const [showStartDialog, setShowStartDialog] = useState(!state.mission);
+  const { state, loadSession, pauseMission, resumeMission, approveRequest, intervene, sessionId } = useWarRoom();
   const [selectedAgentId, setSelectedAgentId] = useState<AgentId | null>(null);
 
-  const handleStartMission = (url: string, goals: string) => {
-    startMission(url, goals);
-    setShowStartDialog(false);
-  };
+  // Show entry screen if no active session
+  if (!sessionId) {
+    return <BlogEmpireEntry onMissionStart={(id) => loadSession(id)} />;
+  }
 
   const selectedAgent = selectedAgentId ? state.agents.find(a => a.id === selectedAgentId) : null;
 
   return (
     <div className="h-full flex flex-col gap-4">
-      {/* Mission Control Bar */}
       <MissionControlBar
         mission={state.mission}
         health={state.health}
         connected={state.connected}
-        onStart={() => setShowStartDialog(true)}
+        onStart={() => {}} // Already started
         onPause={pauseMission}
         onResume={resumeMission}
       />
 
-      {/* Main Content */}
       <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-        {/* Left Panel: Agents */}
         <div className="col-span-8 flex flex-col gap-4 min-h-0">
-          {/* Phase DAG */}
           <Card className="bg-card/50 backdrop-blur border-border/50">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -53,7 +48,6 @@ export function SEOWarRoom() {
             </CardContent>
           </Card>
 
-          {/* Agent Grid + Deep Dive */}
           <div className="flex-1 min-h-0 grid grid-cols-3 gap-4">
             <div className="col-span-2 overflow-hidden">
               <Card className="h-full bg-card/50 backdrop-blur border-border/50">
@@ -86,10 +80,10 @@ export function SEOWarRoom() {
                 </CardHeader>
                 <CardContent className="p-4 pt-0 overflow-auto max-h-[400px]">
                   {selectedAgent ? (
-                    <AgentDeepDive 
-                      agent={selectedAgent} 
+                    <AgentDeepDive
+                      agent={selectedAgent}
                       onClose={() => setSelectedAgentId(null)}
-                      onIntervene={(command) => intervene(command)} 
+                      onIntervene={(command) => intervene(command)}
                       className="relative inset-auto z-auto bg-transparent backdrop-blur-none"
                     />
                   ) : (
@@ -101,9 +95,7 @@ export function SEOWarRoom() {
           </div>
         </div>
 
-        {/* Right Panel: Approvals & Comms */}
         <div className="col-span-4 flex flex-col gap-4 min-h-0">
-          {/* Approval Queue */}
           <Card className="bg-card/50 backdrop-blur border-border/50">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -126,7 +118,6 @@ export function SEOWarRoom() {
             </CardContent>
           </Card>
 
-          {/* Communication Log */}
           <Card className="flex-1 min-h-0 bg-card/50 backdrop-blur border-border/50">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -140,13 +131,6 @@ export function SEOWarRoom() {
           </Card>
         </div>
       </div>
-
-      {/* Mission Start Dialog */}
-      <MissionStartDialog
-        open={showStartDialog}
-        onOpenChange={setShowStartDialog}
-        onStart={handleStartMission}
-      />
     </div>
   );
 }
