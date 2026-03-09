@@ -1,43 +1,44 @@
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export async function POST(request: Request) {
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Blog autopilot scheduler running...');
+
+    const now = new Date().toISOString();
 
     // Get all active autopilot schedules that are due for execution
     const { data: schedules, error: schedulesError } = await supabase
       .from('blog_autopilot_schedules')
-      .select(`
-        *,
-        blog_projects (
-          id, name, niche, platform, status, auto_generated, metadata
-        )
-      `)
+      .select('*, blog_projects(id, name, niche, platform, status, auto_generated, metadata)')
       .eq('enabled', true)
-      .lt('next_run', new Date().toISOString());
+      .lt('next_run', now);
 
     if (schedulesError) {
       console.error('Error fetching autopilot schedules:', schedulesError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch schedules' }), 
-        { status: 500, headers: corsHeaders }
+        JSON.stringify({ error: 'Failed to fetch schedules' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!schedules || schedules.length === 0) {
       console.log('No autopilot schedules due for execution');
       return new Response(
-        JSON.stringify({ message: 'No schedules due', processed: 0 }), 
-        { status: 200, headers: corsHeaders }
+        JSON.stringify({ message: 'No schedules due', processed: 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -48,107 +49,65 @@ export async function POST(request: Request) {
       try {
         console.log(`Processing autopilot for project: ${schedule.blog_project_id}`);
 
-        // Determine which phase to execute based on the last run
-        let nextPhase = 1; // Default to niche research
-        
+        // Rotate through phases 1-7
+        let nextPhase = 1;
         if (schedule.last_run) {
-          // Simple rotation through phases 1-7
           const hoursSinceLastRun = Math.floor(
             (Date.now() - new Date(schedule.last_run).getTime()) / (1000 * 60 * 60)
           );
           nextPhase = ((Math.floor(hoursSinceLastRun / schedule.frequency_hours)) % 7) + 1;
         }
 
-        // Execute the blog generation for this phase
-        const generationResponse = await supabase.functions.invoke('blog-generator', {
+        // Invoke blog-generator for this phase
+        const genRes = await supabase.functions.invoke('blog-generator', {
           body: {
             projectId: schedule.blog_project_id,
             phase: nextPhase,
             isAutopilot: true,
             userId: schedule.user_id,
-            scheduledExecution: true
-          }
+            scheduledExecution: true,
+          },
         });
 
-        if (generationResponse.error) {
-          console.error(`Error in blog generation for project ${schedule.blog_project_id}:`, generationResponse.error);
-          results.push({
-            projectId: schedule.blog_project_id,
-            success: false,
-            error: generationResponse.error
-          });
-        } else {
-          results.push({
-            projectId: schedule.blog_project_id,
-            success: true,
-            phase: nextPhase,
-            data: generationResponse.data
-          });
-        }
+        results.push({
+          projectId: schedule.blog_project_id,
+          success: !genRes.error,
+          phase: nextPhase,
+          error: genRes.error ?? null,
+        });
 
-        // Update the schedule for next run
-        const nextRunTime = new Date(Date.now() + schedule.frequency_hours * 60 * 60 * 1000);
-        
-        const { error: updateError } = await supabase
+        // Schedule next run
+        const nextRun = new Date(Date.now() + schedule.frequency_hours * 60 * 60 * 1000).toISOString();
+        await supabase
           .from('blog_autopilot_schedules')
-          .update({
-            last_run: new Date().toISOString(),
-            next_run: nextRunTime.toISOString(),
-            updated_at: new Date().toISOString()
-          })
+          .update({ last_run: now, next_run: nextRun, updated_at: now })
           .eq('id', schedule.id);
 
-        if (updateError) {
-          console.error(`Error updating schedule for project ${schedule.blog_project_id}:`, updateError);
+        // Optional: social distribution after phase 6+
+        if (schedule.phases_config?.social_distribution && nextPhase >= 6) {
+          await supabase.functions.invoke('social-distribution-executor', {
+            body: { projectId: schedule.blog_project_id, userId: schedule.user_id, autopilotMode: true },
+          });
         }
 
         processedCount++;
-
-        // Optional: Trigger social distribution if enabled
-        if (schedule.phases_config?.social_distribution && nextPhase >= 6) {
-          const socialResponse = await supabase.functions.invoke('social-distribution-executor', {
-            body: {
-              projectId: schedule.blog_project_id,
-              userId: schedule.user_id,
-              autopilotMode: true
-            }
-          });
-
-          if (socialResponse.error) {
-            console.error(`Social distribution failed for project ${schedule.blog_project_id}:`, socialResponse.error);
-          }
-        }
-
-      } catch (error) {
-        console.error(`Error processing schedule for project ${schedule.blog_project_id}:`, error);
-        results.push({
-          projectId: schedule.blog_project_id,
-          success: false,
-          error: error.message
-        });
+      } catch (err) {
+        console.error(`Error processing schedule ${schedule.id}:`, err);
+        results.push({ projectId: schedule.blog_project_id, success: false, error: String(err) });
       }
     }
 
-    console.log(`Blog autopilot scheduler completed. Processed: ${processedCount} projects`);
+    console.log(`Autopilot scheduler done. Processed: ${processedCount}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true,
-        processed: processedCount,
-        results: results,
-        timestamp: new Date().toISOString()
-      }), 
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: true, processed: processedCount, results, timestamp: now }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error) {
-    console.error('Blog autopilot scheduler error:', error);
+  } catch (err) {
+    console.error('Blog autopilot scheduler error:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-}
+});

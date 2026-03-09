@@ -1,68 +1,61 @@
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-export async function POST(request: Request) {
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
+    const { topic, niche, platform, goals, projectId, userId } = await req.json();
 
-    const { topic, niche, platform, goals, projectId, userId } = await request.json();
+    console.log(`Starting auto-build for project: ${projectId}, topic: ${topic}`);
 
-    // Step 1: Generate website using existing pipeline
-    console.log(`Starting website generation for project: ${projectId}`);
-    
-    // Call the v0-website-generator function
-    const websiteResponse = await supabase.functions.invoke('v0-website-generator', {
+    // Step 1: Generate website using existing v0 pipeline
+    const websiteRes = await supabase.functions.invoke('v0-website-generator', {
       body: {
         businessDescription: `${topic} blog focused on ${niche}`,
         businessName: `${topic} Hub`,
         targetAudience: niche,
         goals: goals || `Build authority in ${topic} space`,
-        userId: userId
-      }
+        userId,
+      },
     });
 
-    if (websiteResponse.error) {
-      console.error('Website generation failed:', websiteResponse.error);
+    if (websiteRes.error) {
+      console.error('Website generation failed:', websiteRes.error);
       return new Response(
-        JSON.stringify({ error: 'Website generation failed' }), 
-        { status: 500, headers: corsHeaders }
+        JSON.stringify({ error: 'Website generation failed', details: websiteRes.error }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { websiteData } = websiteResponse.data;
+    const websiteData = websiteRes.data;
 
     // Step 2: Deploy the website to Vercel
-    console.log(`Deploying website for project: ${projectId}`);
-    
-    const deployResponse = await supabase.functions.invoke('deploy-vite-project', {
+    const deployRes = await supabase.functions.invoke('deploy-vite-project', {
       body: {
         projectName: `${topic.toLowerCase().replace(/\s+/g, '-')}-blog`,
-        pages: websiteData.pages,
-        businessData: websiteData.businessData,
-        userId: userId
-      }
+        pages: websiteData?.pages ?? [],
+        businessData: websiteData?.businessData ?? {},
+        userId,
+      },
     });
 
-    if (deployResponse.error) {
-      console.error('Website deployment failed:', deployResponse.error);
-      return new Response(
-        JSON.stringify({ error: 'Website deployment failed' }), 
-        { status: 500, headers: corsHeaders }
-      );
-    }
+    const websiteUrl = deployRes.data?.url ?? null;
 
-    const { url: websiteUrl } = deployResponse.data;
-
-    // Step 3: Update blog project with website URL
-    const { error: updateError } = await supabase
+    // Step 3: Update blog project with deployed website URL
+    await supabase
       .from('blog_projects')
-      .update({ 
+      .update({
         website_url: websiteUrl,
         status: 'active',
         metadata: {
@@ -71,66 +64,36 @@ export async function POST(request: Request) {
           platform,
           goals,
           website_deployed_at: new Date().toISOString(),
-          auto_build_completed: true
-        }
+          auto_build_completed: true,
+        },
       })
       .eq('id', projectId);
 
-    if (updateError) {
-      console.error('Failed to update blog project:', updateError);
-    }
-
-    // Step 4: Initialize content strategy
-    console.log(`Initializing content strategy for project: ${projectId}`);
-    
-    const strategyResponse = await supabase.functions.invoke('content-strategy-generator', {
-      body: {
-        niche: niche,
-        topic: topic,
-        targetAudience: niche,
-        platform: platform,
-        goals: goals,
-        projectId: projectId,
-        userId: userId
-      }
+    // Step 4: Generate initial content strategy
+    const strategyRes = await supabase.functions.invoke('content-strategy-generator', {
+      body: { niche, topic, targetAudience: niche, platform, goals, projectId, userId },
     });
 
-    let contentStrategy = null;
-    if (!strategyResponse.error) {
-      contentStrategy = strategyResponse.data;
-    }
-
-    // Step 5: Start first autopilot cycle
-    console.log(`Starting autopilot cycle for project: ${projectId}`);
-    
-    const autopilotResponse = await supabase.functions.invoke('blog-generator', {
-      body: {
-        projectId: projectId,
-        phase: 1, // Start with niche research
-        isAutopilot: true,
-        userId: userId
-      }
+    // Step 5: Start first autopilot cycle (phase 1 – niche research)
+    const autopilotRes = await supabase.functions.invoke('blog-generator', {
+      body: { projectId, phase: 1, isAutopilot: true, userId },
     });
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
-        websiteUrl: websiteUrl,
-        projectId: projectId,
-        contentStrategy: contentStrategy,
-        autopilotStarted: !autopilotResponse.error
-      }), 
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+        websiteUrl,
+        projectId,
+        contentStrategy: strategyRes.data ?? null,
+        autopilotStarted: !autopilotRes.error,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error) {
-    console.error('Blog website builder error:', error);
+  } catch (err) {
+    console.error('Blog website builder error:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-}
+});
