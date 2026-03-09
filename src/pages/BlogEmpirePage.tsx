@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { BlogEmpireEntry } from '@/components/BlogEmpireEntry';
-import { AgentWarRoom } from '@/components/seo/AgentWarRoom';
 import { RealTimeBlogAgentExecutor } from '@/components/blog/RealTimeBlogAgentExecutor';
+import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
+import { PageHeader } from '@/components/PageHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -16,7 +17,8 @@ const BlogEmpirePage = () => {
   const handleStartAnalysis = (url: string, goals: string) => {
     setCurrentUrl(url);
     setCurrentGoals(goals);
-    setMode('war-room');
+    toast.info('SEO War Room integration coming soon! Use existing SEO page for now.');
+    setMode('entry');
   };
 
   const handleStartAutoBuild = async (data: {
@@ -31,7 +33,6 @@ const BlogEmpirePage = () => {
     }
 
     try {
-      // Create blog project record
       const { data: project, error: projectError } = await supabase
         .from('blog_projects')
         .insert({
@@ -57,16 +58,15 @@ const BlogEmpirePage = () => {
       }
 
       setBuildProjectId(project.id);
-      
-      // Create autopilot schedule
-      const { error: scheduleError } = await supabase
+
+      await supabase
         .from('blog_autopilot_schedules')
         .insert({
           user_id: user.id,
           blog_project_id: project.id,
           enabled: true,
           frequency_hours: 6,
-          next_run: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // First run in 6 hours
+          next_run: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
           phases_config: {
             content_creation: true,
             seo_optimization: true,
@@ -75,14 +75,8 @@ const BlogEmpirePage = () => {
           }
         });
 
-      if (scheduleError) {
-        console.error('Error creating autopilot schedule:', scheduleError);
-        // Don't fail the whole process for this
-      }
-
-      // Trigger the auto-build process
       toast.info('Starting blog empire construction...');
-      
+
       const buildResponse = await supabase.functions.invoke('blog-website-builder', {
         body: {
           topic: data.topic,
@@ -115,35 +109,32 @@ const BlogEmpirePage = () => {
     setBuildProjectId(null);
   };
 
-  if (mode === 'war-room') {
-    // For now, redirect back to entry - we'll enhance this with proper war room integration
-    toast.info('SEO War Room integration coming soon! Use existing SEO page for now.');
-    setMode('entry');
-    return null;
-  }
-
-  if (mode === 'auto-build' && buildProjectId) {
-    // For auto-build mode, show the blog agent executor
-    return (
-      <div className="min-h-screen bg-background">
-        <RealTimeBlogAgentExecutor 
-          projectId={buildProjectId}
-          projectName={`Auto-Built Blog Empire`}
-          currentPhase={1}
-          niche=""
-          platform="custom"
-          onPhaseChange={() => {}}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <BlogEmpireEntry 
-        onStartAnalysis={handleStartAnalysis}
-        onStartAutoBuild={handleStartAutoBuild}
-      />
+    <div className="min-h-screen bg-background flex">
+      <SimpleDashboardSidebar />
+
+      <main className="flex-1 ml-[260px] p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Blog Empire</h1>
+          <PageHeader />
+        </div>
+
+        {mode === 'auto-build' && buildProjectId ? (
+          <RealTimeBlogAgentExecutor
+            projectId={buildProjectId}
+            projectName="Auto-Built Blog Empire"
+            currentPhase={1}
+            niche=""
+            platform="custom"
+            onPhaseChange={() => {}}
+          />
+        ) : (
+          <BlogEmpireEntry
+            onStartAnalysis={handleStartAnalysis}
+            onStartAutoBuild={handleStartAutoBuild}
+          />
+        )}
+      </main>
     </div>
   );
 };
