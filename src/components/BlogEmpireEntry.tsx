@@ -144,15 +144,15 @@ export function BlogEmpireEntry({ onStartAnalysis, onStartAutoBuild, className }
                   
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <div className="w-2 h-2 rounded-full bg-primary"></div>
                       <span>Complete website generation</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <div className="w-2 h-2 rounded-full bg-secondary"></div>
                       <span>Auto-deploy to custom domain</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                      <div className="w-2 h-2 rounded-full bg-accent"></div>
                       <span>24/7 autonomous operation</span>
                     </div>
                   </div>
