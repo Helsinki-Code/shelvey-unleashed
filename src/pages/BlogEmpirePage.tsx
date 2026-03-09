@@ -96,30 +96,23 @@ const BlogEmpirePage = () => {
   };
 
   if (mode === 'war-room') {
-    return (
-      <div className="min-h-screen bg-background">
-        <AgentWarRoom 
-          state={{
-            isRunning: true,
-            targetUrl: currentUrl,
-            goalStatement: currentGoals,
-            agents: [],
-            globalProgress: { phase: 'analysis', progress: 0 }
-          }}
-          onApprove={(id, optionId, userInput) => {}}
-          onIntervene={() => {}}
-          onExport={async (format) => {}}
-        />
-      </div>
-    );
+    // For now, redirect back to entry - we'll enhance this with proper war room integration
+    toast.info('SEO War Room integration coming soon! Use existing SEO page for now.');
+    setMode('entry');
+    return null;
   }
 
   if (mode === 'auto-build' && buildProjectId) {
+    // For auto-build mode, show the blog agent executor
     return (
       <div className="min-h-screen bg-background">
         <RealTimeBlogAgentExecutor 
           projectId={buildProjectId}
-          projectName={`Blog Empire Auto-Build`}
+          projectName={`Auto-Built Blog Empire`}
+          currentPhase={1}
+          niche=""
+          platform="custom"
+          onPhaseChange={() => {}}
         />
       </div>
     );
