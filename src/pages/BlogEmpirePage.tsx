@@ -80,8 +80,28 @@ const BlogEmpirePage = () => {
         // Don't fail the whole process for this
       }
 
+      // Trigger the auto-build process
+      toast.info('Starting blog empire construction...');
+      
+      const buildResponse = await supabase.functions.invoke('blog-website-builder', {
+        body: {
+          topic: data.topic,
+          niche: data.niche,
+          platform: data.platform,
+          goals: data.goals,
+          projectId: project.id,
+          userId: user.id
+        }
+      });
+
+      if (buildResponse.error) {
+        console.error('Auto-build failed:', buildResponse.error);
+        toast.error('Failed to start auto-build process');
+        return;
+      }
+
       setMode('auto-build');
-      toast.success('Blog empire building initiated!');
+      toast.success('Blog empire building initiated! Your site is being deployed...');
     } catch (error) {
       console.error('Error starting auto-build:', error);
       toast.error('Failed to start blog empire building');
