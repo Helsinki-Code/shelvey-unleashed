@@ -17,7 +17,10 @@ import { Button } from '@/components/ui/button';
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, profile, isLoading, isSubscribed, isSuperAdmin } = useAuth();
+  const { user, profile, isLoading: authLoading, isSuperAdmin } = useAuth();
+  const { subscribed, isLoading: subLoading } = useSubscription();
+  const isLoading = authLoading || subLoading;
+  const isSubscribed = subscribed || isSuperAdmin;
   const [ceoChecked, setCeoChecked] = useState(false);
   const [userCeo, setUserCeo] = useState<any>(null);
   const [automationStats, setAutomationStats] = useState({
