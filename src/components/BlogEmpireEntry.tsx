@@ -101,20 +101,20 @@ export function BlogEmpireEntry({ onStartAnalysis, onStartAutoBuild, className }
                     Enter your website URL and watch AI agents analyze, strategize, and create SEO-optimized content in real-time.
                   </p>
                   
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span>Complete SEO audit & analysis</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      <span>Keyword research & strategy</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                      <span>Continuous content creation</span>
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    <span>Complete SEO audit & analysis</span>
                   </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                    <span>Keyword research & strategy</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-accent"></div>
+                    <span>Continuous content creation</span>
+                  </div>
+                </div>
                 </div>
                 
                 <Button className="w-full gap-2 group-hover:gap-3 transition-all">
