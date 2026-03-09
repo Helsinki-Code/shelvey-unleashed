@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, TrendingUp, Store, Bot, DollarSign, ShoppingCart, BarChart3, Zap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { NotificationBell } from '@/components/NotificationBell';
