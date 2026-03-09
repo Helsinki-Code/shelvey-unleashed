@@ -87,7 +87,12 @@ export function SEOWarRoom() {
                 </CardHeader>
                 <CardContent className="p-4 pt-0 overflow-auto max-h-[400px]">
                   {selectedAgent ? (
-                    <AgentDeepDive agent={selectedAgent} onIntervene={(type) => intervene({ type, targetAgent: selectedAgent.id, timestamp: Date.now() })} />
+                    <AgentDeepDive 
+                      agent={selectedAgent} 
+                      onClose={() => setSelectedAgentId(null)}
+                      onIntervene={(command) => intervene(command)} 
+                      className="relative inset-auto z-auto bg-transparent backdrop-blur-none"
+                    />
                   ) : (
                     <p className="text-muted-foreground text-sm">Select an agent to view details</p>
                   )}
