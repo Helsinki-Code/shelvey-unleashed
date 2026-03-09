@@ -119,7 +119,7 @@ const BlogEmpirePage = () => {
       <div className="min-h-screen bg-background">
         <RealTimeBlogAgentExecutor 
           projectId={buildProjectId}
-          onBack={handleBack}
+          projectName={`Blog Empire Auto-Build`}
         />
       </div>
     );
