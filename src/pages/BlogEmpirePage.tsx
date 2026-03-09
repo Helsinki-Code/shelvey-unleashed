@@ -99,9 +99,16 @@ const BlogEmpirePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <AgentWarRoom 
-          initialUrl={currentUrl}
-          initialGoals={currentGoals}
-          onBack={handleBack}
+          state={{
+            isRunning: true,
+            targetUrl: currentUrl,
+            goalStatement: currentGoals,
+            agents: [],
+            globalProgress: { phase: 'analysis', progress: 0 }
+          }}
+          onApprove={(id, optionId, userInput) => {}}
+          onIntervene={() => {}}
+          onExport={async (format) => {}}
         />
       </div>
     );
