@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -53,9 +52,10 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
     }),
   });
   if (!resp.ok) {
+    const text = await resp.text();
     if (resp.status === 429) throw new Error("Rate limited. Please try again shortly.");
-    if (resp.status === 402) throw new Error("AI credits exhausted. Please add funds.");
-    throw new Error(`AI error: ${resp.status}`);
+    if (resp.status === 402) throw new Error("AI credits exhausted.");
+    throw new Error(`AI error: ${resp.status} - ${text}`);
   }
   const data = await resp.json();
   return data.choices?.[0]?.message?.content || "";
@@ -70,27 +70,18 @@ function parseJSON(text: string): any {
   }
 }
 
-// ━━━━━━━━━━ FIRECRAWL REAL SCRAPING ━━━━━━━━━━
+// ━━━━━━━━━━ FIRECRAWL ━━━━━━━━━━
 async function firecrawlScrape(url: string): Promise<any> {
-  if (!FIRECRAWL_API_KEY) {
-    console.warn("FIRECRAWL_API_KEY not set, falling back to AI-based analysis");
-    return null;
-  }
+  if (!FIRECRAWL_API_KEY) return null;
   try {
     const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ url, formats: ["markdown", "html", "links"], onlyMainContent: false }),
     });
-    if (!resp.ok) {
-      console.error(`Firecrawl scrape failed: ${resp.status}`);
-      return null;
-    }
+    if (!resp.ok) { console.error(`Firecrawl scrape failed: ${resp.status}`); return null; }
     return await resp.json();
-  } catch (e) {
-    console.error("Firecrawl error:", e);
-    return null;
-  }
+  } catch (e) { console.error("Firecrawl error:", e); return null; }
 }
 
 async function firecrawlMap(url: string): Promise<string[]> {
@@ -104,9 +95,7 @@ async function firecrawlMap(url: string): Promise<string[]> {
     if (!resp.ok) return [];
     const data = await resp.json();
     return data.links || [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 async function firecrawlSearch(query: string): Promise<any[]> {
@@ -120,17 +109,14 @@ async function firecrawlSearch(query: string): Promise<any[]> {
     if (!resp.ok) return [];
     const data = await resp.json();
     return data.data || [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
-// ━━━━━━━━━━ STATE MANAGEMENT ━━━━━━━━━━
+// ━━━━━━━━━━ STATE HELPERS ━━━━━━━━━━
 function createInitialState(url: string, goals: string, extra?: any): any {
-  const missionId = crypto.randomUUID();
   return {
     mission: {
-      id: missionId, url, goals, status: "running",
+      id: crypto.randomUUID(), url, goals, status: "running",
       startTime: Date.now(), currentPhaseId: null,
       completedPhases: [], totalProgress: 0,
       ...(extra?.entryType === 'topic' ? { entryType: 'topic', topic: extra.topic, niche: extra.niche } : { entryType: 'url' }),
@@ -150,6 +136,7 @@ function createInitialState(url: string, goals: string, extra?: any): any {
     },
     approvals: [],
     recentComms: [],
+    processingPhase: null, // guard: which phase is currently being processed in background
     config: {
       approvalTimeoutMs: 1800000, heartbeatIntervalMs: 5000,
       heartbeatMissThreshold: 3, maxRetries: 3, parallelArticles: 2,
@@ -215,7 +202,7 @@ function createApproval(state: any, agentId: string, phaseId: string, type: stri
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// AGENT EXECUTION — REAL DATA
+// AGENT EXECUTORS — run in background via EdgeRuntime.waitUntil()
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 async function executeCrawler(state: any) {
@@ -224,13 +211,11 @@ async function executeCrawler(state: any) {
   addLog(state, "crawler", "action", `🕷️ Initiating REAL crawl of ${url} via Firecrawl`);
   addComm(state, "orchestrator", "crawler", "task_assign", { description: `Crawl ${url}` });
 
-  // Step 1: Map the site to discover all pages
   addLog(state, "crawler", "info", "Mapping site structure...");
   updateAgent(state, "crawler", { progress: 15 });
   const sitePages = await firecrawlMap(url);
   addLog(state, "crawler", "info", `📍 Discovered ${sitePages.length} URLs from sitemap`);
 
-  // Step 2: Scrape the homepage for content analysis
   addLog(state, "crawler", "info", "Scraping homepage content...");
   updateAgent(state, "crawler", { progress: 35 });
   const scrapeResult = await firecrawlScrape(url);
@@ -240,13 +225,12 @@ async function executeCrawler(state: any) {
   const realMetadata = scrapeResult?.data?.metadata || scrapeResult?.metadata || {};
 
   addLog(state, "crawler", "info", `📄 Scraped ${realMarkdown.length} chars of content, ${realLinks.length} links`);
-  addLog(state, "crawler", "info", `📋 Title: "${realMetadata.title || 'Unknown'}" | Status: ${realMetadata.statusCode || 'N/A'}`);
 
-  // Step 3: Scrape up to 5 additional pages for deeper analysis
+  // Scrape up to 3 additional pages (reduced from 5 to save time)
   const additionalPages: any[] = [];
-  const pagesToScrape = sitePages.slice(1, 6);
+  const pagesToScrape = sitePages.slice(1, 4);
   for (let i = 0; i < pagesToScrape.length; i++) {
-    addLog(state, "crawler", "info", `Scraping page ${i + 2}/${Math.min(sitePages.length, 6)}: ${pagesToScrape[i]}`);
+    addLog(state, "crawler", "info", `Scraping page ${i + 2}/${Math.min(sitePages.length, 4)}: ${pagesToScrape[i]}`);
     updateAgent(state, "crawler", { progress: 35 + ((i + 1) / pagesToScrape.length) * 30 });
     const pageData = await firecrawlScrape(pagesToScrape[i]);
     if (pageData) {
@@ -259,7 +243,6 @@ async function executeCrawler(state: any) {
     }
   }
 
-  // Step 4: AI analyzes the REAL scraped data
   addLog(state, "crawler", "info", "🤖 AI analyzing scraped content...");
   updateAgent(state, "crawler", { progress: 75 });
 
@@ -274,7 +257,6 @@ async function executeCrawler(state: any) {
   ));
 
   if (analysis) {
-    // Enrich with real data
     analysis.realData = {
       pagesDiscovered: sitePages.length,
       pageUrls: sitePages.slice(0, 50),
@@ -286,17 +268,14 @@ async function executeCrawler(state: any) {
     state.data.crawlData = analysis;
     updateAgent(state, "crawler", { progress: 95, dataProduced: { pages: sitePages.length, scraped: 1 + additionalPages.length } });
     addLog(state, "crawler", "info", `✅ Analysis complete: ${sitePages.length} pages discovered, ${analysis.contentThemes?.length || 0} themes identified`);
-    analysis.technicalIssues?.slice(0, 5).forEach((i: any) => addLog(state, "crawler", "warn", `⚠️ ${i.issue} (${i.severity})`));
-    addLog(state, "crawler", "decision", `Brand voice: ${analysis.toneAnalysis?.primaryTone || 'Unknown'} / ${analysis.toneAnalysis?.secondaryTone || 'Unknown'}`);
   } else {
-    addLog(state, "crawler", "error", "AI analysis failed, using raw scraped data");
     state.data.crawlData = {
-      pages: [{ url, title: realMetadata.title || "Homepage", type: "page", contentTheme: "General", wordCount: realMarkdown.split(/\s+/).length, hasImages: true, hasMeta: !!realMetadata.title, issues: [] }],
-      siteStructure: { totalPages: sitePages.length, pageTypes: [{ type: "page", count: sitePages.length }], depth: 2, orphanPages: [] },
-      toneAnalysis: { primaryTone: "Professional", secondaryTone: "Informative", formality: "Semi-formal", brandVoiceDescription: "Standard professional", examplePhrases: [] },
+      pages: [{ url, title: realMetadata.title || "Homepage", type: "page", contentTheme: "General", wordCount: realMarkdown.split(/\s+/).length }],
+      siteStructure: { totalPages: sitePages.length, pageTypes: [{ type: "page", count: sitePages.length }], depth: 2 },
+      toneAnalysis: { primaryTone: "Professional", secondaryTone: "Informative" },
       technicalIssues: [],
       contentThemes: [{ theme: "General", frequency: 1, relatedKeywords: [] }],
-      crawlSummary: `Scraped ${sitePages.length} pages. Homepage: ${realMarkdown.split(/\s+/).length} words.`,
+      crawlSummary: `Scraped ${sitePages.length} pages.`,
       realData: { pagesDiscovered: sitePages.length, pageUrls: sitePages.slice(0, 50), homepageWordCount: realMarkdown.split(/\s+/).length, totalLinksFound: realLinks.length, metadata: realMetadata, scrapedPages: 1 + additionalPages.length },
     };
   }
@@ -304,8 +283,8 @@ async function executeCrawler(state: any) {
   updateAgent(state, "crawler", { progress: 100 });
   addComm(state, "crawler", "orchestrator", "task_complete", { success: true, pagesFound: sitePages.length });
   createApproval(state, "crawler", "PHASE_CRAWL", "crawl_complete", "Website Crawl Complete",
-    `🕷️ REAL crawl: ${sitePages.length} pages discovered, ${1 + additionalPages.length} scraped in detail. Review findings.`,
-    `Crawled ${url} via Firecrawl. ${sitePages.length} pages found, ${state.data.crawlData.contentThemes?.length || 0} themes.`,
+    `🕷️ REAL crawl: ${sitePages.length} pages discovered, ${1 + additionalPages.length} scraped in detail.`,
+    `Crawled ${url} via Firecrawl. ${sitePages.length} pages found.`,
     state.data.crawlData);
 }
 
@@ -314,15 +293,14 @@ async function executeKeyword(state: any) {
   addLog(state, "keyword", "action", "Starting keyword research from REAL crawl data");
   addComm(state, "orchestrator", "keyword", "task_assign", { description: "Research keywords" });
 
-  // Use Firecrawl search to find real competitor content
   const themes = state.data.crawlData?.contentThemes?.map((t: any) => t.theme) || ["General"];
   const searchQuery = `${state.mission.url} ${themes.slice(0, 3).join(' ')} best keywords`;
-  
+
   addLog(state, "keyword", "info", `🔍 Searching web for competitor data: "${searchQuery}"`);
   const searchResults = await firecrawlSearch(searchQuery);
   addLog(state, "keyword", "info", `📊 Found ${searchResults.length} competitor pages for analysis`);
 
-  const competitorContent = searchResults.slice(0, 5).map((r: any) => 
+  const competitorContent = searchResults.slice(0, 5).map((r: any) =>
     `${r.title || r.url}: ${(r.markdown || r.description || '').slice(0, 500)}`
   ).join('\n\n');
 
@@ -335,9 +313,7 @@ async function executeKeyword(state: any) {
     state.data.keywords = result.keywords;
     state.data.keywordClusters = result.clusters || [];
     addLog(state, "keyword", "info", `✅ ${result.keywords.length} keywords in ${result.clusters?.length || 0} clusters`);
-    result.keywords.slice(0, 5).forEach((k: any) => addLog(state, "keyword", "info", `  🔑 "${k.keyword}" — Vol: ${k.volume}, Diff: ${k.difficulty}`));
   } else {
-    addLog(state, "keyword", "warn", "Using AI-estimated keywords");
     state.data.keywords = [{ keyword: `${themes[0]} best practices`, volume: 2400, difficulty: 45, cpc: 1.2, intent: "Informational", cluster: "Core" }];
   }
 
@@ -352,24 +328,19 @@ async function executeKeyword(state: any) {
 async function executeSerp(state: any) {
   updateAgent(state, "serp", { status: "working", currentTask: "Analyzing SERPs", progress: 10 });
   addLog(state, "serp", "action", "Beginning REAL SERP analysis");
-  addComm(state, "orchestrator", "serp", "task_assign", { description: "Analyze SERPs" });
 
   const topKws = state.data.keywords.slice(0, 5).map((k: any) => k.keyword);
   const serpData: any[] = [];
 
-  // Search each keyword with Firecrawl for real SERP data
   for (let i = 0; i < topKws.length; i++) {
     const kw = topKws[i];
     addLog(state, "serp", "info", `🔍 Searching SERP for: "${kw}"`);
     updateAgent(state, "serp", { progress: 10 + ((i + 1) / topKws.length) * 60 });
-    
     const results = await firecrawlSearch(kw);
     serpData.push({
       keyword: kw,
       realResults: results.slice(0, 5).map((r: any) => ({
-        url: r.url,
-        title: r.title || '',
-        description: r.description || '',
+        url: r.url, title: r.title || '', description: r.description || '',
         snippet: (r.markdown || '').slice(0, 300),
       })),
       resultCount: results.length,
@@ -377,7 +348,6 @@ async function executeSerp(state: any) {
     addLog(state, "serp", "info", `  📊 ${results.length} results for "${kw}"`);
   }
 
-  // AI analyzes real SERP data
   addLog(state, "serp", "info", "🤖 AI analyzing real SERP data...");
   updateAgent(state, "serp", { progress: 80 });
 
@@ -393,19 +363,15 @@ async function executeSerp(state: any) {
   } else {
     state.data.serpResults = serpData.map((s) => ({
       keyword: s.keyword, aiOverview: "", peopleAlsoAsk: [],
-      competitors: s.realResults.map((r: any, i: number) => ({ domain: new URL(r.url).hostname, rank: i + 1, estimatedTraffic: 0, domainAuthority: 0, rankingChange: 0 })),
-      opportunityScore: 60, strategicInsight: `${s.resultCount} results found`, group: "General", timestamp: Date.now(),
+      competitors: s.realResults.map((r: any, i: number) => ({ domain: r.url, rank: i + 1, estimatedTraffic: 0, domainAuthority: 0, rankingChange: 0 })),
+      opportunityScore: 60, strategicInsight: `${s.resultCount} results found`, group: "General",
     }));
   }
-
-  state.data.serpResults.forEach((s: any) => {
-    addLog(state, "serp", "info", `📊 "${s.keyword}" — Opportunity: ${s.opportunityScore}/100, Competitors: ${s.competitors?.length || 0}`);
-  });
 
   updateAgent(state, "serp", { progress: 100, dataProduced: { serpResults: state.data.serpResults.length } });
   addComm(state, "serp", "orchestrator", "task_complete", { success: true });
   createApproval(state, "serp", "PHASE_SERP", "serp_analysis", "SERP Analysis Complete",
-    `${state.data.serpResults.length} keywords analyzed with REAL search data. Review findings.`,
+    `${state.data.serpResults.length} keywords analyzed with REAL search data.`,
     `Analyzed SERPs for ${state.data.serpResults.length} keywords using live web search.`,
     state.data.serpResults);
 }
@@ -413,7 +379,6 @@ async function executeSerp(state: any) {
 async function executeStrategy(state: any) {
   updateAgent(state, "strategy", { status: "working", currentTask: "Building strategy", progress: 15 });
   addLog(state, "strategy", "action", "Synthesizing ALL real intelligence into content strategy");
-  addComm(state, "orchestrator", "strategy", "task_assign", { description: "Build content strategy" });
 
   const result = parseJSON(await callAI(
     "You are THE PLANNER, an expert content strategist. Return JSON with: clusters (array with name, keywords, intent, contentAngle, priority), pillarContent (array with title, targetKeyword, supportingArticles, estimatedImpact), calendar (array with week, topic, type, bestDay, targetKeyword, reasoning), internalLinking (array with sourceTopic, targetTopic, anchorText, linkStrength), competitivePositioning (string), summary (string), strategicRationale (string).",
@@ -423,35 +388,30 @@ async function executeStrategy(state: any) {
   if (result) {
     state.data.contentStrategy = result;
     addLog(state, "strategy", "info", `✅ ${result.clusters?.length || 0} clusters, ${result.calendar?.length || 0} calendar items`);
-    addLog(state, "strategy", "decision", result.summary || "Strategy ready.");
   } else {
-    state.data.contentStrategy = { clusters: [], pillarContent: [], calendar: [], internalLinking: [], internalLinkingMap: [], competitivePositioning: "", contentGapPriorities: [], summary: "Basic strategy.", strategicRationale: "" };
+    state.data.contentStrategy = { clusters: [], pillarContent: [], calendar: [], internalLinking: [], summary: "Basic strategy." };
   }
 
   updateAgent(state, "strategy", { progress: 100 });
   addComm(state, "strategy", "orchestrator", "task_complete", { success: true });
   createApproval(state, "strategy", "PHASE_STRATEGY", "strategy", "Content Strategy Complete",
-    `${state.data.contentStrategy.clusters?.length || 0} clusters, ${state.data.contentStrategy.calendar?.length || 0} planned articles. Approve to begin writing.`,
+    `${state.data.contentStrategy.clusters?.length || 0} clusters, ${state.data.contentStrategy.calendar?.length || 0} planned articles.`,
     "Full content strategy developed from real data.", state.data.contentStrategy);
 }
 
 async function executeWriter(state: any) {
   updateAgent(state, "writer", { status: "working", currentTask: "Writing articles", progress: 5 });
   addLog(state, "writer", "action", "Beginning article generation from real strategy");
-  addComm(state, "orchestrator", "writer", "task_assign", { description: "Write articles" });
 
   const targetKw = state.data.keywords[0]?.keyword || "article topic";
   const paa = state.data.serpResults[0]?.peopleAlsoAsk || [];
 
-  // Research the topic with real web data before writing
   addLog(state, "writer", "info", `🔍 Researching "${targetKw}" with live web data...`);
   const researchResults = await firecrawlSearch(`${targetKw} comprehensive guide 2024`);
-  const researchContent = researchResults.slice(0, 3).map((r: any) => 
+  const researchContent = researchResults.slice(0, 3).map((r: any) =>
     `Source: ${r.url}\n${(r.markdown || '').slice(0, 1000)}`
   ).join('\n\n---\n\n');
-  addLog(state, "writer", "info", `📚 Gathered ${researchResults.length} real sources for reference`);
 
-  // Generate outline
   addLog(state, "writer", "info", `Generating outline for "${targetKw}"`);
   const outlineResult = parseJSON(await callAI(
     "You are THE WORDSMITH. Generate an article outline based on real research data. Return JSON with: title (string), metaDescription (string), sections (array of {heading, headingLevel, description, visualType, targetWordCount, paaQuestionsAddressed, keyPoints}).",
@@ -459,7 +419,7 @@ async function executeWriter(state: any) {
   ));
 
   const articleTitle = outlineResult?.title || `Complete Guide to ${targetKw}`;
-  const sections = outlineResult?.sections || [{ heading: "Introduction", description: "Overview", visualType: "none", targetWordCount: 300 }];
+  const sections = outlineResult?.sections || [{ heading: "Introduction", description: "Overview", targetWordCount: 300 }];
 
   const articleId = crypto.randomUUID();
   const article: any = {
@@ -467,13 +427,11 @@ async function executeWriter(state: any) {
     metaDescription: outlineResult?.metaDescription || "",
     status: "drafting", progress: 0, logs: [], content: "", mdContent: "",
     sections: sections.map((s: any) => ({ ...s, content: "", type: "text" })),
-    wordCount: 0, targetWordCount: 3000, aiOverviewOptimized: false, paaQuestionsAnswered: [],
-    sourcesUsed: researchResults.length,
+    wordCount: 0, targetWordCount: 3000, sourcesUsed: researchResults.length,
   };
   state.data.articles.push(article);
   updateAgent(state, "writer", { progress: 20 });
 
-  // Write each section
   let fullContent = "";
   for (let i = 0; i < Math.min(sections.length, 8); i++) {
     const sec = sections[i];
@@ -481,7 +439,7 @@ async function executeWriter(state: any) {
 
     const sectionContent = await callAI(
       "You are THE WORDSMITH, an expert SEO content writer. Write a detailed, engaging section. Use natural language, real examples, and data. Do NOT return JSON — return pure markdown text only.",
-      `Write section "${sec.heading}" for article about "${targetKw}".\nContext: ${fullContent.slice(-500)}\nTarget: ${sec.targetWordCount || 500} words.\nPAA: ${(sec.paaQuestionsAddressed || []).join(', ')}\nReal research data to reference:\n${researchContent.slice(0, 1000)}\nWrite engaging, authoritative content.`
+      `Write section "${sec.heading}" for article about "${targetKw}".\nContext: ${fullContent.slice(-500)}\nTarget: ${sec.targetWordCount || 500} words.\nReal research data to reference:\n${researchContent.slice(0, 1000)}\nWrite engaging, authoritative content.`
     );
 
     fullContent += `\n\n## ${sec.heading}\n\n${sectionContent}`;
@@ -496,11 +454,11 @@ async function executeWriter(state: any) {
 
   article.status = "completed";
   article.progress = 100;
-  addLog(state, "writer", "info", `✅ Article complete: "${articleTitle}" — ${article.wordCount} words from ${researchResults.length} sources`);
+  addLog(state, "writer", "info", `✅ Article complete: "${articleTitle}" — ${article.wordCount} words`);
   updateAgent(state, "writer", { progress: 100, dataProduced: { articles: 1, words: article.wordCount } });
   addComm(state, "writer", "orchestrator", "task_complete", { success: true, wordCount: article.wordCount });
   createApproval(state, "writer", "PHASE_WRITE", "article_draft", "Article Draft Complete",
-    `"${articleTitle}" — ${article.wordCount} words, researched from ${researchResults.length} live sources. Review and approve.`,
+    `"${articleTitle}" — ${article.wordCount} words from ${researchResults.length} live sources.`,
     `Wrote ${article.wordCount}-word article backed by real web research.`,
     { articleId, title: articleTitle, wordCount: article.wordCount });
 }
@@ -508,13 +466,8 @@ async function executeWriter(state: any) {
 async function executeMonitor(state: any) {
   updateAgent(state, "rank_tracker", { status: "working", currentTask: "Setting up monitoring", progress: 30 });
   addLog(state, "rank_tracker", "action", "Initializing rank tracking and monitoring");
-  addComm(state, "orchestrator", "rank_tracker", "task_assign", { description: "Set up monitoring" });
-
   addLog(state, "rank_tracker", "info", "✅ Rank tracking configured for all target keywords");
-  addLog(state, "rank_tracker", "info", "✅ Analytics monitoring initialized");
-  addLog(state, "rank_tracker", "info", "✅ Content optimization alerts enabled");
-  addLog(state, "rank_tracker", "info", "🔄 24/7 autopilot mode ACTIVE — agents will continue optimizing");
-
+  addLog(state, "rank_tracker", "info", "🔄 24/7 autopilot mode ACTIVE");
   updateAgent(state, "rank_tracker", { status: "monitoring", progress: 100 });
   updatePhase(state, "PHASE_MONITOR", { status: "completed", endTime: Date.now() });
   addComm(state, "rank_tracker", "orchestrator", "task_complete", { success: true });
@@ -529,49 +482,56 @@ const PHASE_EXECUTORS: Record<string, (state: any) => Promise<void>> = {
   PHASE_MONITOR: executeMonitor,
 };
 
-async function advanceWorkflow(state: any) {
-  if (state.mission.status !== "running") return;
+// ━━━━━━━━━━ BACKGROUND WORKER ━━━━━━━━━━
+// Runs a phase executor in background, then updates the DB when done
+async function runPhaseInBackground(sessionId: string, phaseId: string, state: any) {
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_KEY);
+  const phase = state.phases.find((p: any) => p.id === phaseId);
+  if (!phase) return;
 
+  const executor = PHASE_EXECUTORS[phaseId];
+  if (!executor) return;
+
+  try {
+    console.log(`[BG] Starting phase ${phaseId} for session ${sessionId}`);
+    await executor(state);
+
+    // If executor created an approval, phase stays in awaiting_approval
+    // If no approval (e.g. monitor), phase was already marked completed by executor
+    if (!state.approvals.some((a: any) => a.phaseId === phaseId && a.status === "pending")) {
+      updatePhase(state, phaseId, { status: "completed", endTime: Date.now(), progress: 100 });
+    }
+  } catch (err) {
+    console.error(`[BG] Phase ${phaseId} failed:`, err);
+    addLog(state, phase.assignedAgent, "error", `Phase failed: ${err}`);
+    updatePhase(state, phaseId, { status: "failed" });
+    updateAgent(state, phase.assignedAgent, { status: "error" });
+  }
+
+  // Clear processing guard
+  state.processingPhase = null;
+  recalculateProgress(state);
+
+  // Check if mission is now complete
   const allCompleted = state.phases.every((p: any) => p.status === "completed" || p.status === "skipped");
   if (allCompleted) {
     state.mission.status = "completed";
     state.mission.endTime = Date.now();
     state.mission.totalProgress = 100;
     updateAgent(state, "orchestrator", { status: "completed", currentTask: "Mission complete!" });
-    addLog(state, "orchestrator", "action", "✅ All phases completed. Mission successful. Autopilot monitoring active.");
-    return;
+    addLog(state, "orchestrator", "action", "✅ All phases completed. Mission successful.");
   }
 
-  if (state.approvals.some((a: any) => a.status === "pending")) return;
-
-  const ready = getReadyPhases(state);
-  if (ready.length === 0) return;
-
-  const phase = ready[0];
-  updatePhase(state, phase.id, { status: "running", startTime: Date.now() });
-  state.mission.currentPhaseId = phase.id;
-  updateAgent(state, "orchestrator", { status: "working", currentTask: `Running: ${phase.name}` });
-  addLog(state, "orchestrator", "action", `▶️ Starting phase: ${phase.name}`);
-
-  const executor = PHASE_EXECUTORS[phase.id];
-  if (executor) {
-    try {
-      await executor(state);
-      if (!state.approvals.some((a: any) => a.phaseId === phase.id && a.status === "pending")) {
-        updatePhase(state, phase.id, { status: "completed", endTime: Date.now(), progress: 100 });
-      }
-    } catch (err) {
-      addLog(state, phase.assignedAgent, "error", `Phase failed: ${err}`);
-      updatePhase(state, phase.id, { status: "failed" });
-      updateAgent(state, phase.assignedAgent, { status: "error" });
-    }
-  }
-
-  recalculateProgress(state);
+  // Persist to DB — this triggers realtime for the frontend
+  console.log(`[BG] Saving state for session ${sessionId}, phase ${phaseId} done`);
+  await supabaseAdmin.from("seo_sessions").update({
+    workflow_state: state,
+    updated_at: new Date().toISOString(),
+  }).eq("id", sessionId);
 }
 
 // ━━━━━━━━━━ MAIN HANDLER ━━━━━━━━━━
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -581,7 +541,7 @@ serve(async (req) => {
 
     switch (action) {
       case "start_mission": {
-        const { url, goals, entryType, topic, niche, projectId } = body;
+        const { url, goals, entryType, topic, niche } = body;
         const state = createInitialState(url, goals, { entryType, topic, niche });
         updateAgent(state, "orchestrator", { status: "working", currentTask: "Initializing mission" });
         addLog(state, "orchestrator", "action", `🚀 Mission started for ${url} (${entryType || 'url'} entry)`);
@@ -605,18 +565,74 @@ serve(async (req) => {
       }
 
       case "advance": {
+        // Read current session
         const { data: session } = await supabaseAdmin.from("seo_sessions").select("*").eq("id", sessionId).single();
         if (!session) throw new Error("Session not found");
 
         const state = session.workflow_state;
-        await advanceWorkflow(state);
 
+        // If mission is done or paused, just return state
+        if (state.mission.status !== "running") {
+          return new Response(JSON.stringify({ state, status: "not_running" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // If a phase is already being processed in background, don't re-trigger
+        if (state.processingPhase) {
+          console.log(`[advance] Phase ${state.processingPhase} already processing, returning current state`);
+          return new Response(JSON.stringify({ state, status: "already_processing", processingPhase: state.processingPhase }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // If there are pending approvals, nothing to do
+        if (state.approvals.some((a: any) => a.status === "pending")) {
+          return new Response(JSON.stringify({ state, status: "awaiting_approval" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Check if all done
+        const allCompleted = state.phases.every((p: any) => p.status === "completed" || p.status === "skipped");
+        if (allCompleted) {
+          state.mission.status = "completed";
+          state.mission.endTime = Date.now();
+          state.mission.totalProgress = 100;
+          await supabaseAdmin.from("seo_sessions").update({ workflow_state: state }).eq("id", sessionId);
+          return new Response(JSON.stringify({ state, status: "completed" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Find next ready phase
+        const ready = getReadyPhases(state);
+        if (ready.length === 0) {
+          return new Response(JSON.stringify({ state, status: "no_ready_phases" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const phase = ready[0];
+
+        // Mark phase as running and set processing guard
+        updatePhase(state, phase.id, { status: "running", startTime: Date.now() });
+        state.mission.currentPhaseId = phase.id;
+        state.processingPhase = phase.id;
+        updateAgent(state, "orchestrator", { status: "working", currentTask: `Running: ${phase.name}` });
+        addLog(state, "orchestrator", "action", `▶️ Starting phase: ${phase.name}`);
+
+        // Save the "running" state immediately so frontend sees it
         await supabaseAdmin.from("seo_sessions").update({
           workflow_state: state,
           updated_at: new Date().toISOString(),
         }).eq("id", sessionId);
 
-        return new Response(JSON.stringify({ state }), {
+        // Kick off the background worker — returns immediately
+        // @ts-ignore: EdgeRuntime.waitUntil is a Deno Deploy API
+        EdgeRuntime.waitUntil(runPhaseInBackground(sessionId, phase.id, state));
+
+        return new Response(JSON.stringify({ state, status: "phase_started", phaseId: phase.id }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -645,6 +661,8 @@ serve(async (req) => {
           addLog(state, "orchestrator", "warn", `❌ Rejected: ${approval.title}. Re-queuing.`);
         }
 
+        // Clear processing guard since the phase is now approved/rejected
+        state.processingPhase = null;
         recalculateProgress(state);
         await supabaseAdmin.from("seo_sessions").update({ workflow_state: state }).eq("id", sessionId);
 
@@ -657,7 +675,6 @@ serve(async (req) => {
         const { command } = body;
         const { data: session } = await supabaseAdmin.from("seo_sessions").select("*").eq("id", sessionId).single();
         if (!session) throw new Error("Session not found");
-
         const state = session.workflow_state;
         if (command.type === "pause") {
           updateAgent(state, command.targetAgent, { status: "paused" });
@@ -666,7 +683,6 @@ serve(async (req) => {
           updateAgent(state, command.targetAgent, { status: "idle" });
           addLog(state, command.targetAgent, "action", "▶️ Resumed by operator");
         }
-
         await supabaseAdmin.from("seo_sessions").update({ workflow_state: state }).eq("id", sessionId);
         return new Response(JSON.stringify({ state }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -684,7 +700,7 @@ serve(async (req) => {
         const state = session.workflow_state;
         const report = await callAI(
           "Generate a comprehensive SEO session report in markdown format.",
-          `Session data: URL: ${state.mission.url}, Keywords: ${state.data.keywords.length}, Articles: ${state.data.articles.length}, Total words: ${state.data.articles.reduce((s: number, a: any) => s + (a.wordCount || 0), 0)}. Phases completed: ${state.phases.filter((p: any) => p.status === "completed").length}/${state.phases.length}. Data sourced from real web scraping.`
+          `Session data: URL: ${state.mission.url}, Keywords: ${state.data.keywords.length}, Articles: ${state.data.articles.length}. Phases completed: ${state.phases.filter((p: any) => p.status === "completed").length}/${state.phases.length}.`
         );
         return new Response(JSON.stringify({ report }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }

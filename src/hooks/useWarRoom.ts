@@ -65,8 +65,7 @@ async function invokeWarRoom(action: string, payload: Record<string, any> = {}) 
 export function useWarRoom() {
   const [state, setState] = useState<WarRoomState>(createInitialState);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const runningRef = useRef(false);
+  const advancingRef = useRef(false);
 
   const mergeState = useCallback((serverState: any) => {
     if (!serverState) return;
@@ -84,30 +83,33 @@ export function useWarRoom() {
     }));
   }, []);
 
-  // Load session and start polling
+  // One-shot advance: call once, don't poll
+  const triggerAdvance = useCallback(async (sid?: string) => {
+    const id = sid || sessionId;
+    if (!id || advancingRef.current) return;
+    advancingRef.current = true;
+    try {
+      const result = await invokeWarRoom('advance', { sessionId: id });
+      mergeState(result.state);
+    } catch (err) {
+      console.error('Advance error:', err);
+    } finally {
+      advancingRef.current = false;
+    }
+  }, [sessionId, mergeState]);
+
+  // Load session state, then trigger first advance
   const loadSession = useCallback(async (id: string) => {
     setSessionId(id);
-    runningRef.current = true;
     try {
       const result = await invokeWarRoom('get_state', { sessionId: id });
       mergeState(result.state);
+      // Trigger advance once to kick off next phase if needed
+      setTimeout(() => triggerAdvance(id), 500);
     } catch (err) {
       console.error('Failed to load session:', err);
     }
-  }, [mergeState]);
-
-  const advanceWorkflow = useCallback(async () => {
-    if (!sessionId || !runningRef.current) return;
-    try {
-      const result = await invokeWarRoom('advance', { sessionId });
-      mergeState(result.state);
-      if (result.state?.mission?.status === 'completed' || result.state?.mission?.status === 'failed') {
-        runningRef.current = false;
-      }
-    } catch (err) {
-      console.error('Advance error:', err);
-    }
-  }, [sessionId, mergeState]);
+  }, [mergeState, triggerAdvance]);
 
   const approveRequest = useCallback(async (approvalId: string, optionId: string, userInput?: string) => {
     if (!sessionId) return;
@@ -115,10 +117,12 @@ export function useWarRoom() {
       const result = await invokeWarRoom('approve', { sessionId, approvalId, optionId, userInput });
       mergeState(result.state);
       toast.success('Approval processed.');
+      // After approval, trigger advance to start next phase
+      setTimeout(() => triggerAdvance(), 1000);
     } catch (err) {
       toast.error('Approval failed.');
     }
-  }, [sessionId, mergeState]);
+  }, [sessionId, mergeState, triggerAdvance]);
 
   const intervene = useCallback(async (command: InterventionCommand) => {
     if (!sessionId) return;
@@ -131,7 +135,6 @@ export function useWarRoom() {
   }, [sessionId, mergeState]);
 
   const pauseMission = useCallback(async () => {
-    runningRef.current = false;
     setState(prev => ({
       ...prev,
       mission: prev.mission ? { ...prev.mission, status: 'paused' } : prev.mission,
@@ -139,22 +142,11 @@ export function useWarRoom() {
   }, []);
 
   const resumeMission = useCallback(async () => {
-    runningRef.current = true;
-  }, []);
+    triggerAdvance();
+  }, [triggerAdvance]);
 
-  // Polling loop — advance every 3s when running
-  useEffect(() => {
-    if (sessionId && runningRef.current) {
-      pollingRef.current = setInterval(() => {
-        if (runningRef.current) advanceWorkflow();
-      }, 3000);
-    }
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, [sessionId, advanceWorkflow]);
-
-  // Also subscribe to realtime changes on seo_sessions for instant updates
+  // Realtime subscription — primary state sync mechanism
+  // When the background worker finishes and writes to DB, we get the update here
   useEffect(() => {
     if (!sessionId) return;
     const channel = supabase
@@ -166,12 +158,22 @@ export function useWarRoom() {
         filter: `id=eq.${sessionId}`,
       }, (payload) => {
         const newState = (payload.new as any)?.workflow_state;
-        if (newState) mergeState(newState);
+        if (newState) {
+          mergeState(newState);
+          // If background phase just finished and no pending approvals, auto-advance to next phase
+          const hasPending = newState.approvals?.some((a: any) => a.status === "pending");
+          const isRunning = newState.mission?.status === "running";
+          const notProcessing = !newState.processingPhase;
+          if (isRunning && !hasPending && notProcessing) {
+            // A phase just completed without needing approval (e.g. monitor), trigger next
+            setTimeout(() => triggerAdvance(), 500);
+          }
+        }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [sessionId, mergeState]);
+  }, [sessionId, mergeState, triggerAdvance]);
 
   return {
     state,
@@ -181,6 +183,7 @@ export function useWarRoom() {
     resumeMission,
     approveRequest,
     intervene,
-    isRunning: runningRef.current,
+    triggerAdvance,
+    isRunning: state.mission?.status === 'running',
   };
 }
