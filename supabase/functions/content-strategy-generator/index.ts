@@ -11,29 +11,24 @@ serve(async (req) => {
   }
 
   try {
-    const { action, projectId, businessName, industry, targetAudience, brandVoice } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const body = await req.json();
+    const { action, projectId, businessName, industry, targetAudience, brandVoice, niche, topic, platform, goals } = body;
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
+    const effectiveAction = action || 'research_niche';
+    const effectiveName = businessName || topic || niche || 'blog';
+    const effectiveAudience = targetAudience || niche || 'general consumers';
+
     let prompt = '';
-    let systemPrompt = `You are a content strategy expert for ${businessName || 'this business'} in the ${industry || 'general'} industry. Target audience: ${targetAudience || 'general consumers'}. Brand voice: ${brandVoice || 'professional and friendly'}.`;
+    const systemPrompt = `You are a content strategy expert for ${effectiveName} in the ${industry || 'general'} industry. Target audience: ${effectiveAudience}. Brand voice: ${brandVoice || 'professional and friendly'}. Always return valid JSON.`;
 
-    switch (action) {
+    switch (effectiveAction) {
       case 'research_niche':
-        prompt = `You are a niche research expert. For the niche "${businessName || 'blog'}" (target audience: ${targetAudience || 'general'}), provide a comprehensive niche analysis:
-
-1. Market Size & Opportunity
-2. Target Audience Profile
-3. Top 10 Keywords (with estimated search volume)
-4. Top 5 Competitors
-5. Content Gaps & Opportunities
-6. Monetization Potential
-7. Recommended Content Pillars
-
-Return as JSON:
+        prompt = `For the niche "${effectiveName}" (target audience: ${effectiveAudience}), provide a comprehensive niche analysis as JSON:
 {
   "niche": string,
   "marketSize": {"estimate": string, "growth": string},
@@ -47,14 +42,7 @@ Return as JSON:
         break;
 
       case 'generate_strategy':
-        prompt = `Create a comprehensive 90-day content strategy for ${businessName}. Include:
-1. Content pillars (3-4 main themes)
-2. Content mix (blog posts, social media, email, video)
-3. Publishing frequency recommendations
-4. Key messages and value propositions
-5. Content goals and KPIs
-
-Return as JSON with structure:
+        prompt = `Create a comprehensive 90-day content strategy for ${effectiveName}. Return as JSON:
 {
   "pillars": [{"name": string, "description": string, "topics": string[]}],
   "contentMix": {"blog": number, "social": number, "email": number, "video": number},
@@ -65,45 +53,20 @@ Return as JSON with structure:
         break;
 
       case 'suggest_topics':
-        prompt = `Generate 20 content topic ideas for ${businessName}. For each topic, include:
-- Title
-- Content type (blog, social, video, email)
-- Target keyword
-- Estimated search volume (low/medium/high)
-- Difficulty (easy/medium/hard)
-- Content pillar it belongs to
-
-Return as JSON array:
+        prompt = `Generate 20 content topic ideas for ${effectiveName}. Return as JSON array:
 [{"title": string, "type": string, "keyword": string, "searchVolume": string, "difficulty": string, "pillar": string}]`;
         break;
 
       case 'create_calendar':
-        const { duration = '30', pillars = [] } = await req.json();
-        prompt = `Create a ${duration}-day content calendar for ${businessName}. 
-Content pillars: ${pillars.join(', ') || 'education, product, community'}
-
-For each day, suggest content with:
-- Date (relative to start)
-- Content type
-- Topic/title
-- Platform(s)
-- Status (draft)
-
-Return as JSON array:
+        const duration = body.duration || '30';
+        const pillars = body.pillars || [];
+        prompt = `Create a ${duration}-day content calendar for ${effectiveName}. Content pillars: ${pillars.join(', ') || 'education, product, community'}. Return as JSON array:
 [{"day": number, "type": string, "title": string, "platforms": string[], "pillar": string}]`;
         break;
 
       case 'analyze_competitors':
-        const { competitors = [] } = await req.json();
-        prompt = `Analyze content strategy for these competitors: ${competitors.join(', ') || 'top 3 competitors'}.
-Include:
-- Content types they use
-- Posting frequency
-- Top performing content themes
-- Gaps and opportunities
-- Recommendations for differentiation
-
-Return as JSON:
+        const competitors = body.competitors || [];
+        prompt = `Analyze content strategy for these competitors: ${competitors.join(', ') || 'top 3 competitors'}. Return as JSON:
 {
   "competitors": [{"name": string, "contentTypes": string[], "frequency": string, "topThemes": string[]}],
   "gaps": string[],
@@ -113,19 +76,19 @@ Return as JSON:
         break;
 
       default:
-        throw new Error(`Unknown action: ${action}`);
+        throw new Error(`Unknown action: ${effectiveAction}`);
     }
 
-    console.log(`Content strategy action: ${action} for project: ${projectId}`);
+    console.log(`Content strategy action: ${effectiveAction} for project: ${projectId}`);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-3-flash-preview',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
@@ -137,13 +100,22 @@ Return as JSON:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ success: false, error: 'Rate limit exceeded, please try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ success: false, error: 'Payment required, please add AI credits.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // Try to parse JSON from response
     let result;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
@@ -152,11 +124,7 @@ Return as JSON:
       result = { raw: content };
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      action,
-      result 
-    }), {
+    return new Response(JSON.stringify({ success: true, action: effectiveAction, result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

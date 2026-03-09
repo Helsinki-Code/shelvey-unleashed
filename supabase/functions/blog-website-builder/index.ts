@@ -71,12 +71,12 @@ Deno.serve(async (req) => {
 
     // Step 4: Generate initial content strategy
     const strategyRes = await supabase.functions.invoke('content-strategy-generator', {
-      body: { niche, topic, targetAudience: niche, platform, goals, projectId, userId },
+      body: { action: 'research_niche', niche, topic, businessName: topic, targetAudience: niche, platform, goals, projectId, userId },
     });
 
     // Step 5: Start first autopilot cycle (phase 1 – niche research)
     const autopilotRes = await supabase.functions.invoke('blog-generator', {
-      body: { projectId, phase: 1, isAutopilot: true, userId },
+      body: { action: 'generate_article', projectId, phase: 1, isAutopilot: true, userId },
     });
 
     return new Response(
