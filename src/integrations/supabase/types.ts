@@ -512,6 +512,53 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_autopilot_schedules: {
+        Row: {
+          blog_project_id: string
+          created_at: string | null
+          enabled: boolean | null
+          frequency_hours: number | null
+          id: string
+          last_run: string | null
+          next_run: string | null
+          phases_config: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          blog_project_id: string
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency_hours?: number | null
+          id?: string
+          last_run?: string | null
+          next_run?: string | null
+          phases_config?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          blog_project_id?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency_hours?: number | null
+          id?: string
+          last_run?: string | null
+          next_run?: string | null
+          phases_config?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_autopilot_schedules_blog_project_id_fkey"
+            columns: ["blog_project_id"]
+            isOneToOne: true
+            referencedRelation: "blog_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_backlinks: {
         Row: {
           anchor_text: string | null
@@ -886,6 +933,7 @@ export type Database = {
       }
       blog_projects: {
         Row: {
+          auto_generated: boolean | null
           created_at: string | null
           current_phase: number | null
           domain: string | null
@@ -900,8 +948,10 @@ export type Database = {
           total_revenue: number | null
           updated_at: string | null
           user_id: string
+          website_url: string | null
         }
         Insert: {
+          auto_generated?: boolean | null
           created_at?: string | null
           current_phase?: number | null
           domain?: string | null
@@ -916,8 +966,10 @@ export type Database = {
           total_revenue?: number | null
           updated_at?: string | null
           user_id: string
+          website_url?: string | null
         }
         Update: {
+          auto_generated?: boolean | null
           created_at?: string | null
           current_phase?: number | null
           domain?: string | null
@@ -932,6 +984,7 @@ export type Database = {
           total_revenue?: number | null
           updated_at?: string | null
           user_id?: string
+          website_url?: string | null
         }
         Relationships: []
       }
