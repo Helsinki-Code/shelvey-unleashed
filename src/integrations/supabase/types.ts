@@ -3007,10 +3007,12 @@ export type Database = {
           agent_logs: Json | null
           articles: Json | null
           created_at: string | null
+          entry_type: string | null
           goals: string | null
           id: string
           status: string
           target_url: string
+          topic: string | null
           updated_at: string | null
           user_id: string
           workflow_state: Json | null
@@ -3019,10 +3021,12 @@ export type Database = {
           agent_logs?: Json | null
           articles?: Json | null
           created_at?: string | null
+          entry_type?: string | null
           goals?: string | null
           id?: string
           status?: string
           target_url: string
+          topic?: string | null
           updated_at?: string | null
           user_id: string
           workflow_state?: Json | null
@@ -3031,10 +3035,12 @@ export type Database = {
           agent_logs?: Json | null
           articles?: Json | null
           created_at?: string | null
+          entry_type?: string | null
           goals?: string | null
           id?: string
           status?: string
           target_url?: string
+          topic?: string | null
           updated_at?: string | null
           user_id?: string
           workflow_state?: Json | null

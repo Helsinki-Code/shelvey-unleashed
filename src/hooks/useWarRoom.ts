@@ -2,11 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type {
-  WarRoomState, AgentState, PhaseState, ApprovalRequest,
-  BusMessage, MissionState, DataStore, MissionConfig, AgentId,
-  InterventionCommand,
+  WarRoomState, InterventionCommand,
 } from '@/types/agent';
-import { DEFAULT_CONFIG, AGENT_DEFINITIONS, PhaseStatus, DEFAULT_PHASES } from '@/types/agent';
+import { AGENT_DEFINITIONS, PhaseStatus, DEFAULT_PHASES } from '@/types/agent';
 
 function createInitialState(): WarRoomState {
   return {
@@ -43,7 +41,13 @@ function createInitialState(): WarRoomState {
     },
     approvals: [],
     communications: [],
-    config: DEFAULT_CONFIG,
+    config: {
+      approvalTimeoutMs: 1800000, heartbeatIntervalMs: 5000,
+      heartbeatMissThreshold: 3, maxRetries: 3, parallelArticles: 2,
+      minWordCount: 3000, minPAAQuestions: 7, minImages: 5,
+      enableAutoApprove: false, autoApprovePhases: [],
+      rankCheckIntervalMs: 3600000, optimizationCheckIntervalMs: 86400000,
+    },
     health: { overallStatus: 'healthy', agents: [] },
     connected: false,
   };
@@ -80,15 +84,15 @@ export function useWarRoom() {
     }));
   }, []);
 
-  const startMission = useCallback(async (url: string, goals: string) => {
+  // Load session and start polling
+  const loadSession = useCallback(async (id: string) => {
+    setSessionId(id);
+    runningRef.current = true;
     try {
-      const result = await invokeWarRoom('start_mission', { url, goals });
-      setSessionId(result.sessionId);
+      const result = await invokeWarRoom('get_state', { sessionId: id });
       mergeState(result.state);
-      runningRef.current = true;
-      toast.success('Mission launched! Agents deploying...');
     } catch (err) {
-      toast.error('Failed to start mission: ' + (err instanceof Error ? err.message : 'Unknown'));
+      console.error('Failed to load session:', err);
     }
   }, [mergeState]);
 
@@ -126,20 +130,6 @@ export function useWarRoom() {
     }
   }, [sessionId, mergeState]);
 
-  const getSessionReport = useCallback(async () => {
-    if (!sessionId) return null;
-    try {
-      return await invokeWarRoom('get_report', { sessionId });
-    } catch { return null; }
-  }, [sessionId]);
-
-  const exportData = useCallback(async (format: string) => {
-    if (!sessionId) return null;
-    try {
-      return await invokeWarRoom('export', { sessionId, format });
-    } catch { return null; }
-  }, [sessionId]);
-
   const pauseMission = useCallback(async () => {
     runningRef.current = false;
     setState(prev => ({
@@ -152,7 +142,7 @@ export function useWarRoom() {
     runningRef.current = true;
   }, []);
 
-  // Polling loop
+  // Polling loop — advance every 3s when running
   useEffect(() => {
     if (sessionId && runningRef.current) {
       pollingRef.current = setInterval(() => {
@@ -164,16 +154,33 @@ export function useWarRoom() {
     };
   }, [sessionId, advanceWorkflow]);
 
+  // Also subscribe to realtime changes on seo_sessions for instant updates
+  useEffect(() => {
+    if (!sessionId) return;
+    const channel = supabase
+      .channel(`seo-session-${sessionId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'seo_sessions',
+        filter: `id=eq.${sessionId}`,
+      }, (payload) => {
+        const newState = (payload.new as any)?.workflow_state;
+        if (newState) mergeState(newState);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionId, mergeState]);
+
   return {
     state,
     sessionId,
-    startMission,
+    loadSession,
     pauseMission,
     resumeMission,
     approveRequest,
     intervene,
-    getSessionReport,
-    exportData,
     isRunning: runningRef.current,
   };
 }
