@@ -7,7 +7,6 @@ import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import { CommunicationLog } from './CommunicationLog';
 import { MissionStartDialog } from './MissionStartDialog';
 import { AgentDeepDive } from './AgentDeepDive';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Target, MessageSquare, CheckCircle, Activity } from 'lucide-react';
