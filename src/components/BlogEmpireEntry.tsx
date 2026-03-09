@@ -300,7 +300,7 @@ export function BlogEmpireEntry({ onStartAnalysis, onStartAutoBuild, className }
         </Card>
 
         <div className="grid grid-cols-3 gap-4 text-center text-sm">
-          {pathType === 'existing' ? [
+          {(pathType === 'existing' ? [
             { label: 'Crawl & Analyze', desc: 'Site structure, content, tech issues' },
             { label: 'Research & Strategize', desc: 'Keywords, SERP, content plan' },
             { label: 'Write & Optimize', desc: '3,000+ word SEO articles' },
@@ -308,7 +308,7 @@ export function BlogEmpireEntry({ onStartAnalysis, onStartAutoBuild, className }
             { label: 'Generate & Deploy', desc: 'Complete website in minutes' },
             { label: 'Content Strategy', desc: 'SEO-optimized article pipeline' },
             { label: '24/7 Autopilot', desc: 'Autonomous content creation' },
-          ].map((item, i) => (
+          ]).map((item, i) => (
             <div key={i} className="p-3 rounded-lg border border-border/50">
               <p className="font-medium">{item.label}</p>
               <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
