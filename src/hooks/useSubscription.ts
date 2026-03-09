@@ -52,14 +52,28 @@ export const useSubscription = () => {
 
       if (error) throw error;
 
+      const isActive = data.subscribed === true;
       setSubscription({
-        subscribed: data.subscribed,
-        productId: data.product_id,
-        subscriptionEnd: data.subscription_end,
-        status: data.status,
+        subscribed: isActive,
+        productId: data.product_id || null,
+        subscriptionEnd: data.subscription_end || null,
+        status: isActive ? 'active' : 'none',
         isLoading: false,
         error: null,
       });
+
+      // Sync profiles table if Stripe says active but profile doesn't reflect it
+      if (isActive && user) {
+        const tier = data.product_id === 'prod_TXysVPTCBGfrbU' ? 'dfy' : 'standard';
+        await supabase
+          .from('profiles')
+          .update({
+            subscription_status: 'active',
+            subscription_tier: tier,
+            subscription_expires_at: data.subscription_end || null,
+          })
+          .eq('id', user.id);
+      }
     } catch (err) {
       console.error('Error checking subscription:', err);
       setSubscription(prev => ({
@@ -68,7 +82,7 @@ export const useSubscription = () => {
         error: err instanceof Error ? err.message : 'Failed to check subscription',
       }));
     }
-  }, [session?.access_token, isSuperAdmin]);
+  }, [session?.access_token, isSuperAdmin, user]);
 
   const createCheckout = useCallback(async (includeSetupFee: boolean = true, planType: string = 'standard') => {
     if (!session?.access_token) {

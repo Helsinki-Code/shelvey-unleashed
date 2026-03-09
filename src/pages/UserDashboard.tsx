@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, TrendingUp, Store, Bot, DollarSign, ShoppingCart, BarChart3, Zap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { SimpleDashboardSidebar } from '@/components/SimpleDashboardSidebar';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -16,7 +17,10 @@ import { Button } from '@/components/ui/button';
 const UserDashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, profile, isLoading, isSubscribed, isSuperAdmin } = useAuth();
+  const { user, profile, isLoading: authLoading, isSuperAdmin } = useAuth();
+  const { subscribed, isLoading: subLoading } = useSubscription();
+  const isLoading = authLoading || subLoading;
+  const isSubscribed = subscribed || isSuperAdmin;
   const [ceoChecked, setCeoChecked] = useState(false);
   const [userCeo, setUserCeo] = useState<any>(null);
   const [automationStats, setAutomationStats] = useState({
